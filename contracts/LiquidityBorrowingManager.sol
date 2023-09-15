@@ -46,12 +46,6 @@ contract LiquidityBorrowingManager is
         Loan[] loans;
     }
 
-    uint256 public constant MAX_DAILY_RATE = 100; // 1%
-    uint256 public constant MIN_DAILY_RATE = 5; // 0.05 %
-
-    uint256 public constant MAX_NUM_LOANS_PER_POSOTION = 5;
-    uint256 public constant MAX_NUM_USER_POSOTION = 10;
-
     /// borrowingKey=>BorrowingInfo
     mapping(bytes32 => BorrowingInfo) public borrowings;
     /// borrower => BorrowingKeys[]
@@ -126,7 +120,7 @@ contract LiquidityBorrowingManager is
         uint256 value
     ) external {
         require(msg.sender == dailyRateOperator, "invalid caller");
-        if (value > MAX_DAILY_RATE || value < MIN_DAILY_RATE) {
+        if (value > Constants.MAX_DAILY_RATE || value < Constants.MIN_DAILY_RATE) {
             revert InvalidSettingsValue(value);
         }
         TokenInfo storage holdTokenRateInfo = saleToken < holdToken
@@ -266,7 +260,10 @@ contract LiquidityBorrowingManager is
         } else {
             // If it's a new position, ensure that the user does not have too many positions
             bytes32[] storage allUserBorrowingKeys = userBorrowingKeys[msg.sender];
-            require(allUserBorrowingKeys.length < MAX_NUM_USER_POSOTION, "too many positions");
+            require(
+                allUserBorrowingKeys.length < Constants.MAX_NUM_USER_POSOTION,
+                "too many positions"
+            );
             // Add the borrowingKey to the user's borrowing keys
             allUserBorrowingKeys.push(borrowingKey);
             // Initialize the BorrowingInfo for the new position
@@ -286,7 +283,7 @@ contract LiquidityBorrowingManager is
             }
         }
         // Ensure that the number of loans does not exceed the maximum limit
-        require(borrowing.loans.length < MAX_NUM_LOANS_PER_POSOTION, "too many loans");
+        require(borrowing.loans.length < Constants.MAX_NUM_LOANS_PER_POSOTION, "too many loans");
 
         borrowing.accLoanRatePerShare = accLoanRatePerShare;
         uint256 liquidationBonus = specificTokenLiquidationBonus[params.holdToken];

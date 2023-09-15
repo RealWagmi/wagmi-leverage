@@ -8,4 +8,8 @@ library Constants {
     uint256 public constant DEFAULT_DAILY_RATE = 10; // 0.1%
     uint256 public constant MAX_PLATFORM_FEE = 2000; // 20%
     uint256 public constant MAX_LIQUIDATION_BONUS = 100; // 1%
+    uint256 public constant MAX_DAILY_RATE = 100; // 1%
+    uint256 public constant MIN_DAILY_RATE = 5; // 0.05 %
+    uint256 public constant MAX_NUM_LOANS_PER_POSOTION = 5;
+    uint256 public constant MAX_NUM_USER_POSOTION = 10;
 }
