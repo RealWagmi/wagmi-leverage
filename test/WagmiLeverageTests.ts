@@ -31,6 +31,7 @@ describe("WagmiLeverageTests", () => {
     const WETH_USDT_10000_POOL_ADDRESS = "0xC5aF84701f98Fa483eCe78aF83F11b6C38ACA71D";
     const NONFUNGIBLE_POSITION_MANAGER_ADDRESS = "0xC36442b4a4522E871399CD717aBDD847Ab11FE88";/// Mainnet, Goerli, Arbitrum, Optimism, Polygon
     const UNISWAP_V3_FACTORY = "0x1F98431c8aD98523631AE4a59f267346ea31F984";/// Mainnet, Goerli, Arbitrum, Optimism, Polygon
+    const UNISWAP_V3_QUOTER_V2 = "0x61fFE014bA17989E743c5F6cB21bF9697530B21e";
     const UNISWAP_V3_POOL_INIT_CODE_HASH = "0xe34f199b19b2b4f47f68442619d555527d244f78a3297ea89325f843f87b8b54";/// Mainnet, Goerli, Arbitrum, Optimism, Polygon
     const SWAP_ROUTER_ADDRESS = "0xE592427A0AEce92De3Edee1F18E0157C05861564";
 
@@ -52,6 +53,13 @@ describe("WagmiLeverageTests", () => {
 
 
     before(async () => {
+        console.log("");
+        console.log("--------------------------------------");
+        console.log("|       pool : WETH-USDT             |");
+        console.log("|       position : long              |");
+        console.log("|       range : 100 (10 tick spacing)|");
+        console.log("|       amount : ~ 3 ETH             |");
+        console.log("--------------------------------------");
         [owner, alice, bob] = await ethers.getSigners();
         USDT = await ethers.getContractAt("IERC20", USDT_ADDRESS);
         WETH = await ethers.getContractAt("IERC20", WETH_ADDRESS);
@@ -62,7 +70,7 @@ describe("WagmiLeverageTests", () => {
         router = await ethers.getContractAt("ISwapRouter", SWAP_ROUTER_ADDRESS);
 
         const LiquidityBorrowingManager = await ethers.getContractFactory("LiquidityBorrowingManager");
-        borrowingManager = await LiquidityBorrowingManager.deploy(NONFUNGIBLE_POSITION_MANAGER_ADDRESS, UNISWAP_V3_FACTORY, UNISWAP_V3_POOL_INIT_CODE_HASH);
+        borrowingManager = await LiquidityBorrowingManager.deploy(NONFUNGIBLE_POSITION_MANAGER_ADDRESS, UNISWAP_V3_QUOTER_V2, UNISWAP_V3_FACTORY, UNISWAP_V3_POOL_INIT_CODE_HASH);
         await borrowingManager.deployed();
         vaultAddress = await borrowingManager.VAULT_ADDRESS();
         const amountUSDT = ethers.utils.parseUnits("10000", 6);
@@ -127,7 +135,6 @@ describe("WagmiLeverageTests", () => {
 
     it("LEFT_OUTRANGE_TOKEN_1 borrowing liquidity (long position WETH)  will be successful", async () => {
         const amountWETH = ethers.utils.parseUnits("0.98", 18);//token0
-        const amountUSDT = ethers.utils.parseUnits("1750", 6);//token1
         const deadline = await time.latest() + 60;
         const minLeverageDesired = 50;
         const maxCollateral = amountWETH.div(minLeverageDesired);
@@ -137,12 +144,20 @@ describe("WagmiLeverageTests", () => {
             tokenId: nftpos[0].tokenId
         }];
 
+        const swapParams: LiquidityBorrowingManager.SwapParamsStruct = {
+            swapTarget: constants.AddressZero,
+            swapAmountDataIndex: 0,
+            maxGasForCall: 0,
+            swapData: '0x'
+        }
+
         const params: LiquidityBorrowingManager.BorrowParamsStruct = {
             swapPoolfee: 500,
             saleToken: USDT_ADDRESS,
             holdToken: WETH_ADDRESS,
             minHoldTokenOut: amountWETH,
             maxCollateral: maxCollateral,//there will be no token sale, there will be no swap
+            externalSwap: swapParams,
             loans: loans
         }
 
@@ -151,7 +166,6 @@ describe("WagmiLeverageTests", () => {
 
     it("RIGHT_OUTRANGE_TOKEN_0 borrowing liquidity (long position WETH)  will be successful", async () => {
         const amountWETH = ethers.utils.parseUnits("0.98", 18);//token0
-        const amountUSDT = ethers.utils.parseUnits("1750", 6);//token1
         const deadline = await time.latest() + 60;
         const minLeverageDesired = 50;
         const maxCollateral = amountWETH.div(minLeverageDesired);
@@ -161,12 +175,20 @@ describe("WagmiLeverageTests", () => {
             tokenId: nftpos[1].tokenId
         }];
 
+        const swapParams: LiquidityBorrowingManager.SwapParamsStruct = {
+            swapTarget: constants.AddressZero,
+            swapAmountDataIndex: 0,
+            maxGasForCall: 0,
+            swapData: '0x'
+        }
+
         const params: LiquidityBorrowingManager.BorrowParamsStruct = {
             swapPoolfee: 500,
             saleToken: USDT_ADDRESS,
             holdToken: WETH_ADDRESS,
             minHoldTokenOut: amountWETH,
             maxCollateral: maxCollateral,//there will be no token sale, there will be no swap
+            externalSwap: swapParams,
             loans: loans
         }
 
@@ -175,7 +197,6 @@ describe("WagmiLeverageTests", () => {
 
     it("INRANGE_TOKEN_0_TOKEN_1 borrowing liquidity (long position WETH)  will be successful", async () => {
         const amountWETH = ethers.utils.parseUnits("0.98", 18);//token0
-        const amountUSDT = ethers.utils.parseUnits("1750", 6);//token1
         const deadline = await time.latest() + 60;
         const minLeverageDesired = 50;
         const maxCollateral = amountWETH.div(minLeverageDesired);
@@ -185,12 +206,20 @@ describe("WagmiLeverageTests", () => {
             tokenId: nftpos[2].tokenId
         }];
 
+        const swapParams: LiquidityBorrowingManager.SwapParamsStruct = {
+            swapTarget: constants.AddressZero,
+            swapAmountDataIndex: 0,
+            maxGasForCall: 0,
+            swapData: '0x'
+        }
+
         const params: LiquidityBorrowingManager.BorrowParamsStruct = {
             swapPoolfee: 500,
             saleToken: USDT_ADDRESS,
             holdToken: WETH_ADDRESS,
             minHoldTokenOut: amountWETH,
             maxCollateral: maxCollateral,//there will be no token sale, there will be no swap
+            externalSwap: swapParams,
             loans: loans
         }
 
@@ -203,6 +232,43 @@ describe("WagmiLeverageTests", () => {
         const slippageBP1000 = 990;//1%
         const deadline = await time.latest() + 60;
         await borrowingManager.connect(bob).repay(borrowingKey, swapPoolFee, slippageBP1000, deadline);
+    });
+
+    it("borrowing all liquidity in one transaction (long position WETH) will be successful", async () => {
+        const amountWETH = ethers.utils.parseUnits("2.90", 18);//token0
+        const deadline = await time.latest() + 60;
+        const minLeverageDesired = 80;
+        const maxCollateral = amountWETH.div(minLeverageDesired);
+
+        const loans = [{
+            liquidity: nftpos[0].liquidity,
+            tokenId: nftpos[0].tokenId
+        }, {
+            liquidity: nftpos[1].liquidity,
+            tokenId: nftpos[1].tokenId
+        }, {
+            liquidity: nftpos[2].liquidity,
+            tokenId: nftpos[2].tokenId
+        }];
+
+        const swapParams: LiquidityBorrowingManager.SwapParamsStruct = {
+            swapTarget: constants.AddressZero,
+            swapAmountDataIndex: 0,
+            maxGasForCall: 0,
+            swapData: '0x'
+        }
+
+        const params: LiquidityBorrowingManager.BorrowParamsStruct = {
+            swapPoolfee: 500,
+            saleToken: USDT_ADDRESS,
+            holdToken: WETH_ADDRESS,
+            minHoldTokenOut: amountWETH,
+            maxCollateral: maxCollateral,//there will be no token sale, there will be no swap
+            externalSwap: swapParams,
+            loans: loans
+        }
+
+        await borrowingManager.connect(bob).borrow(params, deadline);
     });
 
 });
@@ -273,8 +339,8 @@ async function addLiquidity(
             }
         case PositionType.INRANGE_TOKEN_0_TOKEN_1:
             {
-                tickUpper = compressed * tickSpacing;
-                tickLower = tickUpper - (range * tickSpacing);
+                tickUpper = (compressed + (range - range / 2)) * tickSpacing;
+                tickLower = (compressed - range / 2) * tickSpacing;
                 amount1 = desiredAmount1;
                 amount0 = desiredAmount0;
                 break;

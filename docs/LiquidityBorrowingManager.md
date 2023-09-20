@@ -414,6 +414,23 @@ function underlyingPositionManager() external view returns (contract INonfungibl
 |---|---|---|
 | _0 | contract INonfungiblePositionManager | undefined |
 
+### underlyingQuoterV2
+
+```solidity
+function underlyingQuoterV2() external view returns (contract IQuoterV2)
+```
+
+
+
+
+
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | contract IQuoterV2 | undefined |
+
 ### uniswapV3SwapCallback
 
 ```solidity
@@ -588,7 +605,7 @@ error InvalidBorrowedLiquidity(uint256 tokenId)
 ### InvalidRestoredLiquidity
 
 ```solidity
-error InvalidRestoredLiquidity(uint256 tokenId, uint128 restoredLiquidity, uint128 borrowedLiquidity, uint256 amount0, uint256 amount1)
+error InvalidRestoredLiquidity(uint256 tokenId, uint128 borrowedLiquidity, uint128 restoredLiquidity, uint256 amount0, uint256 amount1, uint256 holdTokentBalance, uint256 saleTokenBalance)
 ```
 
 
@@ -600,10 +617,12 @@ error InvalidRestoredLiquidity(uint256 tokenId, uint128 restoredLiquidity, uint1
 | Name | Type | Description |
 |---|---|---|
 | tokenId | uint256 | undefined |
-| restoredLiquidity | uint128 | undefined |
 | borrowedLiquidity | uint128 | undefined |
+| restoredLiquidity | uint128 | undefined |
 | amount0 | uint256 | undefined |
 | amount1 | uint256 | undefined |
+| holdTokentBalance | uint256 | undefined |
+| saleTokenBalance | uint256 | undefined |
 
 ### InvalidSettingsValue
 

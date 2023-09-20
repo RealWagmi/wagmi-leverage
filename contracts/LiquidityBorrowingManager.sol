@@ -7,8 +7,9 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "./abstract/LiquidityManager.sol";
 import "./abstract/OwnerSettings.sol";
 import "./abstract/DailyRateAndCollateral.sol";
+import "./libraries/ExternalCall.sol";
 
-// import "hardhat/console.sol";
+import "hardhat/console.sol";
 
 /**
  * @title LiquidityBorrowingManager
@@ -22,6 +23,17 @@ contract LiquidityBorrowingManager is
     ReentrancyGuard
 {
     using Keys for bytes32[];
+    using ExternalCall for address;
+
+    struct SwapParams {
+        /// Aggregator's router address
+        address swapTarget;
+        uint256 swapAmountDataIndex;
+        uint256 maxGasForCall;
+        /// Aggregator's data that stores pathes and amounts swap through
+        bytes swapData;
+    }
+
     /// @title BorrowParams
     /// @notice This struct represents the parameters required for borrowing.
     struct BorrowParams {
@@ -30,6 +42,7 @@ contract LiquidityBorrowingManager is
         address holdToken;
         uint256 minHoldTokenOut;
         uint256 maxCollateral;
+        SwapParams externalSwap;
         Loan[] loans;
     }
     /// @title BorrowingInfo
@@ -62,11 +75,13 @@ contract LiquidityBorrowingManager is
 
     constructor(
         address _underlyingPositionManagerAddress,
+        address _underlyingQuoterV2,
         address _underlyingV3Factory,
         bytes32 _underlyingV3PoolInitCodeHash
     )
         LiquidityManager(
             _underlyingPositionManagerAddress,
+            _underlyingQuoterV2,
             _underlyingV3Factory,
             _underlyingV3PoolInitCodeHash
         )
@@ -184,7 +199,7 @@ contract LiquidityBorrowingManager is
      * @param deadline The deadline timestamp after which the transaction is considered invalid.
      */
     function borrow(
-        BorrowParams memory params,
+        BorrowParams calldata params,
         uint256 deadline
     ) external nonReentrant checkDeadline(deadline) {
         bool zeroForSaleToken = params.saleToken < params.holdToken;
@@ -215,15 +230,24 @@ contract LiquidityBorrowingManager is
 
             // If there are saleToken balances available, perform a swap to get more holdToken
             if (saleTokenBalance > 0) {
-                holdTokenBalance += _v3SwapExactInput(
-                    v3SwapExactInputParams({
-                        fee: params.swapPoolfee,
-                        tokenIn: params.saleToken,
-                        tokenOut: params.holdToken,
-                        amountIn: saleTokenBalance,
-                        amountOutMinimum: 0
-                    })
-                );
+                if (params.externalSwap.swapTarget != address(0)) {
+                    params.externalSwap.swapTarget._patchAmountAndCall(
+                        params.externalSwap.maxGasForCall,
+                        params.externalSwap.swapData,
+                        params.externalSwap.swapAmountDataIndex,
+                        saleTokenBalance
+                    );
+                } else {
+                    holdTokenBalance += _v3SwapExactInput(
+                        v3SwapExactInputParams({
+                            fee: params.swapPoolfee,
+                            tokenIn: params.saleToken,
+                            tokenOut: params.holdToken,
+                            amountIn: saleTokenBalance,
+                            amountOutMinimum: 0
+                        })
+                    );
+                }
             }
         }
         // Ensure that the received holdToken balance meets the minimum required
@@ -307,7 +331,11 @@ contract LiquidityBorrowingManager is
             VAULT_ADDRESS,
             collateral + liquidationBonus + dailyRate
         );
-        //console.log("leverage =", holdTokenBalance / (collateral + liquidationBonus + dailyRate));
+        console.log("leverage =", holdTokenBalance / collateral);
+        console.log(
+            "leverage (with liquidationBonus + dailyRate)=",
+            holdTokenBalance / (collateral + liquidationBonus + dailyRate)
+        );
         _pay(params.holdToken, address(this), VAULT_ADDRESS, holdTokenBalance);
         // Emit the Borrow event with the borrower, borrowing key, and borrowed amount
         emit Borrow(msg.sender, borrowingKey, borrowedAmount);
