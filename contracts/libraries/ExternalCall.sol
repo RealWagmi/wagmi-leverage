@@ -7,8 +7,10 @@ library ExternalCall {
         address target,
         uint256 maxGas,
         bytes calldata data,
-        uint256 index,
-        uint256 value
+        uint256 swapAmountInDataIndex,
+        uint256 swapAmountInDataValue,
+        uint256 swapAmountOutMinimumDataIndex,
+        uint256 swapAmountOutMinimumValue
     ) internal returns (bool success) {
         if (maxGas == 0) {
             maxGas = gasleft();
@@ -16,7 +18,15 @@ library ExternalCall {
         assembly ("memory-safe") {
             let ptr := mload(0x40)
             calldatacopy(ptr, data.offset, data.length)
-            mstore(add(add(ptr, 0x24), mul(index, 0x20)), value)
+            if gt(swapAmountInDataValue, 0) {
+                mstore(add(add(ptr, 0x24), mul(swapAmountInDataIndex, 0x20)), swapAmountInDataValue)
+            }
+            if gt(swapAmountOutMinimumValue, 0) {
+                mstore(
+                    add(add(ptr, 0x24), mul(swapAmountOutMinimumDataIndex, 0x20)),
+                    swapAmountOutMinimumValue
+                )
+            }
             success := call(
                 maxGas,
                 target,
@@ -34,5 +44,21 @@ library ExternalCall {
 
             mstore(0x40, add(ptr, data.length)) // Set storage pointer to empty space
         }
+    }
+
+    function _readFirstBytes4(bytes calldata swapData) internal pure returns (bytes4 result) {
+        // Read the bytes4 from array memory
+        assembly ("memory-safe") {
+            let ptr := mload(0x40)
+            calldatacopy(ptr, swapData.offset, 32)
+            result := mload(ptr)
+            // Solidity does not require us to clean the trailing bytes.
+            // We do it anyway
+            result := and(
+                result,
+                0xFFFFFFFF00000000000000000000000000000000000000000000000000000000
+            )
+        }
+        return result;
     }
 }

@@ -17,7 +17,8 @@ import {
     INonfungiblePositionManager,
     Vault,
     ISwapRouter,
-    LiquidityManager
+    LiquidityManager,
+    AggregatorMock
 } from "../typechain-types";
 import { BigNumber } from "@ethersproject/bignumber";
 const { constants } = ethers;
@@ -45,10 +46,13 @@ describe("WagmiLeverageTests", () => {
     let USDT: IERC20;
     let WETH: IERC20;
     let router: ISwapRouter;
+    let aggregatorMock: AggregatorMock;
     let snapshot_before: SnapshotRestorer;
     let nonfungiblePositionManager: INonfungiblePositionManager;
     let vaultAddress: string;
     let nftpos: PositionManagerPosInfo[];
+    let swapData: string;
+    const swapIface = new ethers.utils.Interface(["function swap(bytes calldata wrappedCallData)"]);
 
 
 
@@ -72,12 +76,15 @@ describe("WagmiLeverageTests", () => {
         const LiquidityBorrowingManager = await ethers.getContractFactory("LiquidityBorrowingManager");
         borrowingManager = await LiquidityBorrowingManager.deploy(NONFUNGIBLE_POSITION_MANAGER_ADDRESS, UNISWAP_V3_QUOTER_V2, UNISWAP_V3_FACTORY, UNISWAP_V3_POOL_INIT_CODE_HASH);
         await borrowingManager.deployed();
+        const AggregatorMockFactory = await ethers.getContractFactory("AggregatorMock");
+        aggregatorMock = await AggregatorMockFactory.deploy(UNISWAP_V3_QUOTER_V2);
+        await aggregatorMock.deployed();
         vaultAddress = await borrowingManager.VAULT_ADDRESS();
         const amountUSDT = ethers.utils.parseUnits("10000", 6);
         const amountWETH = ethers.utils.parseUnits("100", 18);
         await hackDonor(
             DONOR_ADDRESS,
-            [owner.address, alice.address, bob.address],
+            [owner.address, alice.address, bob.address, aggregatorMock.address],
             [
                 { tokenAddress: USDT_ADDRESS, amount: amountUSDT },
                 { tokenAddress: WETH_ADDRESS, amount: amountWETH },
@@ -89,8 +96,10 @@ describe("WagmiLeverageTests", () => {
         await maxApprove(owner, borrowingManager.address, [USDT_ADDRESS, WETH_ADDRESS]);
         await maxApprove(alice, borrowingManager.address, [USDT_ADDRESS, WETH_ADDRESS]);
         await maxApprove(bob, borrowingManager.address, [USDT_ADDRESS, WETH_ADDRESS]);
+
         nftpos = [];
         snapshot_before = await takeSnapshot();
+
     });
 
     it("should deploy LiquidityBorrowingManager correctly", async () => {
@@ -101,6 +110,12 @@ describe("WagmiLeverageTests", () => {
         expect(await borrowingManager.UNDERLYING_V3_FACTORY_ADDRESS()).to.equal(UNISWAP_V3_FACTORY);
         expect(await borrowingManager.UNDERLYING_V3_POOL_INIT_CODE_HASH()).to.equal(UNISWAP_V3_POOL_INIT_CODE_HASH);
         expect(await borrowingManager.computePoolAddress(USDT_ADDRESS, WETH_ADDRESS, 500)).to.equal(WETH_USDT_500_POOL_ADDRESS);
+    });
+
+    it("should add swap target to whitelist will be successful", async () => {
+        // onlyOwner
+        await expect(borrowingManager.connect(alice).setSwapCallToWhitelist(aggregatorMock.address, "0x627dd56a", true)).to.be.reverted;
+        await borrowingManager.connect(owner).setSwapCallToWhitelist(aggregatorMock.address, "0x627dd56a", true);
     });
 
     it("approve positionManager NFT and check event", async () => {
@@ -144,11 +159,18 @@ describe("WagmiLeverageTests", () => {
             tokenId: nftpos[0].tokenId
         }];
 
+        const swap_params = ethers.utils.defaultAbiCoder.encode(
+            ["address", "address", "uint256", "uint256"],
+            [USDT_ADDRESS, WETH_ADDRESS, 0, 0]
+        );
+        swapData = swapIface.encodeFunctionData("swap", [swap_params]);
+
         const swapParams: LiquidityBorrowingManager.SwapParamsStruct = {
-            swapTarget: constants.AddressZero,
-            swapAmountDataIndex: 0,
+            swapTarget: aggregatorMock.address,
+            swapAmountInDataIndex: 3,
+            swapAmountOutMinimumDataIndex: 4,
             maxGasForCall: 0,
-            swapData: '0x'
+            swapData: swapData
         }
 
         const params: LiquidityBorrowingManager.BorrowParamsStruct = {
@@ -177,7 +199,8 @@ describe("WagmiLeverageTests", () => {
 
         const swapParams: LiquidityBorrowingManager.SwapParamsStruct = {
             swapTarget: constants.AddressZero,
-            swapAmountDataIndex: 0,
+            swapAmountInDataIndex: 0,
+            swapAmountOutMinimumDataIndex: 0,
             maxGasForCall: 0,
             swapData: '0x'
         }
@@ -208,7 +231,8 @@ describe("WagmiLeverageTests", () => {
 
         const swapParams: LiquidityBorrowingManager.SwapParamsStruct = {
             swapTarget: constants.AddressZero,
-            swapAmountDataIndex: 0,
+            swapAmountInDataIndex: 0,
+            swapAmountOutMinimumDataIndex: 0,
             maxGasForCall: 0,
             swapData: '0x'
         }
@@ -253,7 +277,8 @@ describe("WagmiLeverageTests", () => {
 
         const swapParams: LiquidityBorrowingManager.SwapParamsStruct = {
             swapTarget: constants.AddressZero,
-            swapAmountDataIndex: 0,
+            swapAmountInDataIndex: 0,
+            swapAmountOutMinimumDataIndex: 0,
             maxGasForCall: 0,
             swapData: '0x'
         }

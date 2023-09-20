@@ -310,6 +310,24 @@ Repays a borrowing
 | slippageBP1000 | uint256 | The allowed slippage percentage for the swap, in basis points |
 | deadline | uint256 | The deadline by which the transaction must be executed |
 
+### setSwapCallToWhitelist
+
+```solidity
+function setSwapCallToWhitelist(address swapTarget, bytes4 funcSelector, bool isAllowed) external nonpayable
+```
+
+
+
+*Adds or removes a swap call to the whitelist.*
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| swapTarget | address | The address of the target contract for the swap call. |
+| funcSelector | bytes4 | The function selector of the swap call. |
+| isAllowed | bool | A boolean indicating whether the swap call is allowed or not. |
+
 ### specificTokenLiquidationBonus
 
 ```solidity
@@ -506,6 +524,29 @@ borrower =&gt; BorrowingKeys[]
 | Name | Type | Description |
 |---|---|---|
 | _0 | bytes32 | undefined |
+
+### whitelistedCall
+
+```solidity
+function whitelistedCall(address, bytes4) external view returns (bool)
+```
+
+swapTarget   =&gt; (func.selector =&gt; is allowed)
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | address | undefined |
+| _1 | bytes4 | undefined |
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | bool | undefined |
 
 
 

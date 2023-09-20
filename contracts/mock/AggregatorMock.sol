@@ -2,8 +2,17 @@
 pragma solidity 0.8.21;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "../interfaces/IQuoterV2.sol";
+
+// import "hardhat/console.sol";
 
 contract AggregatorMock {
+    IQuoterV2 public immutable underlyingQuoterV2;
+
+    constructor(address _underlyingQuoterV2) {
+        underlyingQuoterV2 = IQuoterV2(_underlyingQuoterV2);
+    }
+
     function _safeTransfer(address token, address to, uint256 value) private {
         (bool success, ) = token.call(abi.encodeWithSelector(IERC20.transfer.selector, to, value));
         require(success, "AggregatorMock: safeTransfer failed");
@@ -17,11 +26,27 @@ contract AggregatorMock {
     }
 
     function swap(bytes calldata wrappedCallData) external {
-        (address tokenIn, address tokenOut, uint256 amountIn, uint256 amountOut) = abi.decode(
+        (address tokenIn, address tokenOut, uint256 amountIn, uint256 amountOutMin) = abi.decode(
             wrappedCallData,
             (address, address, uint256, uint256)
         );
         require(tokenIn != tokenOut, "TE");
+        // console.log("tokenIn =", tokenIn);
+        // console.log("tokenOut =", tokenOut);
+        // console.log("amountIn =", amountIn);
+        // console.log("amountOutMin =", amountOutMin);
+
+        (uint256 amountOut, , , ) = underlyingQuoterV2.quoteExactInputSingle(
+            IQuoterV2.QuoteExactInputSingleParams({
+                tokenIn: tokenIn,
+                tokenOut: tokenOut,
+                amountIn: amountIn,
+                fee: 500,
+                sqrtPriceLimitX96: 0
+            })
+        );
+        // console.log("amountOut =", amountOut);
+        require(amountOut >= amountOutMin, "AggregatorMock: price slippage check");
         _safeTransferFrom(tokenIn, msg.sender, address(this), amountIn);
         _safeTransfer(tokenOut, msg.sender, amountOut);
     }

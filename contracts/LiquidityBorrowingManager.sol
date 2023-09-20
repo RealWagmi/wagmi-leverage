@@ -23,12 +23,14 @@ contract LiquidityBorrowingManager is
     ReentrancyGuard
 {
     using Keys for bytes32[];
-    using ExternalCall for address;
+    using { ExternalCall._patchAmountAndCall } for address;
+    using { ExternalCall._readFirstBytes4 } for bytes;
 
     struct SwapParams {
         /// Aggregator's router address
         address swapTarget;
-        uint256 swapAmountDataIndex;
+        uint256 swapAmountInDataIndex;
+        uint256 swapAmountOutMinimumDataIndex;
         uint256 maxGasForCall;
         /// Aggregator's data that stores pathes and amounts swap through
         bytes swapData;
@@ -65,6 +67,8 @@ contract LiquidityBorrowingManager is
     mapping(address => bytes32[]) public userBorrowingKeys;
     /// tokenId => BorrowingKeys[]
     mapping(uint256 => bytes32[]) public underlyingPosBorrowingKeys;
+    ///     swapTarget   => (func.selector => is allowed)
+    mapping(address => mapping(bytes4 => bool)) public whitelistedCall;
 
     ///  token => Amt
     mapping(address => uint256) public platformsFeesInfo;
@@ -92,8 +96,39 @@ contract LiquidityBorrowingManager is
         _;
     }
 
+    modifier checkSwapCallParameters(address swapTarget, bytes calldata swapData) {
+        require(
+            swapTarget == address(0) || _checkSwapCallParameters(swapTarget, swapData),
+            "swap call params is not supported"
+        );
+        _;
+    }
+
     function _blockTimestamp() internal view returns (uint256) {
         return block.timestamp;
+    }
+
+    /**
+     * @dev Adds or removes a swap call to the whitelist.
+     * @param swapTarget The address of the target contract for the swap call.
+     * @param funcSelector The function selector of the swap call.
+     * @param isAllowed A boolean indicating whether the swap call is allowed or not.
+     */
+    function setSwapCallToWhitelist(
+        address swapTarget,
+        bytes4 funcSelector,
+        bool isAllowed
+    ) external onlyOwner {
+        require(funcSelector != IERC20.transferFrom.selector, "forbidden function selector");
+        whitelistedCall[swapTarget][funcSelector] = isAllowed;
+    }
+
+    function _checkSwapCallParameters(
+        address swapTarget,
+        bytes calldata swapData
+    ) internal view returns (bool isAllowed) {
+        bytes4 funcSelector = swapData._readFirstBytes4();
+        isAllowed = whitelistedCall[swapTarget][funcSelector];
     }
 
     /**
@@ -192,6 +227,15 @@ contract LiquidityBorrowingManager is
         _pay(holdToken, msg.sender, VAULT_ADDRESS, collateralAmt);
     }
 
+    struct BorrowCache {
+        bool zeroForSaleToken;
+        uint256 dailyRate;
+        uint256 accLoanRatePerShare;
+        uint256 borrowedAmount;
+        uint256 holdTokenBalance;
+        uint256 saleTokenBalance;
+    }
+
     /**
      * @notice Borrow function allows a user to borrow tokens by providing collateral and taking out loans.
      * @dev Emits a Borrow event upon successful borrowing.
@@ -201,61 +245,74 @@ contract LiquidityBorrowingManager is
     function borrow(
         BorrowParams calldata params,
         uint256 deadline
-    ) external nonReentrant checkDeadline(deadline) {
-        bool zeroForSaleToken = params.saleToken < params.holdToken;
+    )
+        external
+        nonReentrant
+        checkDeadline(deadline)
+        checkSwapCallParameters(params.externalSwap.swapTarget, params.externalSwap.swapData)
+    {
+        BorrowCache memory cache;
+
+        cache.zeroForSaleToken = params.saleToken < params.holdToken;
         // Retrieve the TokenInfo for the holdTokenRateInfo based on the ordering of saleToken and holdToken
-        TokenInfo storage holdTokenRateInfo = zeroForSaleToken
+        TokenInfo storage holdTokenRateInfo = cache.zeroForSaleToken
             ? tokenPairs[Keys.computePairKey(params.saleToken, params.holdToken)][1]
             : tokenPairs[Keys.computePairKey(params.holdToken, params.saleToken)][0];
         // Update the token rate information and retrieve the dailyRate and accLoanRatePerShare
-        (uint256 dailyRate, uint256 accLoanRatePerShare) = _updateTokenRateInfo(holdTokenRateInfo);
+        (cache.dailyRate, cache.accLoanRatePerShare) = _updateTokenRateInfo(holdTokenRateInfo);
         // Extract liquidity
-        uint256 borrowedAmount = _extractLiquidity(
-            zeroForSaleToken,
+        cache.borrowedAmount = _extractLiquidity(
+            cache.zeroForSaleToken,
             params.saleToken,
             params.holdToken,
             params.loans
         );
 
-        uint256 holdTokenBalance;
+        (cache.saleTokenBalance, cache.holdTokenBalance) = _getPairBalance(
+            params.saleToken,
+            params.holdToken
+        );
+        //console.log("saleTokenBalance before the swap =", saleTokenBalance);
 
-        {
-            uint256 saleTokenBalance;
-
-            (saleTokenBalance, holdTokenBalance) = _getPairBalance(
-                params.saleToken,
-                params.holdToken
-            );
-            //console.log("saleTokenBalance before the swap =", saleTokenBalance);
-
-            // If there are saleToken balances available, perform a swap to get more holdToken
-            if (saleTokenBalance > 0) {
-                if (params.externalSwap.swapTarget != address(0)) {
-                    params.externalSwap.swapTarget._patchAmountAndCall(
-                        params.externalSwap.maxGasForCall,
-                        params.externalSwap.swapData,
-                        params.externalSwap.swapAmountDataIndex,
-                        saleTokenBalance
-                    );
-                } else {
-                    holdTokenBalance += _v3SwapExactInput(
-                        v3SwapExactInputParams({
-                            fee: params.swapPoolfee,
-                            tokenIn: params.saleToken,
-                            tokenOut: params.holdToken,
-                            amountIn: saleTokenBalance,
-                            amountOutMinimum: 0
-                        })
-                    );
-                }
+        // If there are saleToken balances available, perform a swap to get more holdToken
+        if (cache.saleTokenBalance > 0) {
+            if (params.externalSwap.swapTarget != address(0)) {
+                _approveIfNecessary(
+                    params.saleToken,
+                    params.externalSwap.swapTarget,
+                    cache.saleTokenBalance
+                );
+                params.externalSwap.swapTarget._patchAmountAndCall(
+                    params.externalSwap.maxGasForCall,
+                    params.externalSwap.swapData,
+                    params.externalSwap.swapAmountInDataIndex,
+                    cache.saleTokenBalance,
+                    params.externalSwap.swapAmountOutMinimumDataIndex,
+                    0
+                );
+                cache.holdTokenBalance = _getBalance(params.holdToken);
+            } else {
+                cache.holdTokenBalance += _v3SwapExactInput(
+                    v3SwapExactInputParams({
+                        fee: params.swapPoolfee,
+                        tokenIn: params.saleToken,
+                        tokenOut: params.holdToken,
+                        amountIn: cache.saleTokenBalance,
+                        amountOutMinimum: 0
+                    })
+                );
             }
         }
+
         // Ensure that the received holdToken balance meets the minimum required
 
         //console.log("holdToken borrower owe =", borrowedAmount);
         //console.log("holdToken borrower has after the swap =", holdTokenBalance);
-        require(holdTokenBalance >= params.minHoldTokenOut, "too little received");
-        require((borrowedAmount - holdTokenBalance) <= params.maxCollateral, "too much collateral");
+        require(cache.holdTokenBalance >= params.minHoldTokenOut, "too little received");
+        require(
+            (cache.borrowedAmount - cache.holdTokenBalance) <= params.maxCollateral,
+            "too much collateral"
+        );
 
         bytes32 borrowingKey = Keys.computeBorrowingKey(
             msg.sender,
@@ -267,7 +324,7 @@ contract LiquidityBorrowingManager is
         if (borrowing.borrowedAmount > 0) {
             uint256 currentPerDayFees = FullMath.mulDiv(
                 borrowing.borrowedAmount,
-                accLoanRatePerShare - borrowing.accLoanRatePerShare,
+                cache.accLoanRatePerShare - borrowing.accLoanRatePerShare,
                 FixedPoint96.Q96
             ) / Constants.BP;
             // Check if the collateral meets the required amount of fees
@@ -309,36 +366,36 @@ contract LiquidityBorrowingManager is
         // Ensure that the number of loans does not exceed the maximum limit
         require(borrowing.loans.length < Constants.MAX_NUM_LOANS_PER_POSOTION, "too many loans");
 
-        borrowing.accLoanRatePerShare = accLoanRatePerShare;
+        borrowing.accLoanRatePerShare = cache.accLoanRatePerShare;
         uint256 liquidationBonus = specificTokenLiquidationBonus[params.holdToken];
         liquidationBonus =
-            (borrowedAmount *
+            (cache.borrowedAmount *
                 (liquidationBonus > 0 ? liquidationBonus : dafaultLiquidationBonusBP) *
                 params.loans.length) /
             Constants.BP;
-        dailyRate = (borrowedAmount * dailyRate) / Constants.BP; //prepayment per day
+        cache.dailyRate = (cache.borrowedAmount * cache.dailyRate) / Constants.BP; //prepayment per day
 
-        borrowing.borrowedAmount += borrowedAmount;
+        borrowing.borrowedAmount += cache.borrowedAmount;
         borrowing.liquidationBonus += liquidationBonus;
-        borrowing.dailyRateCollateral += dailyRate;
+        borrowing.dailyRateCollateral += cache.dailyRate;
 
-        uint256 collateral = borrowedAmount - holdTokenBalance;
-        holdTokenRateInfo.totalBorrowed += borrowedAmount;
+        uint256 collateral = cache.borrowedAmount - cache.holdTokenBalance;
+        holdTokenRateInfo.totalBorrowed += cache.borrowedAmount;
         // Transfer the required tokens to the VAULT_ADDRESS for collateral and holdTokenBalance
         _pay(
             params.holdToken,
             msg.sender,
             VAULT_ADDRESS,
-            collateral + liquidationBonus + dailyRate
+            collateral + liquidationBonus + cache.dailyRate
         );
-        console.log("leverage =", holdTokenBalance / collateral);
+        console.log("leverage =", cache.holdTokenBalance / collateral);
         console.log(
             "leverage (with liquidationBonus + dailyRate)=",
-            holdTokenBalance / (collateral + liquidationBonus + dailyRate)
+            cache.holdTokenBalance / (collateral + liquidationBonus + cache.dailyRate)
         );
-        _pay(params.holdToken, address(this), VAULT_ADDRESS, holdTokenBalance);
+        _pay(params.holdToken, address(this), VAULT_ADDRESS, cache.holdTokenBalance);
         // Emit the Borrow event with the borrower, borrowing key, and borrowed amount
-        emit Borrow(msg.sender, borrowingKey, borrowedAmount);
+        emit Borrow(msg.sender, borrowingKey, cache.borrowedAmount);
     }
 
     /**

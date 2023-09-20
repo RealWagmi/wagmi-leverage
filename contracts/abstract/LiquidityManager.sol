@@ -110,17 +110,19 @@ abstract contract LiquidityManager is ApproveSwapAndPay {
         // sqrtPriceX96 = TickMath.getSqrtRatioAtTick(tick);
     }
 
+    function _getBalance(address token) internal view returns (uint256 balance) {
+        bytes memory callData = abi.encodeWithSelector(IERC20.balanceOf.selector, address(this));
+        (bool success, bytes memory data) = token.staticcall(callData);
+        require(success && data.length >= 32);
+        balance = abi.decode(data, (uint256));
+    }
+
     function _getPairBalance(
         address tokenA,
         address tokenB
     ) internal view returns (uint256 balanceA, uint256 balanceB) {
-        bytes memory callData = abi.encodeWithSelector(IERC20.balanceOf.selector, address(this));
-        (bool success, bytes memory data) = tokenA.staticcall(callData);
-        require(success && data.length >= 32);
-        balanceA = abi.decode(data, (uint256));
-        (success, data) = tokenB.staticcall(callData);
-        require(success && data.length >= 32);
-        balanceB = abi.decode(data, (uint256));
+        balanceA = _getBalance(tokenA);
+        balanceB = _getBalance(tokenB);
     }
 
     function _decreaseLiquidity(uint256 tokenId, uint128 liquidity) private {
