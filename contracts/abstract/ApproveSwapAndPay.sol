@@ -5,10 +5,13 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IUniswapV3Pool } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import { SafeCast } from "@uniswap/v3-core/contracts/libraries/SafeCast.sol";
+import "../libraries/ExternalCall.sol";
 
 abstract contract ApproveSwapAndPay {
     using SafeCast for uint256;
     using SafeERC20 for IERC20;
+    using { ExternalCall._patchAmountAndCall } for address;
+    using { ExternalCall._readFirstBytes4 } for bytes;
 
     struct v3SwapExactInputParams {
         uint24 fee;
@@ -16,6 +19,18 @@ abstract contract ApproveSwapAndPay {
         address tokenOut;
         uint256 amountIn;
         uint256 amountOutMinimum;
+    }
+
+    /// @notice Struct to hold parameters for swapping tokens
+    struct SwapParams {
+        /// @notice Address of the aggregator's router
+        address swapTarget;
+        /// @notice The index in the `swapData` array where the swap amount in is stored
+        uint256 swapAmountInDataIndex;
+        /// @notice The maximum gas limit for the swap call
+        uint256 maxGasForCall;
+        /// @notice The aggregator's data that stores paths and amounts for swapping through
+        bytes swapData;
     }
 
     /// @dev The minimum value that can be returned from #getSqrtRatioAtTick. Equivalent to getSqrtRatioAtTick(MIN_TICK)
@@ -26,6 +41,11 @@ abstract contract ApproveSwapAndPay {
 
     address public immutable UNDERLYING_V3_FACTORY_ADDRESS;
     bytes32 public immutable UNDERLYING_V3_POOL_INIT_CODE_HASH;
+
+    ///     swapTarget   => (func.selector => is allowed)
+    mapping(address => mapping(bytes4 => bool)) public whitelistedCall;
+
+    error SwapSlippageCheckError(uint256 expectedOut, uint256 receivedOut);
 
     constructor(
         address _UNDERLYING_V3_FACTORY_ADDRESS,
@@ -42,7 +62,7 @@ abstract contract ApproveSwapAndPay {
         return success && (data.length == 0 || abi.decode(data, (bool)));
     }
 
-    function _approveIfNecessary(address token, address spender, uint256 amount) internal {
+    function _maxApproveIfNecessary(address token, address spender, uint256 amount) internal {
         if (IERC20(token).allowance(address(this), spender) < amount) {
             if (!_tryApprove(token, spender, type(uint256).max)) {
                 if (!_tryApprove(token, spender, type(uint256).max - 1)) {
@@ -54,6 +74,48 @@ abstract contract ApproveSwapAndPay {
                     }
                 }
             }
+        }
+    }
+
+    function _getBalance(address token) internal view returns (uint256 balance) {
+        bytes memory callData = abi.encodeWithSelector(IERC20.balanceOf.selector, address(this));
+        (bool success, bytes memory data) = token.staticcall(callData);
+        require(success && data.length >= 32);
+        balance = abi.decode(data, (uint256));
+    }
+
+    function _getPairBalance(
+        address tokenA,
+        address tokenB
+    ) internal view returns (uint256 balanceA, uint256 balanceB) {
+        balanceA = _getBalance(tokenA);
+        balanceB = _getBalance(tokenB);
+    }
+
+    function _patchAmountsAndCallSwap(
+        address tokenIn,
+        address tokenOut,
+        SwapParams calldata externalSwap,
+        uint256 amountIn,
+        uint256 amountOutMin
+    ) internal returns (uint256 amountOut) {
+        bytes4 funcSelector = externalSwap.swapData._readFirstBytes4();
+        require(
+            whitelistedCall[externalSwap.swapTarget][funcSelector],
+            "swap call params is not supported"
+        );
+        _maxApproveIfNecessary(tokenIn, externalSwap.swapTarget, amountIn);
+        uint256 balanceOutBefore = _getBalance(tokenOut);
+
+        externalSwap.swapTarget._patchAmountAndCall(
+            externalSwap.swapData,
+            externalSwap.maxGasForCall,
+            externalSwap.swapAmountInDataIndex,
+            amountIn
+        );
+        amountOut = _getBalance(tokenOut) - balanceOutBefore;
+        if (amountOut == 0 || amountOut < amountOutMin) {
+            revert SwapSlippageCheckError(amountOutMin, amountOut);
         }
     }
 
@@ -70,7 +132,7 @@ abstract contract ApproveSwapAndPay {
     function _v3SwapExactInput(
         v3SwapExactInputParams memory params
     ) internal returns (uint256 amountOut) {
-        _approveIfNecessary(params.tokenIn, address(this), params.amountIn);
+        _maxApproveIfNecessary(params.tokenIn, address(this), params.amountIn);
         bool zeroForTokenIn = params.tokenIn < params.tokenOut;
         (int256 amount0Delta, int256 amount1Delta) = IUniswapV3Pool(
             computePoolAddress(params.tokenIn, params.tokenOut, params.fee)
@@ -82,7 +144,9 @@ abstract contract ApproveSwapAndPay {
                 abi.encode(params.fee, params.tokenIn, params.tokenOut)
             );
         amountOut = uint256(-(zeroForTokenIn ? amount1Delta : amount0Delta));
-        if (amountOut < params.amountOutMinimum) revert("v3Swap slippage check");
+        if (amountOut < params.amountOutMinimum) {
+            revert SwapSlippageCheckError(params.amountOutMinimum, amountOut);
+        }
     }
 
     function uniswapV3SwapCallback(

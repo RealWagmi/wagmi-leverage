@@ -81,7 +81,7 @@ function borrow(LiquidityBorrowingManager.BorrowParams params, uint256 deadline)
 ### borrowings
 
 ```solidity
-function borrowings(bytes32) external view returns (address borrower, address saleToken, address holdToken, uint256 feesOwed, uint256 borrowedAmount, uint256 liquidationBonus, uint256 accLoanRatePerShare, uint256 dailyRateCollateral)
+function borrowings(bytes32) external view returns (address borrower, address saleToken, address holdToken, uint256 feesOwed, uint256 borrowedAmount, uint256 liquidationBonus, uint256 accLoanRatePerShare, uint256 dailyRateCollateralBalance)
 ```
 
 borrowingKey=&gt;BorrowingInfo
@@ -105,7 +105,7 @@ borrowingKey=&gt;BorrowingInfo
 | borrowedAmount | uint256 | undefined |
 | liquidationBonus | uint256 | undefined |
 | accLoanRatePerShare | uint256 | undefined |
-| dailyRateCollateral | uint256 | undefined |
+| dailyRateCollateralBalance | uint256 | undefined |
 
 ### checkDailyRateCollateral
 
@@ -264,7 +264,7 @@ function platformFeesBP() external view returns (uint256)
 function platformsFeesInfo(address) external view returns (uint256)
 ```
 
-token =&gt; Amt
+token =&gt; FeesAmt
 
 
 
@@ -294,10 +294,10 @@ function renounceOwnership() external nonpayable
 ### repay
 
 ```solidity
-function repay(bytes32 borrowingKey, uint24 swapPoolFee, uint256 slippageBP1000, uint256 deadline) external nonpayable
+function repay(LiquidityBorrowingManager.RepayParams params, uint256 deadline) external nonpayable
 ```
 
-Repays a borrowing
+
 
 
 
@@ -305,10 +305,8 @@ Repays a borrowing
 
 | Name | Type | Description |
 |---|---|---|
-| borrowingKey | bytes32 | The key of the borrowing to be repaid |
-| swapPoolFee | uint24 | The fee of swapping pool |
-| slippageBP1000 | uint256 | The allowed slippage percentage for the swap, in basis points |
-| deadline | uint256 | The deadline by which the transaction must be executed |
+| params | LiquidityBorrowingManager.RepayParams | undefined |
+| deadline | uint256 | undefined |
 
 ### setSwapCallToWhitelist
 
@@ -712,5 +710,22 @@ error NotApproved(uint256 tokenId)
 | Name | Type | Description |
 |---|---|---|
 | tokenId | uint256 | undefined |
+
+### SwapSlippageCheckError
+
+```solidity
+error SwapSlippageCheckError(uint256 expectedOut, uint256 receivedOut)
+```
+
+
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| expectedOut | uint256 | undefined |
+| receivedOut | uint256 | undefined |
 
 

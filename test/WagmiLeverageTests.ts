@@ -18,8 +18,10 @@ import {
     Vault,
     ISwapRouter,
     LiquidityManager,
-    AggregatorMock
+    AggregatorMock,
 } from "../typechain-types";
+
+import { ApproveSwapAndPay } from "../typechain-types/contracts/LiquidityBorrowingManager";
 import { BigNumber } from "@ethersproject/bignumber";
 const { constants } = ethers;
 
@@ -165,16 +167,15 @@ describe("WagmiLeverageTests", () => {
         );
         swapData = swapIface.encodeFunctionData("swap", [swap_params]);
 
-        const swapParams: LiquidityBorrowingManager.SwapParamsStruct = {
+        const swapParams: ApproveSwapAndPay.SwapParamsStruct = {
             swapTarget: aggregatorMock.address,
             swapAmountInDataIndex: 3,
-            swapAmountOutMinimumDataIndex: 4,
             maxGasForCall: 0,
             swapData: swapData
         }
 
         const params: LiquidityBorrowingManager.BorrowParamsStruct = {
-            swapPoolfee: 500,
+            internalSwapPoolfee: 500,
             saleToken: USDT_ADDRESS,
             holdToken: WETH_ADDRESS,
             minHoldTokenOut: amountWETH,
@@ -197,16 +198,15 @@ describe("WagmiLeverageTests", () => {
             tokenId: nftpos[1].tokenId
         }];
 
-        const swapParams: LiquidityBorrowingManager.SwapParamsStruct = {
+        const swapParams: ApproveSwapAndPay.SwapParamsStruct = {
             swapTarget: constants.AddressZero,
             swapAmountInDataIndex: 0,
-            swapAmountOutMinimumDataIndex: 0,
             maxGasForCall: 0,
-            swapData: '0x'
+            swapData: swapData
         }
 
         const params: LiquidityBorrowingManager.BorrowParamsStruct = {
-            swapPoolfee: 500,
+            internalSwapPoolfee: 500,
             saleToken: USDT_ADDRESS,
             holdToken: WETH_ADDRESS,
             minHoldTokenOut: amountWETH,
@@ -229,16 +229,15 @@ describe("WagmiLeverageTests", () => {
             tokenId: nftpos[2].tokenId
         }];
 
-        const swapParams: LiquidityBorrowingManager.SwapParamsStruct = {
+        const swapParams: ApproveSwapAndPay.SwapParamsStruct = {
             swapTarget: constants.AddressZero,
             swapAmountInDataIndex: 0,
-            swapAmountOutMinimumDataIndex: 0,
             maxGasForCall: 0,
-            swapData: '0x'
+            swapData: swapData
         }
 
         const params: LiquidityBorrowingManager.BorrowParamsStruct = {
-            swapPoolfee: 500,
+            internalSwapPoolfee: 500,
             saleToken: USDT_ADDRESS,
             holdToken: WETH_ADDRESS,
             minHoldTokenOut: amountWETH,
@@ -252,10 +251,22 @@ describe("WagmiLeverageTests", () => {
 
     it("repay borrowing and restore liquidity will be successful", async () => {
         const borrowingKey = await borrowingManager.userBorrowingKeys(bob.address, 0);
-        const swapPoolFee = 500;
-        const slippageBP1000 = 990;//1%
         const deadline = await time.latest() + 60;
-        await borrowingManager.connect(bob).repay(borrowingKey, swapPoolFee, slippageBP1000, deadline);
+        const swapParams: ApproveSwapAndPay.SwapParamsStruct = {
+            swapTarget: constants.AddressZero,
+            swapAmountInDataIndex: 0,
+            maxGasForCall: 0,
+            swapData: swapData
+        }
+        const params: LiquidityBorrowingManager.RepayParamsStruct = {
+            isEmergency: false,
+            internalSwapPoolfee: 500,
+            externalSwap: swapParams,
+            borrowingKey: borrowingKey,
+            swapSlippageBP1000: 990 //1%
+
+        }
+        await borrowingManager.connect(bob).repay(params, deadline);
     });
 
     it("borrowing all liquidity in one transaction (long position WETH) will be successful", async () => {
@@ -275,16 +286,15 @@ describe("WagmiLeverageTests", () => {
             tokenId: nftpos[2].tokenId
         }];
 
-        const swapParams: LiquidityBorrowingManager.SwapParamsStruct = {
+        const swapParams: ApproveSwapAndPay.SwapParamsStruct = {
             swapTarget: constants.AddressZero,
             swapAmountInDataIndex: 0,
-            swapAmountOutMinimumDataIndex: 0,
             maxGasForCall: 0,
-            swapData: '0x'
+            swapData: swapData
         }
 
         const params: LiquidityBorrowingManager.BorrowParamsStruct = {
-            swapPoolfee: 500,
+            internalSwapPoolfee: 500,
             saleToken: USDT_ADDRESS,
             holdToken: WETH_ADDRESS,
             minHoldTokenOut: amountWETH,

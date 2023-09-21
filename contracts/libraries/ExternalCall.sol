@@ -5,12 +5,10 @@ pragma solidity 0.8.21;
 library ExternalCall {
     function _patchAmountAndCall(
         address target,
-        uint256 maxGas,
         bytes calldata data,
+        uint256 maxGas,
         uint256 swapAmountInDataIndex,
-        uint256 swapAmountInDataValue,
-        uint256 swapAmountOutMinimumDataIndex,
-        uint256 swapAmountOutMinimumValue
+        uint256 swapAmountInDataValue
     ) internal returns (bool success) {
         if (maxGas == 0) {
             maxGas = gasleft();
@@ -20,12 +18,6 @@ library ExternalCall {
             calldatacopy(ptr, data.offset, data.length)
             if gt(swapAmountInDataValue, 0) {
                 mstore(add(add(ptr, 0x24), mul(swapAmountInDataIndex, 0x20)), swapAmountInDataValue)
-            }
-            if gt(swapAmountOutMinimumValue, 0) {
-                mstore(
-                    add(add(ptr, 0x24), mul(swapAmountOutMinimumDataIndex, 0x20)),
-                    swapAmountOutMinimumValue
-                )
             }
             success := call(
                 maxGas,

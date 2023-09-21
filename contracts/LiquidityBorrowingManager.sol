@@ -7,7 +7,6 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "./abstract/LiquidityManager.sol";
 import "./abstract/OwnerSettings.sol";
 import "./abstract/DailyRateAndCollateral.sol";
-import "./libraries/ExternalCall.sol";
 
 import "hardhat/console.sol";
 
@@ -23,28 +22,23 @@ contract LiquidityBorrowingManager is
     ReentrancyGuard
 {
     using Keys for bytes32[];
-    using { ExternalCall._patchAmountAndCall } for address;
-    using { ExternalCall._readFirstBytes4 } for bytes;
-
-    struct SwapParams {
-        /// Aggregator's router address
-        address swapTarget;
-        uint256 swapAmountInDataIndex;
-        uint256 swapAmountOutMinimumDataIndex;
-        uint256 maxGasForCall;
-        /// Aggregator's data that stores pathes and amounts swap through
-        bytes swapData;
-    }
 
     /// @title BorrowParams
     /// @notice This struct represents the parameters required for borrowing.
     struct BorrowParams {
-        uint24 swapPoolfee;
+        /// @notice The pool fee level for the internal swap
+        uint24 internalSwapPoolfee;
+        /// @notice The address of the token that will be sold to obtain the loan currency
         address saleToken;
+        /// @notice The address of the token that will be held
         address holdToken;
+        /// @notice The minimum amount of holdToken that must be obtained
         uint256 minHoldTokenOut;
+        /// @notice The maximum amount of collateral that can be provided for the loan
         uint256 maxCollateral;
+        /// @notice The SwapParams struct representing the external swap parameters
         SwapParams externalSwap;
+        /// @notice An array of Loan structs representing multiple loans
         Loan[] loans;
     }
     /// @title BorrowingInfo
@@ -53,12 +47,41 @@ contract LiquidityBorrowingManager is
         address borrower;
         address saleToken;
         address holdToken;
+        /// @notice The amount of fees owed by the creditor
         uint256 feesOwed;
+        /// @notice The amount borrowed by the borrower
         uint256 borrowedAmount;
+        /// @notice The liquidation bonus
         uint256 liquidationBonus;
+        /// @notice The accumulated loan rate per share
         uint256 accLoanRatePerShare;
-        uint256 dailyRateCollateral;
+        /// @notice The daily rate collateral balance
+        uint256 dailyRateCollateralBalance;
         Loan[] loans;
+    }
+    /// @notice This struct used for caching variables inside a function 'borrow'
+    struct BorrowCache {
+        bool zeroForSaleToken;
+        uint256 dailyRate;
+        uint256 accLoanRatePerShare;
+        uint256 borrowedAmount;
+        uint256 holdTokenBalance;
+        uint256 saleTokenBalance;
+    }
+
+    /// @title RepayParams
+    /// @notice This struct represents the parameters required for repaying a loan.
+    struct RepayParams {
+        /// @notice The activation of the emergency liquidity restoration mode (available only to the lender)
+        bool isEmergency;
+        /// @notice The pool fee level for the internal swap
+        uint24 internalSwapPoolfee;
+        /// @notice The external swap parameters for the repayment transaction
+        SwapParams externalSwap;
+        /// @notice The unique borrowing key associated with the loan
+        bytes32 borrowingKey;
+        /// @notice The slippage allowance for the swap in basis points (1/10th of a percent)
+        uint256 swapSlippageBP1000;
     }
 
     /// borrowingKey=>BorrowingInfo
@@ -67,15 +90,23 @@ contract LiquidityBorrowingManager is
     mapping(address => bytes32[]) public userBorrowingKeys;
     /// tokenId => BorrowingKeys[]
     mapping(uint256 => bytes32[]) public underlyingPosBorrowingKeys;
-    ///     swapTarget   => (func.selector => is allowed)
-    mapping(address => mapping(bytes4 => bool)) public whitelistedCall;
 
-    ///  token => Amt
+    ///  token => FeesAmt
     mapping(address => uint256) public platformsFeesInfo;
 
     event Borrow(address borrower, bytes32 borrowingKey, uint256 borrowedAmount);
     event Repay(address borrower, address liquidator, bytes32 borrowingKey);
     event CollectProtocol(address recipient, address[] tokens, uint256[] amounts);
+
+    /// @dev Modifier to check if the current block timestamp is before or equal to the deadline.
+    modifier checkDeadline(uint256 deadline) {
+        require(_blockTimestamp() <= deadline, "Transaction too old");
+        _;
+    }
+
+    function _blockTimestamp() internal view returns (uint256) {
+        return block.timestamp;
+    }
 
     constructor(
         address _underlyingPositionManagerAddress,
@@ -91,23 +122,6 @@ contract LiquidityBorrowingManager is
         )
     {}
 
-    modifier checkDeadline(uint256 deadline) {
-        require(_blockTimestamp() <= deadline, "Transaction too old");
-        _;
-    }
-
-    modifier checkSwapCallParameters(address swapTarget, bytes calldata swapData) {
-        require(
-            swapTarget == address(0) || _checkSwapCallParameters(swapTarget, swapData),
-            "swap call params is not supported"
-        );
-        _;
-    }
-
-    function _blockTimestamp() internal view returns (uint256) {
-        return block.timestamp;
-    }
-
     /**
      * @dev Adds or removes a swap call to the whitelist.
      * @param swapTarget The address of the target contract for the swap call.
@@ -119,16 +133,14 @@ contract LiquidityBorrowingManager is
         bytes4 funcSelector,
         bool isAllowed
     ) external onlyOwner {
-        require(funcSelector != IERC20.transferFrom.selector, "forbidden function selector");
+        require(
+            swapTarget != VAULT_ADDRESS &&
+                swapTarget != address(this) &&
+                swapTarget != address(underlyingPositionManager),
+            "forbidden target"
+        );
+        require(funcSelector != IERC20.transferFrom.selector, "forbidden selector");
         whitelistedCall[swapTarget][funcSelector] = isAllowed;
-    }
-
-    function _checkSwapCallParameters(
-        address swapTarget,
-        bytes calldata swapData
-    ) internal view returns (bool isAllowed) {
-        bytes4 funcSelector = swapData._readFirstBytes4();
-        isAllowed = whitelistedCall[swapTarget][funcSelector];
     }
 
     /**
@@ -197,7 +209,7 @@ contract LiquidityBorrowingManager is
         balance = _checkDailyRateCollateral(
             borrowing.borrowedAmount,
             borrowing.accLoanRatePerShare,
-            borrowing.dailyRateCollateral,
+            borrowing.dailyRateCollateralBalance,
             accLoanRatePerShare
         );
         if (balance > 0) {
@@ -223,17 +235,8 @@ contract LiquidityBorrowingManager is
         bytes32 borrowingKey = Keys.computeBorrowingKey(borrower, saleToken, holdToken);
         BorrowingInfo storage borrowing = borrowings[borrowingKey];
         require(borrowing.borrowedAmount > 0, "invalid position");
-        borrowing.dailyRateCollateral += collateralAmt;
+        borrowing.dailyRateCollateralBalance += collateralAmt;
         _pay(holdToken, msg.sender, VAULT_ADDRESS, collateralAmt);
-    }
-
-    struct BorrowCache {
-        bool zeroForSaleToken;
-        uint256 dailyRate;
-        uint256 accLoanRatePerShare;
-        uint256 borrowedAmount;
-        uint256 holdTokenBalance;
-        uint256 saleTokenBalance;
     }
 
     /**
@@ -245,12 +248,7 @@ contract LiquidityBorrowingManager is
     function borrow(
         BorrowParams calldata params,
         uint256 deadline
-    )
-        external
-        nonReentrant
-        checkDeadline(deadline)
-        checkSwapCallParameters(params.externalSwap.swapTarget, params.externalSwap.swapData)
-    {
+    ) external nonReentrant checkDeadline(deadline) {
         BorrowCache memory cache;
 
         cache.zeroForSaleToken = params.saleToken < params.holdToken;
@@ -277,24 +275,17 @@ contract LiquidityBorrowingManager is
         // If there are saleToken balances available, perform a swap to get more holdToken
         if (cache.saleTokenBalance > 0) {
             if (params.externalSwap.swapTarget != address(0)) {
-                _approveIfNecessary(
+                cache.holdTokenBalance += _patchAmountsAndCallSwap(
                     params.saleToken,
-                    params.externalSwap.swapTarget,
-                    cache.saleTokenBalance
-                );
-                params.externalSwap.swapTarget._patchAmountAndCall(
-                    params.externalSwap.maxGasForCall,
-                    params.externalSwap.swapData,
-                    params.externalSwap.swapAmountInDataIndex,
+                    params.holdToken,
+                    params.externalSwap,
                     cache.saleTokenBalance,
-                    params.externalSwap.swapAmountOutMinimumDataIndex,
                     0
                 );
-                cache.holdTokenBalance = _getBalance(params.holdToken);
             } else {
                 cache.holdTokenBalance += _v3SwapExactInput(
                     v3SwapExactInputParams({
-                        fee: params.swapPoolfee,
+                        fee: params.internalSwapPoolfee,
                         tokenIn: params.saleToken,
                         tokenOut: params.holdToken,
                         amountIn: cache.saleTokenBalance,
@@ -309,10 +300,6 @@ contract LiquidityBorrowingManager is
         //console.log("holdToken borrower owe =", borrowedAmount);
         //console.log("holdToken borrower has after the swap =", holdTokenBalance);
         require(cache.holdTokenBalance >= params.minHoldTokenOut, "too little received");
-        require(
-            (cache.borrowedAmount - cache.holdTokenBalance) <= params.maxCollateral,
-            "too much collateral"
-        );
 
         bytes32 borrowingKey = Keys.computeBorrowingKey(
             msg.sender,
@@ -329,14 +316,14 @@ contract LiquidityBorrowingManager is
             ) / Constants.BP;
             // Check if the collateral meets the required amount of fees
             require(
-                borrowing.dailyRateCollateral >= currentPerDayFees,
+                borrowing.dailyRateCollateralBalance >= currentPerDayFees,
                 "collateral increase required"
             );
-            // Calculate the platformFees and deduct from the dailyRateCollateral
+            // Calculate the platformFees and deduct from the dailyRateCollateralBalance
             uint256 platformFees = (currentPerDayFees * platformFeesBP) / Constants.BP;
             currentPerDayFees -= platformFees;
             platformsFeesInfo[params.holdToken] += platformFees;
-            borrowing.dailyRateCollateral -= currentPerDayFees;
+            borrowing.dailyRateCollateralBalance -= currentPerDayFees;
             borrowing.feesOwed += currentPerDayFees;
         } else {
             // If it's a new position, ensure that the user does not have too many positions
@@ -377,9 +364,10 @@ contract LiquidityBorrowingManager is
 
         borrowing.borrowedAmount += cache.borrowedAmount;
         borrowing.liquidationBonus += liquidationBonus;
-        borrowing.dailyRateCollateral += cache.dailyRate;
+        borrowing.dailyRateCollateralBalance += cache.dailyRate;
 
         uint256 collateral = cache.borrowedAmount - cache.holdTokenBalance;
+        require(collateral <= params.maxCollateral, "too much collateral");
         holdTokenRateInfo.totalBorrowed += cache.borrowedAmount;
         // Transfer the required tokens to the VAULT_ADDRESS for collateral and holdTokenBalance
         _pay(
@@ -399,22 +387,24 @@ contract LiquidityBorrowingManager is
     }
 
     /**
-     * @notice Repays a borrowing
-     * @param borrowingKey The key of the borrowing to be repaid
-     * @param swapPoolFee The fee of swapping pool
-     * @param slippageBP1000 The allowed slippage percentage for the swap, in basis points
-     * @param deadline The deadline by which the transaction must be executed
+     * @notice This function is used to repay a loan.
+     * @param params The repayment parameters including
+     *  activation of the emergency liquidity restoration mode (available only to the lender)
+     *  internal swap pool fee,
+     *  external swap parameters,
+     *  borrowing key,
+     *  swap slippage allowance.
+     * @param deadline The deadline by which the repayment must be made.
      */
     function repay(
-        bytes32 borrowingKey,
-        uint24 swapPoolFee,
-        uint256 slippageBP1000,
+        RepayParams calldata params,
         uint256 deadline
     ) external nonReentrant checkDeadline(deadline) {
-        BorrowingInfo memory borrowing = borrowings[borrowingKey];
+        BorrowingInfo memory borrowing = borrowings[params.borrowingKey];
         require(borrowing.borrowedAmount > 0, "invalid borrowingKey");
+
         bool zeroForSaleToken = borrowing.saleToken < borrowing.holdToken;
-        uint256 feesOwed = borrowing.dailyRateCollateral;
+        uint256 feesOwed = borrowing.dailyRateCollateralBalance;
         {
             // Calculate collateral balance and validate caller
             int256 collateralBalance;
@@ -429,7 +419,7 @@ contract LiquidityBorrowingManager is
                     collateralBalance = _checkDailyRateCollateral(
                         borrowing.borrowedAmount,
                         borrowing.accLoanRatePerShare,
-                        borrowing.dailyRateCollateral,
+                        borrowing.dailyRateCollateralBalance,
                         accLoanRatePerShare
                     );
                     require(
@@ -445,7 +435,8 @@ contract LiquidityBorrowingManager is
                     feesOwed -= uint256(collateralBalance);
                     liquidationBonus += uint256(collateralBalance);
                 }
-                // Transfer liquidation bonus to msg.sender
+                // Transfer liquidation bonus and remaining collateral to msg.sender
+                // For liquidators, the balance of the collateral is always zero
                 Vault(VAULT_ADDRESS).transferToken(
                     borrowing.holdToken,
                     msg.sender,
@@ -469,24 +460,27 @@ contract LiquidityBorrowingManager is
         );
         // Restore liquidity using borrowed amount and pay a daily rate fees
         Loan[] memory loans = borrowing.loans;
-        _approveIfNecessary(
+        _maxApproveIfNecessary(
             borrowing.holdToken,
             address(underlyingPositionManager),
-            type(uint256).max - 1
+            type(uint256).max / 2
         );
-        _approveIfNecessary(
+        _maxApproveIfNecessary(
             borrowing.saleToken,
             address(underlyingPositionManager),
-            type(uint256).max - 1
+            type(uint256).max / 2
         );
+
         _restoreLiquidity(
             RestoreLiquidityParams({
+                isEmergency: params.isEmergency,
                 zeroForSaleToken: zeroForSaleToken,
-                fee: swapPoolFee,
-                slippageBP1000: slippageBP1000,
+                fee: params.internalSwapPoolfee,
+                slippageBP1000: params.swapSlippageBP1000,
                 totalfeesOwed: feesOwed,
                 totalBorrowedAmount: borrowing.borrowedAmount
             }),
+            params.externalSwap,
             loans
         );
         (uint256 saleTokenBalance, uint256 holdTokenBalance) = _getPairBalance(
@@ -495,18 +489,18 @@ contract LiquidityBorrowingManager is
         );
         // Remove borrowing key from related data structures
         for (uint256 i; i < loans.length; ) {
-            underlyingPosBorrowingKeys[loans[i].tokenId].removeKey(borrowingKey);
+            underlyingPosBorrowingKeys[loans[i].tokenId].removeKey(params.borrowingKey);
             unchecked {
                 ++i;
             }
         }
-        userBorrowingKeys[msg.sender].removeKey(borrowingKey);
+        userBorrowingKeys[msg.sender].removeKey(params.borrowingKey);
         // Delete borrowing information
-        delete borrowings[borrowingKey];
+        delete borrowings[params.borrowingKey];
         // Pay a profit to a borrower
         _pay(borrowing.holdToken, address(this), msg.sender, holdTokenBalance);
         _pay(borrowing.saleToken, address(this), msg.sender, saleTokenBalance);
 
-        emit Repay(borrowing.borrower, msg.sender, borrowingKey);
+        emit Repay(borrowing.borrower, msg.sender, params.borrowingKey);
     }
 }

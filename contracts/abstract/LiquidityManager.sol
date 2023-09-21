@@ -18,11 +18,24 @@ abstract contract LiquidityManager is ApproveSwapAndPay {
     }
 
     struct RestoreLiquidityParams {
+        bool isEmergency;
         bool zeroForSaleToken;
         uint24 fee;
         uint256 slippageBP1000;
         uint256 totalfeesOwed;
         uint256 totalBorrowedAmount;
+    }
+
+    struct RestoreLiquidityCache {
+        uint128 borrowedLiquidity;
+        int24 tickLower;
+        int24 tickUpper;
+        uint24 fee;
+        address saleToken;
+        address holdToken;
+        uint160 sqrtPriceX96;
+        uint256 tokenId;
+        uint256 holdTokenDebt;
     }
 
     address public immutable VAULT_ADDRESS;
@@ -77,21 +90,184 @@ abstract contract LiquidityManager is ApproveSwapAndPay {
             1;
     }
 
-    function _getAmountOut(
-        bool zeroForIn,
-        uint256 amountIn,
-        uint160 sqrtPriceX96
-    ) private pure returns (uint256 amountOut) {
-        if (sqrtPriceX96 <= type(uint128).max) {
-            uint256 ratioX192 = uint256(sqrtPriceX96) * sqrtPriceX96;
-            amountOut = zeroForIn
-                ? FullMath.mulDiv(ratioX192, amountIn, 1 << 192)
-                : FullMath.mulDiv(1 << 192, amountIn, ratioX192);
-        } else {
-            uint256 ratioX128 = FullMath.mulDiv(sqrtPriceX96, sqrtPriceX96, 1 << 64);
-            amountOut = zeroForIn
-                ? FullMath.mulDiv(ratioX128, amountIn, 1 << 128)
-                : FullMath.mulDiv(1 << 128, amountIn, ratioX128);
+    /**
+     * @dev Extracts liquidity from loans and returns the borrowed amount.
+     * @param zeroForSaleToken Boolean flag indicating whether the first token passed is the token being sold.
+     * @param token0 The address of one of the tokens in the pair.
+     * @param token1 The address of the other token in the pair.
+     * @param loans An array of Loan struct instances containing loan information.
+     * @return borrowedAmount The total amount borrowed.
+     */
+    function _extractLiquidity(
+        bool zeroForSaleToken,
+        address token0,
+        address token1,
+        Loan[] memory loans
+    ) internal returns (uint256 borrowedAmount) {
+        if (!zeroForSaleToken) {
+            (token0, token1) = (token1, token0);
+        }
+
+        for (uint256 i; i < loans.length; ) {
+            uint256 tokenId = loans[i].tokenId;
+            uint128 liquidity = loans[i].liquidity;
+            // Extract position-related details
+            {
+                int24 tickLower;
+                int24 tickUpper;
+                uint128 posLiquidity;
+                {
+                    address operator;
+                    address posToken0;
+                    address posToken1;
+
+                    (
+                        ,
+                        operator,
+                        posToken0,
+                        posToken1,
+                        ,
+                        tickLower,
+                        tickUpper,
+                        posLiquidity,
+                        ,
+                        ,
+                        ,
+
+                    ) = underlyingPositionManager.positions(tokenId);
+                    // Check operator approval
+                    if (operator != address(this)) {
+                        revert NotApproved(tokenId);
+                    }
+                    // Check token validity
+                    if (posToken0 != token0 || posToken1 != token1) {
+                        revert InvalidTokens(tokenId);
+                    }
+                }
+                // Check borrowed liquidity validity
+                if (!(liquidity > 0 && liquidity <= posLiquidity)) {
+                    revert InvalidBorrowedLiquidity(tokenId);
+                }
+                // Calculate borrowed amount
+                borrowedAmount += _getSingleSideBorrowedAmount(
+                    zeroForSaleToken,
+                    tickLower,
+                    tickUpper,
+                    liquidity
+                );
+            }
+            // Decrease liquidity and move to the next loan
+            _decreaseLiquidity(tokenId, liquidity);
+
+            unchecked {
+                ++i;
+            }
+        }
+    }
+
+    /**
+     * @dev Restores liquidity from loans.
+     * @param params The RestoreLiquidityParams struct containing restoration parameters.
+     * @param externalSwap The SwapParams struct containing external swap details.
+     * @param loans An array of Loan struct instances containing loan information.
+     */
+    function _restoreLiquidity(
+        RestoreLiquidityParams memory params,
+        SwapParams calldata externalSwap,
+        Loan[] memory loans
+    ) internal {
+        RestoreLiquidityCache memory cache;
+        for (uint256 i; i < loans.length; ) {
+            // Update the cache for the current loan
+            _upCache(params.zeroForSaleToken, loans[i].liquidity, loans[i].tokenId, cache);
+
+            (uint256 holdTokenAmountIn, uint256 amount0, uint256 amount1) = _getHoldTokenAmountIn(
+                params.zeroForSaleToken,
+                cache.tickLower,
+                cache.tickUpper,
+                cache.sqrtPriceX96,
+                cache.borrowedLiquidity,
+                cache.holdTokenDebt
+            );
+
+            if (holdTokenAmountIn > 0) {
+                // Quote exact input single for swap
+                uint256 saleTokenAmountOut;
+                (saleTokenAmountOut, cache.sqrtPriceX96, , ) = underlyingQuoterV2
+                    .quoteExactInputSingle(
+                        IQuoterV2.QuoteExactInputSingleParams({
+                            tokenIn: cache.holdToken,
+                            tokenOut: cache.saleToken,
+                            amountIn: holdTokenAmountIn,
+                            fee: params.fee,
+                            sqrtPriceLimitX96: 0
+                        })
+                    );
+                // Perform external swap if external swap target is provided
+                if (externalSwap.swapTarget != address(0)) {
+                    _patchAmountsAndCallSwap(
+                        cache.holdToken,
+                        cache.saleToken,
+                        externalSwap,
+                        holdTokenAmountIn,
+                        (saleTokenAmountOut * params.slippageBP1000) / Constants.BPS
+                    );
+                } else {
+                    // Calculate hold token amount in again for new sqrtPriceX96
+                    (holdTokenAmountIn, , ) = _getHoldTokenAmountIn(
+                        params.zeroForSaleToken,
+                        cache.tickLower,
+                        cache.tickUpper,
+                        cache.sqrtPriceX96,
+                        cache.borrowedLiquidity,
+                        cache.holdTokenDebt
+                    );
+                    // Perform v3 swap exact input and update sqrtPriceX96
+                    _v3SwapExactInput(
+                        v3SwapExactInputParams({
+                            fee: params.fee,
+                            tokenIn: cache.holdToken,
+                            tokenOut: cache.saleToken,
+                            amountIn: holdTokenAmountIn,
+                            amountOutMinimum: (saleTokenAmountOut * params.slippageBP1000) /
+                                Constants.BPS
+                        })
+                    );
+                    cache.sqrtPriceX96 = _getCurrentSqrtPriceX96(
+                        params.zeroForSaleToken,
+                        cache.saleToken,
+                        cache.holdToken,
+                        cache.fee
+                    );
+                    (amount0, amount1) = LiquidityAmounts.getAmountsForLiquidity(
+                        cache.sqrtPriceX96,
+                        TickMath.getSqrtRatioAtTick(cache.tickLower),
+                        TickMath.getSqrtRatioAtTick(cache.tickUpper),
+                        cache.borrowedLiquidity
+                    );
+                }
+            }
+
+            address creditor = underlyingPositionManager.ownerOf(cache.tokenId);
+            // Increase liquidity and transfer liquidity owner reward
+            _increaseLiquidity(
+                params.isEmergency,
+                creditor,
+                cache.saleToken,
+                cache.holdToken,
+                cache.borrowedLiquidity,
+                cache.tokenId,
+                amount0 + 1,
+                amount1 + 1
+            );
+
+            uint256 liquidityOwnerReward = (params.totalfeesOwed * cache.holdTokenDebt) /
+                params.totalBorrowedAmount;
+            Vault(VAULT_ADDRESS).transferToken(cache.holdToken, creditor, liquidityOwnerReward);
+
+            unchecked {
+                ++i;
+            }
         }
     }
 
@@ -106,23 +282,6 @@ abstract contract LiquidityManager is ApproveSwapAndPay {
         }
         address poolAddress = computePoolAddress(tokenA, tokenB, fee);
         (sqrtPriceX96, , , , , , ) = IUniswapV3Pool(poolAddress).slot0();
-        // (, int24 tick, , , , , ) = IUniswapV3Pool(poolAddress).slot0();
-        // sqrtPriceX96 = TickMath.getSqrtRatioAtTick(tick);
-    }
-
-    function _getBalance(address token) internal view returns (uint256 balance) {
-        bytes memory callData = abi.encodeWithSelector(IERC20.balanceOf.selector, address(this));
-        (bool success, bytes memory data) = token.staticcall(callData);
-        require(success && data.length >= 32);
-        balance = abi.decode(data, (uint256));
-    }
-
-    function _getPairBalance(
-        address tokenA,
-        address tokenB
-    ) internal view returns (uint256 balanceA, uint256 balanceB) {
-        balanceA = _getBalance(tokenA);
-        balanceB = _getBalance(tokenB);
     }
 
     function _decreaseLiquidity(uint256 tokenId, uint128 liquidity) private {
@@ -150,6 +309,8 @@ abstract contract LiquidityManager is ApproveSwapAndPay {
     }
 
     function _increaseLiquidity(
+        bool isEmergency,
+        address creditor,
         address saleToken,
         address holdTokent,
         uint128 liquidityDesired,
@@ -173,137 +334,19 @@ abstract contract LiquidityManager is ApproveSwapAndPay {
                 holdTokent,
                 saleToken
             );
-            revert InvalidRestoredLiquidity(
-                tokenId,
-                liquidityDesired,
-                restoredLiquidity,
-                amount0,
-                amount1,
-                holdTokentBalance,
-                saleTokenBalance
-            );
-        }
-    }
 
-    function _getAmountHoldTokenToSwap(
-        bool zeroForSaleToken,
-        uint160 swappingSqrtPriceX96,
-        uint256 holdTokenDebt,
-        uint256 amount0,
-        uint256 amount1
-    ) private pure returns (uint256 amountHoldTokenToSwap) {
-        if (amount0 > 0 && amount1 > 0) {
-            if (zeroForSaleToken) {
-                uint256 outToken0 = _getAmountOut(false, holdTokenDebt, swappingSqrtPriceX96);
-                if (outToken0 > 0) {
-                    uint256 denominator = FullMath.mulDiv(
-                        amount1 * outToken0,
-                        FixedPoint96.Q96,
-                        amount0 * holdTokenDebt
-                    ) + FixedPoint96.Q96;
-
-                    amountHoldTokenToSwap = FullMath.mulDiv(
-                        holdTokenDebt,
-                        FixedPoint96.Q96,
-                        denominator
-                    );
-                }
-            } else {
-                uint256 outToken1 = _getAmountOut(true, holdTokenDebt, swappingSqrtPriceX96);
-                if (outToken1 > 0) {
-                    uint256 denominator = FullMath.mulDiv(
-                        amount0 * outToken1,
-                        FixedPoint96.Q96,
-                        amount1 * holdTokenDebt
-                    ) + FixedPoint96.Q96;
-
-                    amountHoldTokenToSwap = FullMath.mulDiv(
-                        holdTokenDebt,
-                        FixedPoint96.Q96,
-                        denominator
-                    );
-                }
-            }
-        } else {
-            if ((zeroForSaleToken && amount1 == 0) || (!zeroForSaleToken && amount0 == 0)) {
-                amountHoldTokenToSwap = holdTokenDebt;
-            }
-        }
-    }
-
-    function _extractLiquidity(
-        bool zeroForSaleToken,
-        address token0,
-        address token1,
-        Loan[] memory loans
-    ) internal returns (uint256 borrowedAmount) {
-        if (!zeroForSaleToken) {
-            (token0, token1) = (token1, token0);
-        }
-
-        for (uint256 i; i < loans.length; ) {
-            uint256 tokenId = loans[i].tokenId;
-            uint128 liquidity = loans[i].liquidity;
-            {
-                int24 tickLower;
-                int24 tickUpper;
-                uint128 posLiquidity;
-                {
-                    address operator;
-                    address posToken0;
-                    address posToken1;
-
-                    (
-                        ,
-                        operator,
-                        posToken0,
-                        posToken1,
-                        ,
-                        tickLower,
-                        tickUpper,
-                        posLiquidity,
-                        ,
-                        ,
-                        ,
-
-                    ) = underlyingPositionManager.positions(tokenId);
-
-                    if (operator != address(this)) {
-                        revert NotApproved(tokenId);
-                    }
-
-                    if (posToken0 != token0 || posToken1 != token1) {
-                        revert InvalidTokens(tokenId);
-                    }
-                }
-
-                if (!(liquidity > 0 && liquidity <= posLiquidity)) {
-                    revert InvalidBorrowedLiquidity(tokenId);
-                }
-                borrowedAmount += _getSingleSideBorrowedAmount(
-                    zeroForSaleToken,
-                    tickLower,
-                    tickUpper,
-                    liquidity
+            if (!(isEmergency && msg.sender == creditor)) {
+                revert InvalidRestoredLiquidity(
+                    tokenId,
+                    liquidityDesired,
+                    restoredLiquidity,
+                    amount0,
+                    amount1,
+                    holdTokentBalance,
+                    saleTokenBalance
                 );
             }
-
-            _decreaseLiquidity(tokenId, liquidity);
-
-            unchecked {
-                ++i;
-            }
         }
-    }
-
-    struct RestoreLiquidityCache {
-        uint128 borrowedLiquidity;
-        int24 tickLower;
-        int24 tickUpper;
-        uint24 fee;
-        address saleToken;
-        address holdToken;
-        uint256 tokenId;
     }
 
     function _getHoldTokenAmountIn(
@@ -313,7 +356,7 @@ abstract contract LiquidityManager is ApproveSwapAndPay {
         uint160 sqrtPriceX96,
         uint128 liquidity,
         uint256 holdTokenDebt
-    ) internal pure returns (uint256 holdTokenAmountIn, uint256 amount0, uint256 amount1) {
+    ) private pure returns (uint256 holdTokenAmountIn, uint256 amount0, uint256 amount1) {
         (amount0, amount1) = LiquidityAmounts.getAmountsForLiquidity(
             sqrtPriceX96,
             TickMath.getSqrtRatioAtTick(tickLower),
@@ -323,119 +366,51 @@ abstract contract LiquidityManager is ApproveSwapAndPay {
         holdTokenAmountIn = holdTokenDebt - ((zeroForSaleToken ? amount1 : amount0) + 1);
     }
 
-    function _restoreLiquidity(RestoreLiquidityParams memory params, Loan[] memory loans) internal {
-        RestoreLiquidityCache memory cache;
-        for (uint256 i; i < loans.length; ) {
-            cache.tokenId = loans[i].tokenId;
-            cache.borrowedLiquidity = loans[i].liquidity;
-            (
-                ,
-                ,
-                cache.saleToken,
-                cache.holdToken,
-                cache.fee,
-                cache.tickLower,
-                cache.tickUpper,
-                ,
-                ,
-                ,
-                ,
+    /**
+     * @dev Updates the cache for liquidity restoration.
+     * @param zeroForSaleToken A boolean indicating whether the zero token is for sale.
+     * @param liquidity The liquidity amount of the loan.
+     * @param tokenId The ID of the token associated with the loan.
+     * @param cache The RestoreLiquidityCache struct instance to update.
+     */
+    function _upCache(
+        bool zeroForSaleToken,
+        uint128 liquidity,
+        uint256 tokenId,
+        RestoreLiquidityCache memory cache
+    ) private view {
+        cache.tokenId = tokenId;
+        cache.borrowedLiquidity = liquidity;
+        (
+            ,
+            ,
+            cache.saleToken,
+            cache.holdToken,
+            cache.fee,
+            cache.tickLower,
+            cache.tickUpper,
+            ,
+            ,
+            ,
+            ,
 
-            ) = underlyingPositionManager.positions(cache.tokenId);
+        ) = underlyingPositionManager.positions(tokenId);
 
-            if (!params.zeroForSaleToken) {
-                (cache.saleToken, cache.holdToken) = (cache.holdToken, cache.saleToken);
-            }
-
-            uint256 holdTokenDebt = _getSingleSideBorrowedAmount(
-                params.zeroForSaleToken,
-                cache.tickLower,
-                cache.tickUpper,
-                cache.borrowedLiquidity
-            );
-
-            uint160 sqrtPriceX96 = _getCurrentSqrtPriceX96(
-                params.zeroForSaleToken,
-                cache.saleToken,
-                cache.holdToken,
-                cache.fee
-            );
-
-            (uint256 holdTokenAmountIn, uint256 amount0, uint256 amount1) = _getHoldTokenAmountIn(
-                params.zeroForSaleToken,
-                cache.tickLower,
-                cache.tickUpper,
-                sqrtPriceX96,
-                cache.borrowedLiquidity,
-                holdTokenDebt
-            );
-
-            if (holdTokenAmountIn > 0) {
-                uint256 saleTokenAmountOut;
-                (saleTokenAmountOut, sqrtPriceX96, , ) = underlyingQuoterV2.quoteExactInputSingle(
-                    IQuoterV2.QuoteExactInputSingleParams({
-                        tokenIn: cache.holdToken,
-                        tokenOut: cache.saleToken,
-                        amountIn: holdTokenAmountIn,
-                        fee: params.fee,
-                        sqrtPriceLimitX96: 0
-                    })
-                );
-
-                (holdTokenAmountIn, , ) = _getHoldTokenAmountIn(
-                    params.zeroForSaleToken,
-                    cache.tickLower,
-                    cache.tickUpper,
-                    sqrtPriceX96,
-                    cache.borrowedLiquidity,
-                    holdTokenDebt
-                );
-
-                saleTokenAmountOut = _v3SwapExactInput(
-                    v3SwapExactInputParams({
-                        fee: params.fee,
-                        tokenIn: cache.holdToken,
-                        tokenOut: cache.saleToken,
-                        amountIn: holdTokenAmountIn,
-                        amountOutMinimum: (saleTokenAmountOut * params.slippageBP1000) /
-                            Constants.BPS
-                    })
-                );
-
-                sqrtPriceX96 = _getCurrentSqrtPriceX96(
-                    params.zeroForSaleToken,
-                    cache.saleToken,
-                    cache.holdToken,
-                    cache.fee
-                );
-                (amount0, amount1) = LiquidityAmounts.getAmountsForLiquidity(
-                    sqrtPriceX96,
-                    TickMath.getSqrtRatioAtTick(cache.tickLower),
-                    TickMath.getSqrtRatioAtTick(cache.tickUpper),
-                    cache.borrowedLiquidity
-                );
-            }
-
-            _increaseLiquidity(
-                cache.saleToken,
-                cache.holdToken,
-                cache.borrowedLiquidity,
-                cache.tokenId,
-                amount0 + 1,
-                amount1 + 1
-            );
-
-            uint256 liquidityOwnerReward = (params.totalfeesOwed * holdTokenDebt) /
-                params.totalBorrowedAmount;
-            Vault(VAULT_ADDRESS).transferToken(
-                cache.holdToken,
-                underlyingPositionManager.ownerOf(cache.tokenId),
-                liquidityOwnerReward
-            );
-
-            unchecked {
-                ++i;
-            }
+        if (!zeroForSaleToken) {
+            (cache.saleToken, cache.holdToken) = (cache.holdToken, cache.saleToken);
         }
+
+        cache.holdTokenDebt = _getSingleSideBorrowedAmount(
+            zeroForSaleToken,
+            cache.tickLower,
+            cache.tickUpper,
+            cache.borrowedLiquidity
+        );
+        cache.sqrtPriceX96 = _getCurrentSqrtPriceX96(
+            zeroForSaleToken,
+            cache.saleToken,
+            cache.holdToken,
+            cache.fee
+        );
     }
 }
