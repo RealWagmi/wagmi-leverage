@@ -205,6 +205,50 @@ function dailyRateOperator() external view returns (address)
 |---|---|---|
 | _0 | address | undefined |
 
+### getBorrowerDebtsInfo
+
+```solidity
+function getBorrowerDebtsInfo(address borrower) external view returns (struct LiquidityBorrowingManager.BorrowingInfoExt[] extinfo)
+```
+
+Retrieves the debts information for a specific borrower.
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| borrower | address | The address of the borrower. |
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| extinfo | LiquidityBorrowingManager.BorrowingInfoExt[] | An array of BorrowingInfoExt structs representing the borrowing information. |
+
+### getLenderLoansInfo
+
+```solidity
+function getLenderLoansInfo(uint256 tokenId) external view returns (struct LiquidityBorrowingManager.BorrowingInfoExt[] extinfo)
+```
+
+Retrieves the loans information for a specific lender.
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| tokenId | uint256 | The unique identifier of the token representing the lender. |
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| extinfo | LiquidityBorrowingManager.BorrowingInfoExt[] | An array of BorrowingInfoExt structs representing the borrowing information. |
+
 ### increaseDailyRateCollateral
 
 ```solidity

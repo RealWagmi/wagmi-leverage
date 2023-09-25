@@ -304,6 +304,7 @@ describe("WagmiLeverageTests", () => {
         }
 
         await borrowingManager.connect(bob).borrow(params, deadline);
+        //console.log(await borrowingManager.getBorrowerDebtsInfo(bob.address));
     });
 
 });

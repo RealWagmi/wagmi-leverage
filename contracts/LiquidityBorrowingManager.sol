@@ -8,7 +8,7 @@ import "./abstract/LiquidityManager.sol";
 import "./abstract/OwnerSettings.sol";
 import "./abstract/DailyRateAndCollateral.sol";
 
-import "hardhat/console.sol";
+// import "hardhat/console.sol";
 
 /**
  * @title LiquidityBorrowingManager
@@ -67,6 +67,15 @@ contract LiquidityBorrowingManager is
         uint256 borrowedAmount;
         uint256 holdTokenBalance;
         uint256 saleTokenBalance;
+    }
+    /// @notice Struct representing the extended borrowing information.
+    struct BorrowingInfoExt {
+        /// @notice The main borrowing information.
+        BorrowingInfo info;
+        /// @notice The balance of the collateral.
+        int256 collateralBalance;
+        /// @notice The estimated lifetime of the loan.
+        uint256 estimatedLifeTime;
     }
 
     /// @title RepayParams
@@ -201,22 +210,31 @@ contract LiquidityBorrowingManager is
     function checkDailyRateCollateral(
         bytes32 borrowingKey
     ) external view returns (int256 balance, uint256 estimatedLifeTime) {
-        BorrowingInfo memory borrowing = borrowings[borrowingKey];
-        (uint256 currentDailyRate, uint256 accLoanRatePerShare) = _getHoldTokenRateInfo(
-            borrowing.saleToken,
-            borrowing.holdToken
-        );
-        balance = _checkDailyRateCollateral(
-            borrowing.borrowedAmount,
-            borrowing.accLoanRatePerShare,
-            borrowing.dailyRateCollateralBalance,
-            accLoanRatePerShare
-        );
-        if (balance > 0) {
-            uint256 everySecond = ((borrowing.borrowedAmount * currentDailyRate) / Constants.BP) /
-                1 days;
-            estimatedLifeTime = uint256(balance) / everySecond;
-        }
+        (, balance, estimatedLifeTime) = _getDebtInfo(borrowingKey);
+    }
+
+    /**
+     * @notice Retrieves the loans information for a specific lender.
+     * @param tokenId The unique identifier of the token representing the lender.
+     * @return extinfo An array of BorrowingInfoExt structs representing the borrowing information.
+     */
+    function getLenderLoansInfo(
+        uint256 tokenId
+    ) external view returns (BorrowingInfoExt[] memory extinfo) {
+        bytes32[] memory borrowingKeys = underlyingPosBorrowingKeys[tokenId];
+        extinfo = _getDebtsInfo(borrowingKeys);
+    }
+
+    /**
+     * @notice Retrieves the debts information for a specific borrower.
+     * @param borrower The address of the borrower.
+     * @return extinfo An array of BorrowingInfoExt structs representing the borrowing information.
+     */
+    function getBorrowerDebtsInfo(
+        address borrower
+    ) external view returns (BorrowingInfoExt[] memory extinfo) {
+        bytes32[] memory borrowingKeys = userBorrowingKeys[borrower];
+        extinfo = _getDebtsInfo(borrowingKeys);
     }
 
     /**
@@ -270,7 +288,6 @@ contract LiquidityBorrowingManager is
             params.saleToken,
             params.holdToken
         );
-        //console.log("saleTokenBalance before the swap =", saleTokenBalance);
 
         // If there are saleToken balances available, perform a swap to get more holdToken
         if (cache.saleTokenBalance > 0) {
@@ -297,8 +314,6 @@ contract LiquidityBorrowingManager is
 
         // Ensure that the received holdToken balance meets the minimum required
 
-        //console.log("holdToken borrower owe =", borrowedAmount);
-        //console.log("holdToken borrower has after the swap =", holdTokenBalance);
         require(cache.holdTokenBalance >= params.minHoldTokenOut, "too little received");
 
         bytes32 borrowingKey = Keys.computeBorrowingKey(
@@ -376,11 +391,11 @@ contract LiquidityBorrowingManager is
             VAULT_ADDRESS,
             collateral + liquidationBonus + cache.dailyRate
         );
-        console.log("leverage =", cache.holdTokenBalance / collateral);
-        console.log(
-            "leverage (with liquidationBonus + dailyRate)=",
-            cache.holdTokenBalance / (collateral + liquidationBonus + cache.dailyRate)
-        );
+        // console.log("leverage =", cache.holdTokenBalance / collateral);
+        // console.log(
+        //     "leverage (with liquidationBonus + dailyRate)=",
+        //     cache.holdTokenBalance / (collateral + liquidationBonus + cache.dailyRate)
+        // );
         _pay(params.holdToken, address(this), VAULT_ADDRESS, cache.holdTokenBalance);
         // Emit the Borrow event with the borrower, borrowing key, and borrowed amount
         emit Borrow(msg.sender, borrowingKey, cache.borrowedAmount);
@@ -502,5 +517,50 @@ contract LiquidityBorrowingManager is
         _pay(borrowing.saleToken, address(this), msg.sender, saleTokenBalance);
 
         emit Repay(borrowing.borrower, msg.sender, params.borrowingKey);
+    }
+
+    function _getDebtInfo(
+        bytes32 borrowingKey
+    )
+        internal
+        view
+        returns (BorrowingInfo memory borrowing, int256 balance, uint256 estimatedLifeTime)
+    {
+        borrowing = borrowings[borrowingKey];
+        (uint256 currentDailyRate, uint256 accLoanRatePerShare) = _getHoldTokenRateInfo(
+            borrowing.saleToken,
+            borrowing.holdToken
+        );
+        balance = _checkDailyRateCollateral(
+            borrowing.borrowedAmount,
+            borrowing.accLoanRatePerShare,
+            borrowing.dailyRateCollateralBalance,
+            accLoanRatePerShare
+        );
+        if (balance > 0) {
+            uint256 everySecond = ((borrowing.borrowedAmount * currentDailyRate) / Constants.BP) /
+                1 days;
+            estimatedLifeTime = uint256(balance) / everySecond;
+        }
+    }
+
+    /// @notice Retrieves the debt information for the specified borrowing keys.
+    /// @param borrowingKeys The array of borrowing keys to retrieve the debt information for.
+    /// @return extinfo An array of BorrowingInfoExt structs representing the borrowing information.
+    function _getDebtsInfo(
+        bytes32[] memory borrowingKeys
+    ) internal view returns (BorrowingInfoExt[] memory extinfo) {
+        extinfo = new BorrowingInfoExt[](borrowingKeys.length);
+        for (uint256 i; i < borrowingKeys.length; ) {
+            bytes32 key = borrowingKeys[i];
+            (
+                extinfo[i].info,
+                extinfo[i].collateralBalance,
+                extinfo[i].estimatedLifeTime
+            ) = _getDebtInfo(key);
+            unchecked {
+                ++i;
+            }
+        }
     }
 }

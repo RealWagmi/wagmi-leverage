@@ -31,10 +31,6 @@ contract AggregatorMock {
             (address, address, uint256, uint256)
         );
         require(tokenIn != tokenOut, "TE");
-        // console.log("tokenIn =", tokenIn);
-        // console.log("tokenOut =", tokenOut);
-        // console.log("amountIn =", amountIn);
-        // console.log("amountOutMin =", amountOutMin);
 
         (uint256 amountOut, , , ) = underlyingQuoterV2.quoteExactInputSingle(
             IQuoterV2.QuoteExactInputSingleParams({
@@ -45,7 +41,7 @@ contract AggregatorMock {
                 sqrtPriceLimitX96: 0
             })
         );
-        // console.log("amountOut =", amountOut);
+
         require(amountOut >= amountOutMin, "AggregatorMock: price slippage check");
         _safeTransferFrom(tokenIn, msg.sender, address(this), amountIn);
         _safeTransfer(tokenOut, msg.sender, amountOut);
