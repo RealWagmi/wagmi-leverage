@@ -262,7 +262,8 @@ abstract contract LiquidityManager is ApproveSwapAndPay {
             );
 
             uint256 liquidityOwnerReward = (params.totalfeesOwed * cache.holdTokenDebt) /
-                params.totalBorrowedAmount;
+                params.totalBorrowedAmount /
+                Constants.COLLATERAL_BALANCE_PRECISION;
             Vault(VAULT_ADDRESS).transferToken(cache.holdToken, creditor, liquidityOwnerReward);
 
             unchecked {

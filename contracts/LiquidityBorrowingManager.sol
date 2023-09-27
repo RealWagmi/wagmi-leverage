@@ -21,7 +21,8 @@ contract LiquidityBorrowingManager is
     DailyRateAndCollateral,
     ReentrancyGuard
 {
-    using Keys for bytes32[];
+    using { Keys.toUInt256 } for bool;
+    using { Keys.removeKey, Keys.addKeyIfNotExists } for bytes32[];
 
     /// @title BorrowParams
     /// @notice This struct represents the parameters required for borrowing.
@@ -54,8 +55,8 @@ contract LiquidityBorrowingManager is
         /// @notice The liquidation bonus
         uint256 liquidationBonus;
         /// @notice The accumulated loan rate per share
-        uint256 accLoanRatePerShare;
-        /// @notice The daily rate collateral balance
+        uint256 accLoanRatePerSeconds;
+        /// @notice The daily rate collateral balance multiplied by COLLATERAL_BALANCE_PRECISION
         uint256 dailyRateCollateralBalance;
         Loan[] loans;
     }
@@ -63,7 +64,7 @@ contract LiquidityBorrowingManager is
     struct BorrowCache {
         bool zeroForSaleToken;
         uint256 dailyRate;
-        uint256 accLoanRatePerShare;
+        uint256 accLoanRatePerSeconds;
         uint256 borrowedAmount;
         uint256 holdTokenBalance;
         uint256 saleTokenBalance;
@@ -76,6 +77,8 @@ contract LiquidityBorrowingManager is
         int256 collateralBalance;
         /// @notice The estimated lifetime of the loan.
         uint256 estimatedLifeTime;
+        /// borrowing Key
+        bytes32 key;
     }
 
     /// @title RepayParams
@@ -103,9 +106,19 @@ contract LiquidityBorrowingManager is
     ///  token => FeesAmt
     mapping(address => uint256) public platformsFeesInfo;
 
-    event Borrow(address borrower, bytes32 borrowingKey, uint256 borrowedAmount);
+    event Borrow(
+        address borrower,
+        bytes32 borrowingKey,
+        uint256 borrowedAmount,
+        uint256 borrowingCollateral,
+        uint256 liquidationBonus,
+        uint256 dailyRatePrepayment
+    );
+
     event Repay(address borrower, address liquidator, bytes32 borrowingKey);
     event CollectProtocol(address recipient, address[] tokens, uint256[] amounts);
+    event UpdateHoldTokenDailyRate(address saleToken, address holdToken, uint256 value);
+    event IncreaseCollateralBalance(address borrower, bytes32 borrowingKey, uint256 collateralAmt);
 
     /// @dev Modifier to check if the current block timestamp is before or equal to the deadline.
     modifier checkDeadline(uint256 deadline) {
@@ -163,9 +176,10 @@ contract LiquidityBorrowingManager is
 
         for (uint256 i; i < tokens.length; ) {
             address token = tokens[i];
-            uint256 amount = platformsFeesInfo[token];
+            uint256 amount = platformsFeesInfo[token] / Constants.COLLATERAL_BALANCE_PRECISION;
             if (amount > 0) {
                 platformsFeesInfo[token] = 0;
+
                 amounts[i] = amount;
                 Vault(VAULT_ADDRESS).transferToken(token, recipient, amount);
             }
@@ -194,11 +208,10 @@ contract LiquidityBorrowingManager is
         if (value > Constants.MAX_DAILY_RATE || value < Constants.MIN_DAILY_RATE) {
             revert InvalidSettingsValue(value);
         }
-        TokenInfo storage holdTokenRateInfo = saleToken < holdToken
-            ? tokenPairs[Keys.computePairKey(saleToken, holdToken)][1]
-            : tokenPairs[Keys.computePairKey(holdToken, saleToken)][0];
-        _updateTokenRateInfo(holdTokenRateInfo);
+        (, TokenInfo storage holdTokenRateInfo) = _updateTokenRateInfo(saleToken, holdToken);
         holdTokenRateInfo.currentDailyRate = value;
+
+        emit UpdateHoldTokenDailyRate(saleToken, holdToken, value);
     }
 
     /**
@@ -238,23 +251,90 @@ contract LiquidityBorrowingManager is
     }
 
     /**
-     * @notice This function is used to increase the daily rate collateral for a specific borrowing.
+     * @dev Returns the number of loans associated with a given token ID.
+     * @param tokenId The ID of the token.
+     * @return count The total number of loans associated with the token.
+     */
+    function getLoansCount(uint256 tokenId) external view returns (uint256 count) {
+        bytes32[] memory borrowingKeys = underlyingPosBorrowingKeys[tokenId];
+        count = borrowingKeys.length;
+    }
+
+    /**
+     * @dev Returns the number of borrowings for a given borrower.
      * @param borrower The address of the borrower.
-     * @param saleToken The address of the token being sold in the borrowing.
-     * @param holdToken The address of the token being held as collateral.
+     * @return count The total number of borrowings for the borrower.
+     */
+    function getBorrowingsCount(address borrower) external view returns (uint256 count) {
+        bytes32[] memory borrowingKeys = userBorrowingKeys[borrower];
+        count = borrowingKeys.length;
+    }
+
+    /**
+     * @dev Returns the current daily rate for holding tokens.
+     * @param saleToken The address of the token being sold.
+     * @param holdToken The address of the token being held.
+     * @return currentDailyRate The current daily rate for holding tokens.
+     */
+    function getHoldTokenDailyRate(
+        address saleToken,
+        address holdToken
+    ) external view returns (uint256 currentDailyRate) {
+        (currentDailyRate, ) = _getHoldTokenRateInfo(saleToken, holdToken);
+    }
+
+    /**
+     * @dev Calculates the collateral amount required for a lifetime in seconds.
+     *
+     * @param borrowingKey The unique identifier of the borrowing.
+     * @param lifetimeInSeconds The duration of the borrowing in seconds.
+     * @return collateralAmt The calculated collateral amount that is needed.
+     */
+    function calculateCollateralAmtForLifetime(
+        bytes32 borrowingKey,
+        uint256 lifetimeInSeconds
+    ) external view returns (uint256 collateralAmt) {
+        BorrowingInfo memory borrowing = borrowings[borrowingKey];
+        if (borrowing.borrowedAmount > 0) {
+            (uint256 currentDailyRate, ) = _getHoldTokenRateInfo(
+                borrowing.saleToken,
+                borrowing.holdToken
+            );
+
+            uint256 everySecond = (
+                FullMath.mulDivRoundingUp(
+                    borrowing.borrowedAmount,
+                    currentDailyRate * Constants.COLLATERAL_BALANCE_PRECISION,
+                    1 days * Constants.BP
+                )
+            );
+
+            collateralAmt = FullMath.mulDivRoundingUp(
+                everySecond,
+                lifetimeInSeconds,
+                Constants.COLLATERAL_BALANCE_PRECISION
+            );
+
+            if (collateralAmt == 0) collateralAmt = 1;
+        }
+    }
+
+    /**
+     * @notice This function is used to increase the daily rate collateral for a specific borrowing.
+     * @param borrowingKey The unique identifier of the borrowing.
      * @param collateralAmt The amount of collateral to be added.
      */
-    function increaseDailyRateCollateral(
-        address borrower,
-        address saleToken,
-        address holdToken,
-        uint256 collateralAmt
-    ) external {
-        bytes32 borrowingKey = Keys.computeBorrowingKey(borrower, saleToken, holdToken);
+    function increaseCollateralBalance(bytes32 borrowingKey, uint256 collateralAmt) external {
         BorrowingInfo storage borrowing = borrowings[borrowingKey];
-        require(borrowing.borrowedAmount > 0, "invalid position");
-        borrowing.dailyRateCollateralBalance += collateralAmt;
-        _pay(holdToken, msg.sender, VAULT_ADDRESS, collateralAmt);
+        require(
+            borrowing.borrowedAmount > 0 && borrowing.borrower == address(msg.sender),
+            "invalid borrowingKey"
+        );
+        borrowing.dailyRateCollateralBalance +=
+            collateralAmt *
+            Constants.COLLATERAL_BALANCE_PRECISION;
+        _pay(borrowing.holdToken, msg.sender, VAULT_ADDRESS, collateralAmt);
+        emit IncreaseCollateralBalance(msg.sender, borrowingKey, collateralAmt);
     }
 
     /**
@@ -270,18 +350,23 @@ contract LiquidityBorrowingManager is
         BorrowCache memory cache;
 
         cache.zeroForSaleToken = params.saleToken < params.holdToken;
-        // Retrieve the TokenInfo for the holdTokenRateInfo based on the ordering of saleToken and holdToken
-        TokenInfo storage holdTokenRateInfo = cache.zeroForSaleToken
-            ? tokenPairs[Keys.computePairKey(params.saleToken, params.holdToken)][1]
-            : tokenPairs[Keys.computePairKey(params.holdToken, params.saleToken)][0];
-        // Update the token rate information and retrieve the dailyRate and accLoanRatePerShare
-        (cache.dailyRate, cache.accLoanRatePerShare) = _updateTokenRateInfo(holdTokenRateInfo);
+        TokenInfo storage holdTokenRateInfo;
+        // Update the token rate information and retrieve the dailyRate and TokenInfo for the holdTokenRateInfo
+        (cache.dailyRate, holdTokenRateInfo) = _updateTokenRateInfo(
+            params.saleToken,
+            params.holdToken
+        );
+        cache.accLoanRatePerSeconds = holdTokenRateInfo.accLoanRatePerSeconds;
         // Extract liquidity
         cache.borrowedAmount = _extractLiquidity(
             cache.zeroForSaleToken,
             params.saleToken,
             params.holdToken,
             params.loans
+        );
+        require(
+            cache.borrowedAmount >= Constants.MINIMUM_BORROWED_AMOUNT,
+            "too little borrowed amount"
         );
 
         (cache.saleTokenBalance, cache.holdTokenBalance) = _getPairBalance(
@@ -324,22 +409,20 @@ contract LiquidityBorrowingManager is
         BorrowingInfo storage borrowing = borrowings[borrowingKey];
 
         if (borrowing.borrowedAmount > 0) {
-            uint256 currentPerDayFees = FullMath.mulDiv(
+            (int256 collateralBalance, uint256 currentFees) = _calculateCollateralBalance(
                 borrowing.borrowedAmount,
-                cache.accLoanRatePerShare - borrowing.accLoanRatePerShare,
-                FixedPoint96.Q96
-            ) / Constants.BP;
-            // Check if the collateral meets the required amount of fees
-            require(
-                borrowing.dailyRateCollateralBalance >= currentPerDayFees,
-                "collateral increase required"
+                borrowing.accLoanRatePerSeconds,
+                borrowing.dailyRateCollateralBalance,
+                cache.accLoanRatePerSeconds
             );
+            // Check if the collateral meets the required amount of fees
+            require(collateralBalance > 0, "collateral increase required");
             // Calculate the platformFees and deduct from the dailyRateCollateralBalance
-            uint256 platformFees = (currentPerDayFees * platformFeesBP) / Constants.BP;
-            currentPerDayFees -= platformFees;
+            uint256 platformFees = (currentFees * platformFeesBP) / Constants.BP;
+            currentFees -= platformFees;
             platformsFeesInfo[params.holdToken] += platformFees;
-            borrowing.dailyRateCollateralBalance -= currentPerDayFees;
-            borrowing.feesOwed += currentPerDayFees;
+            borrowing.dailyRateCollateralBalance -= currentFees;
+            borrowing.feesOwed += currentFees;
         } else {
             // If it's a new position, ensure that the user does not have too many positions
             bytes32[] storage allUserBorrowingKeys = userBorrowingKeys[msg.sender];
@@ -366,30 +449,43 @@ contract LiquidityBorrowingManager is
             }
         }
         // Ensure that the number of loans does not exceed the maximum limit
-        require(borrowing.loans.length < Constants.MAX_NUM_LOANS_PER_POSOTION, "too many loans");
+        require(borrowing.loans.length < Constants.MAX_NUM_LOANS_PER_POSITION, "too many loans");
 
-        borrowing.accLoanRatePerShare = cache.accLoanRatePerShare;
+        borrowing.accLoanRatePerSeconds = cache.accLoanRatePerSeconds;
+
         uint256 liquidationBonus = specificTokenLiquidationBonus[params.holdToken];
-        liquidationBonus =
-            (cache.borrowedAmount *
-                (liquidationBonus > 0 ? liquidationBonus : dafaultLiquidationBonusBP) *
-                params.loans.length) /
-            Constants.BP;
-        cache.dailyRate = (cache.borrowedAmount * cache.dailyRate) / Constants.BP; //prepayment per day
+        liquidationBonus = FullMath.mulDiv(
+            cache.borrowedAmount,
+            (liquidationBonus > 0 ? liquidationBonus : dafaultLiquidationBonusBP) *
+                params.loans.length,
+            Constants.BP
+        );
+
+        cache.dailyRate = FullMath.mulDivRoundingUp(
+            cache.borrowedAmount,
+            cache.dailyRate,
+            Constants.BP
+        ); //prepayment per day fees
+
+        if (cache.dailyRate < Constants.MINIMUM_FEES_AMOUNT) {
+            cache.dailyRate = Constants.MINIMUM_FEES_AMOUNT;
+        }
 
         borrowing.borrowedAmount += cache.borrowedAmount;
         borrowing.liquidationBonus += liquidationBonus;
-        borrowing.dailyRateCollateralBalance += cache.dailyRate;
+        borrowing.dailyRateCollateralBalance +=
+            cache.dailyRate *
+            Constants.COLLATERAL_BALANCE_PRECISION;
 
-        uint256 collateral = cache.borrowedAmount - cache.holdTokenBalance;
-        require(collateral <= params.maxCollateral, "too much collateral");
+        uint256 borrowingCollateral = cache.borrowedAmount - cache.holdTokenBalance;
+        require(borrowingCollateral <= params.maxCollateral, "too much borrowing collateral");
         holdTokenRateInfo.totalBorrowed += cache.borrowedAmount;
         // Transfer the required tokens to the VAULT_ADDRESS for collateral and holdTokenBalance
         _pay(
             params.holdToken,
             msg.sender,
             VAULT_ADDRESS,
-            collateral + liquidationBonus + cache.dailyRate
+            borrowingCollateral + liquidationBonus + cache.dailyRate
         );
         // console.log("leverage =", cache.holdTokenBalance / collateral);
         // console.log(
@@ -398,7 +494,14 @@ contract LiquidityBorrowingManager is
         // );
         _pay(params.holdToken, address(this), VAULT_ADDRESS, cache.holdTokenBalance);
         // Emit the Borrow event with the borrower, borrowing key, and borrowed amount
-        emit Borrow(msg.sender, borrowingKey, cache.borrowedAmount);
+        emit Borrow(
+            msg.sender,
+            borrowingKey,
+            cache.borrowedAmount,
+            borrowingCollateral,
+            liquidationBonus,
+            cache.dailyRate
+        );
     }
 
     /**
@@ -420,35 +523,41 @@ contract LiquidityBorrowingManager is
 
         bool zeroForSaleToken = borrowing.saleToken < borrowing.holdToken;
         uint256 feesOwed = borrowing.dailyRateCollateralBalance;
+        (, TokenInfo storage holdTokenRateInfo) = _updateTokenRateInfo(
+            borrowing.saleToken,
+            borrowing.holdToken
+        );
         {
             // Calculate collateral balance and validate caller
             int256 collateralBalance;
             {
-                TokenInfo storage holdTokenRateInfo = zeroForSaleToken
-                    ? tokenPairs[Keys.computePairKey(borrowing.saleToken, borrowing.holdToken)][1]
-                    : tokenPairs[Keys.computePairKey(borrowing.holdToken, borrowing.saleToken)][0];
+                uint256 accLoanRatePerSeconds = holdTokenRateInfo.accLoanRatePerSeconds;
 
-                {
-                    (, uint256 accLoanRatePerShare) = _updateTokenRateInfo(holdTokenRateInfo);
-
-                    collateralBalance = _checkDailyRateCollateral(
-                        borrowing.borrowedAmount,
-                        borrowing.accLoanRatePerShare,
-                        borrowing.dailyRateCollateralBalance,
-                        accLoanRatePerShare
-                    );
-                    require(
-                        msg.sender == borrowing.borrower || collateralBalance < 0,
-                        "invalid caller"
-                    );
-                }
+                (collateralBalance, ) = _calculateCollateralBalance(
+                    borrowing.borrowedAmount,
+                    borrowing.accLoanRatePerSeconds,
+                    borrowing.dailyRateCollateralBalance,
+                    accLoanRatePerSeconds
+                );
+                require(
+                    msg.sender == borrowing.borrower || collateralBalance < 0,
+                    "invalid caller"
+                );
             }
             // Calculate liquidation bonus and adjust fees owed
             {
                 uint256 liquidationBonus = borrowing.liquidationBonus;
-                if (collateralBalance > 0) {
+                if (
+                    collateralBalance > 0 &&
+                    (feesOwed + borrowing.feesOwed - uint256(collateralBalance)) /
+                        Constants.COLLATERAL_BALANCE_PRECISION >
+                    Constants.MINIMUM_FEES_AMOUNT
+                ) {
+                    //??
                     feesOwed -= uint256(collateralBalance);
-                    liquidationBonus += uint256(collateralBalance);
+                    liquidationBonus +=
+                        uint256(collateralBalance) /
+                        Constants.COLLATERAL_BALANCE_PRECISION;
                 }
                 // Transfer liquidation bonus and remaining collateral to msg.sender
                 // For liquidators, the balance of the collateral is always zero
@@ -498,6 +607,7 @@ contract LiquidityBorrowingManager is
             params.externalSwap,
             loans
         );
+        holdTokenRateInfo.totalBorrowed -= borrowing.borrowedAmount;
         (uint256 saleTokenBalance, uint256 holdTokenBalance) = _getPairBalance(
             borrowing.saleToken,
             borrowing.holdToken
@@ -524,23 +634,35 @@ contract LiquidityBorrowingManager is
     )
         internal
         view
-        returns (BorrowingInfo memory borrowing, int256 balance, uint256 estimatedLifeTime)
+        returns (
+            BorrowingInfo memory borrowing,
+            int256 collateralBalance,
+            uint256 estimatedLifeTime
+        )
     {
         borrowing = borrowings[borrowingKey];
-        (uint256 currentDailyRate, uint256 accLoanRatePerShare) = _getHoldTokenRateInfo(
+        (uint256 currentDailyRate, uint256 accLoanRatePerSeconds) = _getHoldTokenRateInfo(
             borrowing.saleToken,
             borrowing.holdToken
         );
-        balance = _checkDailyRateCollateral(
+        (collateralBalance, ) = _calculateCollateralBalance(
             borrowing.borrowedAmount,
-            borrowing.accLoanRatePerShare,
+            borrowing.accLoanRatePerSeconds,
             borrowing.dailyRateCollateralBalance,
-            accLoanRatePerShare
+            accLoanRatePerSeconds
         );
-        if (balance > 0) {
-            uint256 everySecond = ((borrowing.borrowedAmount * currentDailyRate) / Constants.BP) /
-                1 days;
-            estimatedLifeTime = uint256(balance) / everySecond;
+
+        if (collateralBalance > 0) {
+            uint256 everySecond = (
+                FullMath.mulDivRoundingUp(
+                    borrowing.borrowedAmount,
+                    currentDailyRate * Constants.COLLATERAL_BALANCE_PRECISION,
+                    1 days * Constants.BP
+                )
+            );
+
+            estimatedLifeTime = uint256(collateralBalance) / everySecond;
+            if (estimatedLifeTime == 0) estimatedLifeTime = 1;
         }
     }
 
@@ -552,12 +674,12 @@ contract LiquidityBorrowingManager is
     ) internal view returns (BorrowingInfoExt[] memory extinfo) {
         extinfo = new BorrowingInfoExt[](borrowingKeys.length);
         for (uint256 i; i < borrowingKeys.length; ) {
-            bytes32 key = borrowingKeys[i];
+            extinfo[i].key = borrowingKeys[i];
             (
                 extinfo[i].info,
                 extinfo[i].collateralBalance,
                 extinfo[i].estimatedLifeTime
-            ) = _getDebtInfo(key);
+            ) = _getDebtInfo(extinfo[i].key);
             unchecked {
                 ++i;
             }

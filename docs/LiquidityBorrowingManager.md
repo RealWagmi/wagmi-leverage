@@ -81,7 +81,7 @@ function borrow(LiquidityBorrowingManager.BorrowParams params, uint256 deadline)
 ### borrowings
 
 ```solidity
-function borrowings(bytes32) external view returns (address borrower, address saleToken, address holdToken, uint256 feesOwed, uint256 borrowedAmount, uint256 liquidationBonus, uint256 accLoanRatePerShare, uint256 dailyRateCollateralBalance)
+function borrowings(bytes32) external view returns (address borrower, address saleToken, address holdToken, uint256 feesOwed, uint256 borrowedAmount, uint256 liquidationBonus, uint256 accLoanRatePerSeconds, uint256 dailyRateCollateralBalance)
 ```
 
 borrowingKey=&gt;BorrowingInfo
@@ -104,8 +104,31 @@ borrowingKey=&gt;BorrowingInfo
 | feesOwed | uint256 | undefined |
 | borrowedAmount | uint256 | undefined |
 | liquidationBonus | uint256 | undefined |
-| accLoanRatePerShare | uint256 | undefined |
+| accLoanRatePerSeconds | uint256 | undefined |
 | dailyRateCollateralBalance | uint256 | undefined |
+
+### calculateCollateralAmtForLifetime
+
+```solidity
+function calculateCollateralAmtForLifetime(bytes32 borrowingKey, uint256 lifetimeInSeconds) external view returns (uint256 collateralAmt)
+```
+
+
+
+*Calculates the collateral amount required for a lifetime in seconds.*
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| borrowingKey | bytes32 | The unique identifier of the borrowing. |
+| lifetimeInSeconds | uint256 | The duration of the borrowing in seconds. |
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| collateralAmt | uint256 | The calculated collateral amount that is needed. |
 
 ### checkDailyRateCollateral
 
@@ -227,6 +250,51 @@ Retrieves the debts information for a specific borrower.
 |---|---|---|
 | extinfo | LiquidityBorrowingManager.BorrowingInfoExt[] | An array of BorrowingInfoExt structs representing the borrowing information. |
 
+### getBorrowingsCount
+
+```solidity
+function getBorrowingsCount(address borrower) external view returns (uint256 count)
+```
+
+
+
+*Returns the number of borrowings for a given borrower.*
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| borrower | address | The address of the borrower. |
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| count | uint256 | The total number of borrowings for the borrower. |
+
+### getHoldTokenDailyRate
+
+```solidity
+function getHoldTokenDailyRate(address saleToken, address holdToken) external view returns (uint256 currentDailyRate)
+```
+
+
+
+*Returns the current daily rate for holding tokens.*
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| saleToken | address | The address of the token being sold. |
+| holdToken | address | The address of the token being held. |
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| currentDailyRate | uint256 | The current daily rate for holding tokens. |
+
 ### getLenderLoansInfo
 
 ```solidity
@@ -249,10 +317,32 @@ Retrieves the loans information for a specific lender.
 |---|---|---|
 | extinfo | LiquidityBorrowingManager.BorrowingInfoExt[] | An array of BorrowingInfoExt structs representing the borrowing information. |
 
-### increaseDailyRateCollateral
+### getLoansCount
 
 ```solidity
-function increaseDailyRateCollateral(address borrower, address saleToken, address holdToken, uint256 collateralAmt) external nonpayable
+function getLoansCount(uint256 tokenId) external view returns (uint256 count)
+```
+
+
+
+*Returns the number of loans associated with a given token ID.*
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| tokenId | uint256 | The ID of the token. |
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| count | uint256 | The total number of loans associated with the token. |
+
+### increaseCollateralBalance
+
+```solidity
+function increaseCollateralBalance(bytes32 borrowingKey, uint256 collateralAmt) external nonpayable
 ```
 
 This function is used to increase the daily rate collateral for a specific borrowing.
@@ -263,9 +353,7 @@ This function is used to increase the daily rate collateral for a specific borro
 
 | Name | Type | Description |
 |---|---|---|
-| borrower | address | The address of the borrower. |
-| saleToken | address | The address of the token being sold in the borrowing. |
-| holdToken | address | The address of the token being held as collateral. |
+| borrowingKey | bytes32 | The unique identifier of the borrowing. |
 | collateralAmt | uint256 | The amount of collateral to be added. |
 
 ### owner
@@ -395,7 +483,7 @@ function specificTokenLiquidationBonus(address) external view returns (uint256)
 ### tokenPairs
 
 ```solidity
-function tokenPairs(bytes32, uint256) external view returns (uint32 latestUpTimestamp, uint256 accLoanRatePerShare, uint256 currentDailyRate, uint256 totalBorrowed)
+function tokenPairs(bytes32, uint256) external view returns (uint32 latestUpTimestamp, uint256 accLoanRatePerSeconds, uint256 currentDailyRate, uint256 totalBorrowed)
 ```
 
 pairKey =&gt; TokenInfo[]
@@ -414,7 +502,7 @@ pairKey =&gt; TokenInfo[]
 | Name | Type | Description |
 |---|---|---|
 | latestUpTimestamp | uint32 | undefined |
-| accLoanRatePerShare | uint256 | undefined |
+| accLoanRatePerSeconds | uint256 | undefined |
 | currentDailyRate | uint256 | undefined |
 | totalBorrowed | uint256 | undefined |
 
@@ -597,7 +685,7 @@ swapTarget   =&gt; (func.selector =&gt; is allowed)
 ### Borrow
 
 ```solidity
-event Borrow(address borrower, bytes32 borrowingKey, uint256 borrowedAmount)
+event Borrow(address borrower, bytes32 borrowingKey, uint256 borrowedAmount, uint256 borrowingCollateral, uint256 liquidationBonus, uint256 dailyRatePrepayment)
 ```
 
 
@@ -611,6 +699,9 @@ event Borrow(address borrower, bytes32 borrowingKey, uint256 borrowedAmount)
 | borrower  | address | undefined |
 | borrowingKey  | bytes32 | undefined |
 | borrowedAmount  | uint256 | undefined |
+| borrowingCollateral  | uint256 | undefined |
+| liquidationBonus  | uint256 | undefined |
+| dailyRatePrepayment  | uint256 | undefined |
 
 ### CollectProtocol
 
@@ -629,6 +720,24 @@ event CollectProtocol(address recipient, address[] tokens, uint256[] amounts)
 | recipient  | address | undefined |
 | tokens  | address[] | undefined |
 | amounts  | uint256[] | undefined |
+
+### IncreaseCollateralBalance
+
+```solidity
+event IncreaseCollateralBalance(address borrower, bytes32 borrowingKey, uint256 collateralAmt)
+```
+
+
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| borrower  | address | undefined |
+| borrowingKey  | bytes32 | undefined |
+| collateralAmt  | uint256 | undefined |
 
 ### OwnershipTransferred
 
@@ -664,6 +773,24 @@ event Repay(address borrower, address liquidator, bytes32 borrowingKey)
 | borrower  | address | undefined |
 | liquidator  | address | undefined |
 | borrowingKey  | bytes32 | undefined |
+
+### UpdateHoldTokenDailyRate
+
+```solidity
+event UpdateHoldTokenDailyRate(address saleToken, address holdToken, uint256 value)
+```
+
+
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| saleToken  | address | undefined |
+| holdToken  | address | undefined |
+| value  | uint256 | undefined |
 
 
 

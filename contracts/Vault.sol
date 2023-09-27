@@ -14,6 +14,8 @@ contract Vault is Ownable {
      * @param _amount The amount of tokens to be transferred
      */
     function transferToken(address _token, address _to, uint256 _amount) external onlyOwner {
-        IERC20(_token).safeTransfer(_to, _amount);
+        if (_amount > 0) {
+            IERC20(_token).safeTransfer(_to, _amount);
+        }
     }
 }

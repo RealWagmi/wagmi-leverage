@@ -25,7 +25,15 @@ contract AggregatorMock {
         require(success, "AggregatorMock: safeTransferFrom failed");
     }
 
+    function nonWhitelistedSwap(bytes calldata wrappedCallData) external {
+        _swap(wrappedCallData);
+    }
+
     function swap(bytes calldata wrappedCallData) external {
+        _swap(wrappedCallData);
+    }
+
+    function _swap(bytes calldata wrappedCallData) internal {
         (address tokenIn, address tokenOut, uint256 amountIn, uint256 amountOutMin) = abi.decode(
             wrappedCallData,
             (address, address, uint256, uint256)

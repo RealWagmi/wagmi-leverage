@@ -5,10 +5,12 @@ import "../vendor0.8/uniswap/FullMath.sol";
 import "../libraries/Keys.sol";
 import { Constants } from "../libraries/Constants.sol";
 
+// import "hardhat/console.sol";
+
 abstract contract DailyRateAndCollateral {
     struct TokenInfo {
         uint32 latestUpTimestamp;
-        uint256 accLoanRatePerShare;
+        uint256 accLoanRatePerSeconds;
         uint256 currentDailyRate;
         uint256 totalBorrowed;
     }
@@ -17,8 +19,12 @@ abstract contract DailyRateAndCollateral {
     mapping(bytes32 => TokenInfo[2]) public tokenPairs;
 
     function _updateTokenRateInfo(
-        TokenInfo storage holdTokenRateInfo
-    ) internal returns (uint256 currentDailyRate, uint256 accLoanRatePerShare) {
+        address saleToken,
+        address holdToken
+    ) internal returns (uint256 currentDailyRate, TokenInfo storage holdTokenRateInfo) {
+        holdTokenRateInfo = saleToken < holdToken
+            ? tokenPairs[Keys.computePairKey(saleToken, holdToken)][1]
+            : tokenPairs[Keys.computePairKey(holdToken, saleToken)][0];
         currentDailyRate = holdTokenRateInfo.currentDailyRate;
         if (currentDailyRate == 0) {
             currentDailyRate = Constants.DEFAULT_DAILY_RATE;
@@ -26,18 +32,18 @@ abstract contract DailyRateAndCollateral {
         if (holdTokenRateInfo.totalBorrowed > 0) {
             uint256 timeWeightedRate = (uint32(block.timestamp) -
                 holdTokenRateInfo.latestUpTimestamp) * currentDailyRate;
-            holdTokenRateInfo.accLoanRatePerShare +=
-                (timeWeightedRate * FixedPoint96.Q96) /
-                holdTokenRateInfo.totalBorrowed;
+            holdTokenRateInfo.accLoanRatePerSeconds +=
+                (timeWeightedRate * Constants.COLLATERAL_BALANCE_PRECISION) /
+                1 days;
         }
+
         holdTokenRateInfo.latestUpTimestamp = uint32(block.timestamp);
-        accLoanRatePerShare = holdTokenRateInfo.accLoanRatePerShare;
     }
 
     function _getHoldTokenRateInfo(
         address saleToken,
         address holdToken
-    ) internal view returns (uint256 currentDailyRate, uint256 accLoanRatePerShare) {
+    ) internal view returns (uint256 currentDailyRate, uint256 accLoanRatePerSeconds) {
         TokenInfo memory holdTokenRateInfo = saleToken < holdToken
             ? tokenPairs[Keys.computePairKey(saleToken, holdToken)][1]
             : tokenPairs[Keys.computePairKey(holdToken, saleToken)][0];
@@ -45,27 +51,31 @@ abstract contract DailyRateAndCollateral {
         if (currentDailyRate == 0) {
             currentDailyRate = Constants.DEFAULT_DAILY_RATE;
         }
+
         uint256 timeWeightedRate = (uint32(block.timestamp) - holdTokenRateInfo.latestUpTimestamp) *
             currentDailyRate;
-        accLoanRatePerShare =
-            holdTokenRateInfo.accLoanRatePerShare +
-            (timeWeightedRate * FixedPoint96.Q96) /
-            holdTokenRateInfo.totalBorrowed;
+        if (holdTokenRateInfo.totalBorrowed > 0) {
+            // ?
+            accLoanRatePerSeconds =
+                holdTokenRateInfo.accLoanRatePerSeconds +
+                (timeWeightedRate * Constants.COLLATERAL_BALANCE_PRECISION) /
+                1 days;
+        }
     }
 
-    function _checkDailyRateCollateral(
+    function _calculateCollateralBalance(
         uint256 borrowedAmount,
         uint256 borrowingAccLoanRatePerShare,
         uint256 borrowingDailyRateCollateral,
-        uint256 accLoanRatePerShare
-    ) internal pure returns (int256 balance) {
+        uint256 accLoanRatePerSeconds
+    ) internal pure returns (int256 collateralBalance, uint256 currentFees) {
         if (borrowedAmount > 0) {
-            uint256 currentPerDayFees = FullMath.mulDiv(
+            currentFees = FullMath.mulDivRoundingUp(
                 borrowedAmount,
-                accLoanRatePerShare - borrowingAccLoanRatePerShare,
-                FixedPoint96.Q96
-            ) / Constants.BP;
-            balance = int256(borrowingDailyRateCollateral) - int256(currentPerDayFees);
+                accLoanRatePerSeconds - borrowingAccLoanRatePerShare,
+                Constants.BP
+            );
+            collateralBalance = int256(borrowingDailyRateCollateral) - int256(currentFees);
         }
     }
 }
