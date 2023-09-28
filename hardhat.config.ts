@@ -4,7 +4,9 @@ import "hardhat-storage-layout";
 import "hardhat-tracer";
 import "@primitivefi/hardhat-dodoc";
 import "hardhat-contract-sizer";
+// import 'hardhat-exposed';
 import { config as dotEnvConfig } from 'dotenv';
+
 
 dotEnvConfig();
 
@@ -17,6 +19,9 @@ const config: HardhatUserConfig = {
     include: ["LiquidityBorrowingManager"]
   },
   defaultNetwork: 'hardhat',
+  // exposed: {
+  //   include: ["./abstract/*.sol"],
+  // },
   gasReporter: {
     currency: 'USD',
     coinmarketcap: process.env.COINMARKETCAP_API_KEY,

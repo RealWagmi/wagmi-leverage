@@ -132,7 +132,6 @@ abstract contract ApproveSwapAndPay {
     function _v3SwapExactInput(
         v3SwapExactInputParams memory params
     ) internal returns (uint256 amountOut) {
-        _maxApproveIfNecessary(params.tokenIn, address(this), params.amountIn);
         bool zeroForTokenIn = params.tokenIn < params.tokenOut;
         (int256 amount0Delta, int256 amount1Delta) = IUniswapV3Pool(
             computePoolAddress(params.tokenIn, params.tokenOut, params.fee)

@@ -41,16 +41,7 @@ library Keys {
         return keccak256(abi.encodePacked(borrower, saleToken, holdToken));
     }
 
-    function computePairKey(address tokenA, address tokenB) internal pure returns (bytes32) {
-        if (tokenA > tokenB) {
-            (tokenA, tokenB) = (tokenB, tokenA);
-        }
-        return keccak256(abi.encodePacked(tokenA, tokenB));
-    }
-
-    function toUInt256(bool x) internal pure returns (uint r) {
-        assembly {
-            r := x
-        }
+    function computePairKey(address saleToken, address holdToken) internal pure returns (bytes32) {
+        return keccak256(abi.encodePacked(saleToken, holdToken));
     }
 }

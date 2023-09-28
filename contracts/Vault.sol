@@ -18,4 +18,20 @@ contract Vault is Ownable {
             IERC20(_token).safeTransfer(_to, _amount);
         }
     }
+
+    function getBalances(
+        address[] calldata tokens
+    ) external view returns (uint256[] memory balances) {
+        bytes memory callData = abi.encodeWithSelector(IERC20.balanceOf.selector, address(this));
+        uint256 length = tokens.length;
+        balances = new uint256[](length);
+        for (uint256 i; i < length; ) {
+            (bool success, bytes memory data) = tokens[i].staticcall(callData);
+            require(success && data.length >= 32);
+            balances[i] = abi.decode(data, (uint256));
+            unchecked {
+                ++i;
+            }
+        }
+    }
 }

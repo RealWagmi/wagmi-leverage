@@ -197,13 +197,18 @@ function computePoolAddress(address tokenA, address tokenB, uint24 fee) external
 ### dafaultLiquidationBonusBP
 
 ```solidity
-function dafaultLiquidationBonusBP() external view returns (uint256)
+function dafaultLiquidationBonusBP(uint256) external view returns (uint256)
 ```
 
 
 
 
 
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | uint256 | undefined |
 
 #### Returns
 
@@ -272,10 +277,10 @@ function getBorrowingsCount(address borrower) external view returns (uint256 cou
 |---|---|---|
 | count | uint256 | The total number of borrowings for the borrower. |
 
-### getHoldTokenDailyRate
+### getHoldTokenDailyRateInfo
 
 ```solidity
-function getHoldTokenDailyRate(address saleToken, address holdToken) external view returns (uint256 currentDailyRate)
+function getHoldTokenDailyRateInfo(address saleToken, address holdToken) external view returns (uint256 currentDailyRate, struct DailyRateAndCollateral.TokenInfo holdTokenRateInfo)
 ```
 
 
@@ -294,6 +299,7 @@ function getHoldTokenDailyRate(address saleToken, address holdToken) external vi
 | Name | Type | Description |
 |---|---|---|
 | currentDailyRate | uint256 | The current daily rate for holding tokens. |
+| holdTokenRateInfo | DailyRateAndCollateral.TokenInfo | undefined |
 
 ### getLenderLoansInfo
 
@@ -317,6 +323,30 @@ Retrieves the loans information for a specific lender.
 |---|---|---|
 | extinfo | LiquidityBorrowingManager.BorrowingInfoExt[] | An array of BorrowingInfoExt structs representing the borrowing information. |
 
+### getLiquidationBonus
+
+```solidity
+function getLiquidationBonus(address token, uint256 borrowedAmount, uint256 times) external view returns (uint256 liquidationBonus)
+```
+
+
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| token | address | undefined |
+| borrowedAmount | uint256 | undefined |
+| times | uint256 | undefined |
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| liquidationBonus | uint256 | undefined |
+
 ### getLoansCount
 
 ```solidity
@@ -338,6 +368,53 @@ function getLoansCount(uint256 tokenId) external view returns (uint256 count)
 | Name | Type | Description |
 |---|---|---|
 | count | uint256 | The total number of loans associated with the token. |
+
+### getPlatformsFeesInfo
+
+```solidity
+function getPlatformsFeesInfo(address[] tokens) external view returns (uint256[] fees)
+```
+
+
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| tokens | address[] | undefined |
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| fees | uint256[] | undefined |
+
+### holdTokenInfo
+
+```solidity
+function holdTokenInfo(bytes32) external view returns (uint32 latestUpTimestamp, uint256 accLoanRatePerSeconds, uint256 currentDailyRate, uint256 totalBorrowed)
+```
+
+pairKey =&gt; TokenInfo
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | bytes32 | undefined |
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| latestUpTimestamp | uint32 | undefined |
+| accLoanRatePerSeconds | uint256 | undefined |
+| currentDailyRate | uint256 | undefined |
+| totalBorrowed | uint256 | undefined |
 
 ### increaseCollateralBalance
 
@@ -383,28 +460,6 @@ function platformFeesBP() external view returns (uint256)
 
 
 
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | uint256 | undefined |
-
-### platformsFeesInfo
-
-```solidity
-function platformsFeesInfo(address) external view returns (uint256)
-```
-
-token =&gt; FeesAmt
-
-
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | address | undefined |
 
 #### Returns
 
@@ -461,7 +516,7 @@ function setSwapCallToWhitelist(address swapTarget, bytes4 funcSelector, bool is
 ### specificTokenLiquidationBonus
 
 ```solidity
-function specificTokenLiquidationBonus(address) external view returns (uint256)
+function specificTokenLiquidationBonus(address, uint256) external view returns (uint256)
 ```
 
 
@@ -473,38 +528,13 @@ function specificTokenLiquidationBonus(address) external view returns (uint256)
 | Name | Type | Description |
 |---|---|---|
 | _0 | address | undefined |
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | uint256 | undefined |
-
-### tokenPairs
-
-```solidity
-function tokenPairs(bytes32, uint256) external view returns (uint32 latestUpTimestamp, uint256 accLoanRatePerSeconds, uint256 currentDailyRate, uint256 totalBorrowed)
-```
-
-pairKey =&gt; TokenInfo[]
-
-
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | bytes32 | undefined |
 | _1 | uint256 | undefined |
 
 #### Returns
 
 | Name | Type | Description |
 |---|---|---|
-| latestUpTimestamp | uint32 | undefined |
-| accLoanRatePerSeconds | uint256 | undefined |
-| currentDailyRate | uint256 | undefined |
-| totalBorrowed | uint256 | undefined |
+| _0 | uint256 | undefined |
 
 ### transferOwnership
 
@@ -898,5 +928,22 @@ error SwapSlippageCheckError(uint256 expectedOut, uint256 receivedOut)
 |---|---|---|
 | expectedOut | uint256 | undefined |
 | receivedOut | uint256 | undefined |
+
+### TooLittleReceivedError
+
+```solidity
+error TooLittleReceivedError(uint256 minOut, uint256 out)
+```
+
+
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| minOut | uint256 | undefined |
+| out | uint256 | undefined |
 
 

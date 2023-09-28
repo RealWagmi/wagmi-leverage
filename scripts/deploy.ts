@@ -8,9 +8,7 @@ async function main() {
     const [deployer] = await ethers.getSigners();
     const network = hardhat.network.name;
 
-    console.log(
-        `[${network}] deployer address: ${deployer.address} multisig address: ${deployer.address}`
-    );
+    console.log(`[${network}] deployer address: ${deployer.address} multisig address: ${deployer.address}`);
 
     console.log("done!");
     process.exit(0);

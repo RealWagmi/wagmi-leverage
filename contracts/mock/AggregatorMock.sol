@@ -4,8 +4,6 @@ pragma solidity 0.8.21;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../interfaces/IQuoterV2.sol";
 
-// import "hardhat/console.sol";
-
 contract AggregatorMock {
     IQuoterV2 public immutable underlyingQuoterV2;
 

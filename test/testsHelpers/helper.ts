@@ -25,17 +25,16 @@ import { ApproveSwapAndPay } from "../../typechain-types/contracts/LiquidityBorr
 import { BigNumber } from "@ethersproject/bignumber";
 const { constants } = ethers;
 
-
 export interface Asset {
     tokenAddress: string;
     amount: BigNumber;
 }
 
 export interface PositionManagerPosInfo {
-    tokenId: BigNumber,
-    liquidity: BigNumber,
-    amount0: BigNumber,
-    amount1: BigNumber
+    tokenId: BigNumber;
+    liquidity: BigNumber;
+    amount0: BigNumber;
+    amount1: BigNumber;
 }
 
 export enum PositionType {
@@ -47,7 +46,7 @@ export enum PositionType {
     RIGHT_OUTRANGE_TOKEN_0,
     //  _______________| tisk|________
     //  ________ token0|      |token1________
-    INRANGE_TOKEN_0_TOKEN_1
+    INRANGE_TOKEN_0_TOKEN_1,
 }
 
 export async function addLiquidity(
@@ -57,8 +56,8 @@ export async function addLiquidity(
     desiredAmount0: BigNumber,
     desiredAmount1: BigNumber,
     range: number,
-    signer: SignerWithAddress): Promise<PositionManagerPosInfo> {
-
+    signer: SignerWithAddress
+): Promise<PositionManagerPosInfo> {
     let tickLower;
     let tickUpper;
     let amount0: BigNumber;
@@ -73,33 +72,28 @@ export async function addLiquidity(
     // if (tick < 0 && tick % tickSpacing != 0) compressed--; // round towards negative infinity(In solidity)
 
     switch (posType) {
-        case PositionType.LEFT_OUTRANGE_TOKEN_1:
-            {
-                tickUpper = compressed * tickSpacing;
-                tickLower = tickUpper - (range * tickSpacing);
-                amount0 = BigNumber.from(0);
-                amount1 = desiredAmount1;
-                break;
-
-            }
-        case PositionType.RIGHT_OUTRANGE_TOKEN_0:
-            {
-                tickLower = (compressed + 1) * tickSpacing;
-                tickUpper = tickLower + (range * tickSpacing);
-                amount1 = BigNumber.from(0);
-                amount0 = desiredAmount0;
-                break;
-            }
-        case PositionType.INRANGE_TOKEN_0_TOKEN_1:
-            {
-                tickUpper = (compressed + (range - range / 2)) * tickSpacing;
-                tickLower = (compressed - range / 2) * tickSpacing;
-                amount1 = desiredAmount1;
-                amount0 = desiredAmount0;
-                break;
-            }
+        case PositionType.LEFT_OUTRANGE_TOKEN_1: {
+            tickUpper = compressed * tickSpacing;
+            tickLower = tickUpper - range * tickSpacing;
+            amount0 = BigNumber.from(0);
+            amount1 = desiredAmount1;
+            break;
+        }
+        case PositionType.RIGHT_OUTRANGE_TOKEN_0: {
+            tickLower = (compressed + 1) * tickSpacing;
+            tickUpper = tickLower + range * tickSpacing;
+            amount1 = BigNumber.from(0);
+            amount0 = desiredAmount0;
+            break;
+        }
+        case PositionType.INRANGE_TOKEN_0_TOKEN_1: {
+            tickUpper = (compressed + (range - range / 2)) * tickSpacing;
+            tickLower = (compressed - range / 2) * tickSpacing;
+            amount1 = desiredAmount1;
+            amount0 = desiredAmount0;
+            break;
+        }
     }
-
 
     const params: INonfungiblePositionManager.MintParamsStruct = {
         token0: token0,
@@ -112,8 +106,8 @@ export async function addLiquidity(
         amount0Min: 0,
         amount1Min: 0,
         recipient: signer.address,
-        deadline: timestamp + 60
-    }
+        deadline: timestamp + 60,
+    };
     const pos = await nonfungiblePositionManager.connect(signer).callStatic.mint(params);
     await nonfungiblePositionManager.connect(signer).mint(params);
     return pos;
@@ -183,12 +177,8 @@ export async function swap(
         amountIn: amountIn,
         amountOutMinimum: 0,
     });
-
 }
 
-export async function zeroForOne(
-    tokenA: string,
-    tokenB: string
-): Promise<boolean> {
+export async function zeroForOne(tokenA: string, tokenB: string): Promise<boolean> {
     return BigNumber.from(tokenA).lt(BigNumber.from(tokenB));
 }
