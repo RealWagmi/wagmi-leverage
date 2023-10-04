@@ -28,11 +28,10 @@ import {
     INonfungiblePositionManager,
     Vault,
     ISwapRouter,
-    LiquidityManager,
     AggregatorMock,
 } from "../typechain-types";
 
-import { ApproveSwapAndPay, DailyRateAndCollateral } from "../typechain-types/contracts/LiquidityBorrowingManager";
+import { ApproveSwapAndPay, DailyRateAndCollateral, LiquidityManager } from "../typechain-types/contracts/LiquidityBorrowingManager";
 
 import { BigNumber, parseFixed, formatFixed } from "@ethersproject/bignumber";
 const { constants } = ethers;
@@ -51,6 +50,7 @@ describe("WagmiLeverageTests", () => {
     const UNISWAP_V3_QUOTER_V2 = "0x61fFE014bA17989E743c5F6cB21bF9697530B21e";
     const UNISWAP_V3_POOL_INIT_CODE_HASH = "0xe34f199b19b2b4f47f68442619d555527d244f78a3297ea89325f843f87b8b54"; /// Mainnet, Goerli, Arbitrum, Optimism, Polygon
     const SWAP_ROUTER_ADDRESS = "0xE592427A0AEce92De3Edee1F18E0157C05861564";
+    const COLLATERAL_BALANCE_PRECISION = BigNumber.from("1000000000000000000");
 
     let owner: SignerWithAddress;
     let alice: SignerWithAddress;
@@ -148,19 +148,25 @@ describe("WagmiLeverageTests", () => {
         let snapshot: SnapshotRestorer = await takeSnapshot();
         // PLATFORM_FEES_BP
         await expect(borrowingManager.connect(alice).updateSettings(0, [2000])).to.be.reverted;
+        await expect(borrowingManager.connect(owner).updateSettings(0, [2001])).to.be.reverted;
+        await expect(borrowingManager.connect(owner).updateSettings(0, [2000, 1])).to.be.reverted;
         await borrowingManager.connect(owner).updateSettings(0, [2000]);
         expect(await borrowingManager.platformFeesBP()).to.equal(2000);
 
         // LIQUIDATION_BONUS_BP
+        await expect(borrowingManager.connect(owner).updateSettings(1, [101, 20])).to.be.reverted; ////MAX_LIQUIDATION_BONUS = 100;
+        await expect(borrowingManager.connect(owner).updateSettings(1, [101, 20, 4])).to.be.reverted;
         await borrowingManager.connect(owner).updateSettings(1, [100, 20]);
         expect(await borrowingManager.dafaultLiquidationBonusBP(0)).to.equal(100);
 
         // DAILY_RATE_OPERATOR
+        await expect(borrowingManager.connect(owner).updateSettings(2, [bob.address, 20, 4])).to.be.reverted;
         await borrowingManager.connect(owner).updateSettings(2, [bob.address]);
         expect(await borrowingManager.dailyRateOperator()).to.equal(bob.address);
 
         // SPECIFIC_TOKEN_LIQUIDATION_BONUS_BP
-        await expect(borrowingManager.connect(owner).updateSettings(3, [200, USDT_ADDRESS])).to.be.reverted; ////MAX_LIQUIDATION_BONUS = 100;
+        await expect(borrowingManager.connect(owner).updateSettings(3, [USDT_ADDRESS, 101, 1000000])).to.be.reverted; ////MAX_LIQUIDATION_BONUS = 100;
+        await expect(borrowingManager.connect(owner).updateSettings(3, [USDT_ADDRESS, 101, 1000000, 2])).to.be.reverted; ////MAX_LIQUIDATION_BONUS = 100;
         await borrowingManager.connect(owner).updateSettings(3, [USDT_ADDRESS, 99, 1000000]);
         expect(await borrowingManager.specificTokenLiquidationBonus(USDT_ADDRESS, 0)).to.equal(99);
         expect(await borrowingManager.specificTokenLiquidationBonus(USDT_ADDRESS, 1)).to.equal(1000000);
@@ -349,9 +355,10 @@ describe("WagmiLeverageTests", () => {
 
     it("INRANGE_TOKEN_0_TOKEN_1 borrowing liquidity (long position WETH)  will be successful", async () => {
         const amountWETH = ethers.utils.parseUnits("0.98", 18); //token0
-        const deadline = (await time.latest()) + 60;
+        let deadline = (await time.latest()) + 60;
         const minLeverageDesired = 50;
         const maxCollateral = amountWETH.div(minLeverageDesired);
+
 
         const loans = [
             {
@@ -377,6 +384,14 @@ describe("WagmiLeverageTests", () => {
             loans: loans,
         };
 
+        let snapshot: SnapshotRestorer = await takeSnapshot();
+        let debt: LiquidityBorrowingManager.BorrowingInfoExtStructOutput = (await borrowingManager.getBorrowerDebtsInfo(bob.address))[0];
+        //let collateralDebt = debt.collateralBalance.div(COLLATERAL_BALANCE_PRECISION);
+        await time.increase(debt.estimatedLifeTime.toNumber() + 10);
+        debt = (await borrowingManager.getBorrowerDebtsInfo(bob.address))[0];
+        expect(debt.collateralBalance).to.be.lt(0);
+        await borrowingManager.connect(bob).borrow(params, (await time.latest()) + 60);
+        snapshot.restore();
         await borrowingManager.connect(bob).borrow(params, deadline);
         await time.increase(10000);
     });
@@ -541,7 +556,6 @@ describe("WagmiLeverageTests", () => {
 
         await borrowingManager.connect(bob).borrow(params, deadline);
 
-
         //console.log(await borrowingManager.getBorrowerDebtsInfo(bob.address));
     });
 
@@ -559,8 +573,8 @@ describe("WagmiLeverageTests", () => {
         await time.increaseTo(latest + 43200); //12 hours
 
         debt = (await borrowingManager.getBorrowerDebtsInfo(bob.address))[1];
-        expect(debt.collateralBalance.div("1000000000000000000")).to.be.equal(
-            collateralBalance.div(2).div("1000000000000000000")
+        expect(debt.collateralBalance.div(COLLATERAL_BALANCE_PRECISION)).to.be.equal(
+            collateralBalance.div(2).div(COLLATERAL_BALANCE_PRECISION)
         );
         expect(debt.estimatedLifeTime).to.be.equal(43200); //24-12=12 Hours
         await borrowingManager.connect(owner).updateHoldTokenDailyRate(USDT_ADDRESS, WETH_ADDRESS, 20); //0.2% MULTIPLE x2
@@ -568,7 +582,7 @@ describe("WagmiLeverageTests", () => {
 
         debt = (await borrowingManager.getBorrowerDebtsInfo(bob.address))[1];
         expect(debt.estimatedLifeTime).to.be.equal(0);
-        expect(debt.collateralBalance.div("1000000000000000000")).to.be.lte(0);
+        expect(debt.collateralBalance.div(COLLATERAL_BALANCE_PRECISION)).to.be.lte(0);
 
         await expect(borrowingManager.connect(owner).updateHoldTokenDailyRate(USDT_ADDRESS, WETH_ADDRESS, 200)).to.be.reverted;
         await expect(borrowingManager.connect(owner).updateHoldTokenDailyRate(USDT_ADDRESS, WETH_ADDRESS, 1)).to.be.reverted;
@@ -625,15 +639,37 @@ describe("WagmiLeverageTests", () => {
         deadline = (await time.latest()) + 60;
         await borrowingManager.connect(alice).repay(params, deadline);
 
-        expect(await borrowingManager.getLoansCount(nftpos[0].tokenId)).to.be.equal(0);
-        expect(await borrowingManager.getLoansCount(nftpos[1].tokenId)).to.be.equal(0);
-        expect(await borrowingManager.getLoansCount(nftpos[2].tokenId)).to.be.equal(0);
-        expect(await borrowingManager.getLoansCount(nftpos[3].tokenId)).to.be.equal(0);
-        expect(await borrowingManager.getLoansCount(nftpos[4].tokenId)).to.be.equal(0);
-        expect(await borrowingManager.getLoansCount(nftpos[5].tokenId)).to.be.equal(0);
-        expect(await borrowingManager.getBorrowingsCount(bob.address)).to.be.equal(0);
+        expect(await borrowingManager.getLenderCreditsCount(nftpos[0].tokenId)).to.be.equal(0);
+        expect(await borrowingManager.getLenderCreditsCount(nftpos[1].tokenId)).to.be.equal(0);
+        expect(await borrowingManager.getLenderCreditsCount(nftpos[2].tokenId)).to.be.equal(0);
+        expect(await borrowingManager.getLenderCreditsCount(nftpos[3].tokenId)).to.be.equal(0);
+        expect(await borrowingManager.getLenderCreditsCount(nftpos[4].tokenId)).to.be.equal(0);
+        expect(await borrowingManager.getLenderCreditsCount(nftpos[5].tokenId)).to.be.equal(0);
+        expect(await borrowingManager.getBorrowerDebtsCount(bob.address)).to.be.equal(0);
 
     });
+
+    it("takeOverDebt should be correct if the collateral is depleted", async () => {
+        snapshot_global.restore();
+        const aliceBorrowingsCount = await borrowingManager.getBorrowerDebtsCount(alice.address);
+        const bobBorrowingsCount = await borrowingManager.getBorrowerDebtsCount(bob.address);
+        let debt: LiquidityBorrowingManager.BorrowingInfoExtStructOutput = (await borrowingManager.getBorrowerDebtsInfo(bob.address))[0];
+        expect(debt.collateralBalance).to.be.gte(0);
+        let collateralDebt = debt.collateralBalance.div(COLLATERAL_BALANCE_PRECISION);
+        await expect(borrowingManager.connect(alice).takeOverDebt(debt.key, collateralDebt)).to.be.reverted;// forbidden
+        await time.increase(debt.estimatedLifeTime.toNumber() + 10);
+        debt = (await borrowingManager.getBorrowerDebtsInfo(bob.address))[0];
+        expect(debt.collateralBalance).to.be.lt(0);
+        collateralDebt = debt.collateralBalance.abs().div(COLLATERAL_BALANCE_PRECISION).add(1);
+        await expect(borrowingManager.connect(alice).takeOverDebt(debt.key, collateralDebt)).to.be.reverted;//collateralAmt is not enough
+        await borrowingManager.connect(alice).takeOverDebt(debt.key, collateralDebt.add(5));
+        expect(await borrowingManager.getBorrowerDebtsCount(bob.address)).to.be.equal(bobBorrowingsCount.sub(1));
+        expect(await borrowingManager.getBorrowerDebtsCount(alice.address)).to.be.equal(aliceBorrowingsCount.add(1));
+        const borrowingsInfo = await borrowingManager.borrowingsInfo(debt.key);
+        expect(borrowingsInfo.borrower).to.be.equal(constants.AddressZero);
+
+    });
+
 
     it("increase the collateral balance should be correct", async () => {
         snapshot_global.restore();
@@ -645,7 +681,7 @@ describe("WagmiLeverageTests", () => {
         let collateralAmt = await borrowingManager.calculateCollateralAmtForLifetime(key, 86400);
 
         let debtBefore = (await borrowingManager.getBorrowerDebtsInfo(bob.address))[1];
-        let debtOncollateral = debtBefore.collateralBalance.div("1000000000000000000");
+        let debtOncollateral = debtBefore.collateralBalance.div(COLLATERAL_BALANCE_PRECISION);
         if (debtOncollateral.lt(0)) {
             debtOncollateral = debtOncollateral.abs();
         } else {
@@ -666,10 +702,10 @@ describe("WagmiLeverageTests", () => {
         const { balance, estimatedLifeTime } = await borrowingManager.checkDailyRateCollateral(borrowingKey);
         expect(balance).to.be.gt(0);
         expect(estimatedLifeTime).to.be.gt(86000);
-        let extinfo: LiquidityBorrowingManager.BorrowingInfoExtStructOutput[] = await borrowingManager.getLenderLoansInfo(nftpos[0].tokenId);
+        let extinfo: LiquidityBorrowingManager.BorrowingInfoExtStructOutput[] = await borrowingManager.getLenderCreditsInfo(nftpos[0].tokenId);
         expect(extinfo[0].key).to.be.equal(borrowingKey);
-        expect(await borrowingManager.getLoansCount(nftpos[0].tokenId)).to.be.equal(1);
-        expect(await borrowingManager.getBorrowingsCount(bob.address)).to.be.equal(2);
+        expect(await borrowingManager.getLenderCreditsCount(nftpos[0].tokenId)).to.be.equal(1);
+        expect(await borrowingManager.getBorrowerDebtsCount(bob.address)).to.be.equal(2);
 
         let rateInfo = await borrowingManager.getHoldTokenDailyRateInfo(WETH_ADDRESS, USDT_ADDRESS);
         expect(rateInfo[0]).to.be.equal(10);// default
@@ -679,6 +715,10 @@ describe("WagmiLeverageTests", () => {
         expect(rateInfo[1].totalBorrowed).to.be.gt(0);
         extinfo = await borrowingManager.getBorrowerDebtsInfo(bob.address);
         expect(extinfo[1].key).to.be.equal(borrowingKey);
+
+        const loansInfo: LiquidityManager.LoanInfoStructOutput[] = await borrowingManager.getLoansInfo(borrowingKey);
+        expect(loansInfo.length).to.be.equal(3);
+        expect(loansInfo[0].tokenId).to.be.equal(nftpos[0].tokenId);
 
     });
 
@@ -778,13 +818,13 @@ describe("WagmiLeverageTests", () => {
 
         rateInfo = await borrowingManager.getHoldTokenDailyRateInfo(WETH_ADDRESS, WBTC_ADDRESS);
         expect(rateInfo[1].totalBorrowed).to.be.equal(0);
-        expect(await borrowingManager.getLoansCount(nftpos[0].tokenId)).to.be.equal(0);
-        expect(await borrowingManager.getLoansCount(nftpos[1].tokenId)).to.be.equal(0);
-        expect(await borrowingManager.getLoansCount(nftpos[2].tokenId)).to.be.equal(0);
-        expect(await borrowingManager.getLoansCount(nftpos[3].tokenId)).to.be.equal(0);
-        expect(await borrowingManager.getLoansCount(nftpos[4].tokenId)).to.be.equal(0);
-        expect(await borrowingManager.getLoansCount(nftpos[5].tokenId)).to.be.equal(0);
-        expect(await borrowingManager.getBorrowingsCount(bob.address)).to.be.equal(0);
+        expect(await borrowingManager.getLenderCreditsCount(nftpos[0].tokenId)).to.be.equal(0);
+        expect(await borrowingManager.getLenderCreditsCount(nftpos[1].tokenId)).to.be.equal(0);
+        expect(await borrowingManager.getLenderCreditsCount(nftpos[2].tokenId)).to.be.equal(0);
+        expect(await borrowingManager.getLenderCreditsCount(nftpos[3].tokenId)).to.be.equal(0);
+        expect(await borrowingManager.getLenderCreditsCount(nftpos[4].tokenId)).to.be.equal(0);
+        expect(await borrowingManager.getLenderCreditsCount(nftpos[5].tokenId)).to.be.equal(0);
+        expect(await borrowingManager.getBorrowerDebtsCount(bob.address)).to.be.equal(0);
     });
 
     it("Vault test should be successful", async () => {

@@ -40,7 +40,7 @@ contract $LiquidityManager is LiquidityManager {
         bool zeroForSaleToken,
         address token0,
         address token1,
-        Loan[] calldata loans
+        LoanInfo[] calldata loans
     ) external returns (uint256 borrowedAmount) {
         (borrowedAmount) = super._extractLiquidity(zeroForSaleToken, token0, token1, loans);
         emit return$_extractLiquidity(borrowedAmount);
@@ -49,7 +49,7 @@ contract $LiquidityManager is LiquidityManager {
     function $_restoreLiquidity(
         RestoreLiquidityParams calldata params,
         SwapParams calldata externalSwap,
-        Loan[] calldata loans
+        LoanInfo[] calldata loans
     ) external {
         super._restoreLiquidity(params, externalSwap, loans);
     }

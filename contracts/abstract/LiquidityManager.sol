@@ -12,13 +12,12 @@ import { Constants } from "../libraries/Constants.sol";
 // import "hardhat/console.sol";
 
 abstract contract LiquidityManager is ApproveSwapAndPay {
-    struct Loan {
+    struct LoanInfo {
         uint128 liquidity;
         uint256 tokenId;
     }
 
     struct RestoreLiquidityParams {
-        bool isEmergency;
         bool zeroForSaleToken;
         uint24 fee;
         uint256 slippageBP1000;
@@ -95,14 +94,14 @@ abstract contract LiquidityManager is ApproveSwapAndPay {
      * @param zeroForSaleToken Boolean flag indicating whether the first token passed is the token being sold.
      * @param token0 The address of one of the tokens in the pair.
      * @param token1 The address of the other token in the pair.
-     * @param loans An array of Loan struct instances containing loan information.
+     * @param loans An array of LoanInfo struct instances containing loan information.
      * @return borrowedAmount The total amount borrowed.
      */
     function _extractLiquidity(
         bool zeroForSaleToken,
         address token0,
         address token1,
-        Loan[] memory loans
+        LoanInfo[] memory loans
     ) internal returns (uint256 borrowedAmount) {
         if (!zeroForSaleToken) {
             (token0, token1) = (token1, token0);
@@ -169,12 +168,12 @@ abstract contract LiquidityManager is ApproveSwapAndPay {
      * @dev Restores liquidity from loans.
      * @param params The RestoreLiquidityParams struct containing restoration parameters.
      * @param externalSwap The SwapParams struct containing external swap details.
-     * @param loans An array of Loan struct instances containing loan information.
+     * @param loans An array of LoanInfo struct instances containing loan information.
      */
     function _restoreLiquidity(
         RestoreLiquidityParams memory params,
         SwapParams calldata externalSwap,
-        Loan[] memory loans
+        LoanInfo[] memory loans
     ) internal {
         RestoreLiquidityCache memory cache;
         for (uint256 i; i < loans.length; ) {
@@ -251,8 +250,6 @@ abstract contract LiquidityManager is ApproveSwapAndPay {
             address creditor = underlyingPositionManager.ownerOf(cache.tokenId);
             // Increase liquidity and transfer liquidity owner reward
             _increaseLiquidity(
-                params.isEmergency,
-                creditor,
                 cache.saleToken,
                 cache.holdToken,
                 cache.borrowedLiquidity,
@@ -310,8 +307,6 @@ abstract contract LiquidityManager is ApproveSwapAndPay {
     }
 
     function _increaseLiquidity(
-        bool isEmergency,
-        address creditor,
         address saleToken,
         address holdTokent,
         uint128 liquidityDesired,
@@ -336,17 +331,15 @@ abstract contract LiquidityManager is ApproveSwapAndPay {
                 saleToken
             );
 
-            if (!(isEmergency && msg.sender == creditor)) {
-                revert InvalidRestoredLiquidity(
-                    tokenId,
-                    liquidityDesired,
-                    restoredLiquidity,
-                    amount0,
-                    amount1,
-                    holdTokentBalance,
-                    saleTokenBalance
-                );
-            }
+            revert InvalidRestoredLiquidity(
+                tokenId,
+                liquidityDesired,
+                restoredLiquidity,
+                amount0,
+                amount1,
+                holdTokentBalance,
+                saleTokenBalance
+            );
         }
     }
 

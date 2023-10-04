@@ -78,10 +78,10 @@ function borrow(LiquidityBorrowingManager.BorrowParams params, uint256 deadline)
 | params | LiquidityBorrowingManager.BorrowParams | undefined |
 | deadline | uint256 | undefined |
 
-### borrowings
+### borrowingsInfo
 
 ```solidity
-function borrowings(bytes32) external view returns (address borrower, address saleToken, address holdToken, uint256 feesOwed, uint256 borrowedAmount, uint256 liquidationBonus, uint256 accLoanRatePerSeconds, uint256 dailyRateCollateralBalance)
+function borrowingsInfo(bytes32) external view returns (address borrower, address saleToken, address holdToken, uint256 feesOwed, uint256 borrowedAmount, uint256 liquidationBonus, uint256 accLoanRatePerSeconds, uint256 dailyRateCollateralBalance)
 ```
 
 borrowingKey=&gt;BorrowingInfo
@@ -233,6 +233,28 @@ function dailyRateOperator() external view returns (address)
 |---|---|---|
 | _0 | address | undefined |
 
+### getBorrowerDebtsCount
+
+```solidity
+function getBorrowerDebtsCount(address borrower) external view returns (uint256 count)
+```
+
+
+
+*Returns the number of borrowings for a given borrower.*
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| borrower | address | The address of the borrower. |
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| count | uint256 | The total number of borrowings for the borrower. |
+
 ### getBorrowerDebtsInfo
 
 ```solidity
@@ -254,28 +276,6 @@ Retrieves the debts information for a specific borrower.
 | Name | Type | Description |
 |---|---|---|
 | extinfo | LiquidityBorrowingManager.BorrowingInfoExt[] | An array of BorrowingInfoExt structs representing the borrowing information. |
-
-### getBorrowingsCount
-
-```solidity
-function getBorrowingsCount(address borrower) external view returns (uint256 count)
-```
-
-
-
-*Returns the number of borrowings for a given borrower.*
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| borrower | address | The address of the borrower. |
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| count | uint256 | The total number of borrowings for the borrower. |
 
 ### getHoldTokenDailyRateInfo
 
@@ -301,56 +301,10 @@ function getHoldTokenDailyRateInfo(address saleToken, address holdToken) externa
 | currentDailyRate | uint256 | The current daily rate for holding tokens. |
 | holdTokenRateInfo | DailyRateAndCollateral.TokenInfo | undefined |
 
-### getLenderLoansInfo
+### getLenderCreditsCount
 
 ```solidity
-function getLenderLoansInfo(uint256 tokenId) external view returns (struct LiquidityBorrowingManager.BorrowingInfoExt[] extinfo)
-```
-
-Retrieves the loans information for a specific lender.
-
-
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| tokenId | uint256 | The unique identifier of the token representing the lender. |
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| extinfo | LiquidityBorrowingManager.BorrowingInfoExt[] | An array of BorrowingInfoExt structs representing the borrowing information. |
-
-### getLiquidationBonus
-
-```solidity
-function getLiquidationBonus(address token, uint256 borrowedAmount, uint256 times) external view returns (uint256 liquidationBonus)
-```
-
-
-
-
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| token | address | undefined |
-| borrowedAmount | uint256 | undefined |
-| times | uint256 | undefined |
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| liquidationBonus | uint256 | undefined |
-
-### getLoansCount
-
-```solidity
-function getLoansCount(uint256 tokenId) external view returns (uint256 count)
+function getLenderCreditsCount(uint256 tokenId) external view returns (uint256 count)
 ```
 
 
@@ -368,6 +322,74 @@ function getLoansCount(uint256 tokenId) external view returns (uint256 count)
 | Name | Type | Description |
 |---|---|---|
 | count | uint256 | The total number of loans associated with the token. |
+
+### getLenderCreditsInfo
+
+```solidity
+function getLenderCreditsInfo(uint256 tokenId) external view returns (struct LiquidityBorrowingManager.BorrowingInfoExt[] extinfo)
+```
+
+Retrieves the borrowing information for a specific tokenId.
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| tokenId | uint256 | The unique identifier of the PositionManager token. |
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| extinfo | LiquidityBorrowingManager.BorrowingInfoExt[] | An array of BorrowingInfoExt structs representing the borrowing information associated with the token. |
+
+### getLiquidationBonus
+
+```solidity
+function getLiquidationBonus(address token, uint256 borrowedAmount, uint256 times) external view returns (uint256 liquidationBonus)
+```
+
+
+
+*Calculates the liquidation bonus for a given token, borrowed amount, and times factor.*
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| token | address | The address of the token. |
+| borrowedAmount | uint256 | The amount of tokens borrowed. |
+| times | uint256 | The times factor to apply to the liquidation bonus calculation. |
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| liquidationBonus | uint256 | The calculated liquidation bonus. |
+
+### getLoansInfo
+
+```solidity
+function getLoansInfo(bytes32 borrowingKey) external view returns (struct LiquidityManager.LoanInfo[] loans)
+```
+
+Get information about loans associated with a borrowing key
+
+*This function retrieves an array of loan information for a given borrowing key. The loans are stored in the loansInfo mapping, which is a mapping of borrowing keys to LoanInfo arrays.*
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| borrowingKey | bytes32 | The unique key associated with the borrowing |
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| loans | LiquidityManager.LoanInfo[] | An array containing LoanInfo structs representing the loans associated with the borrowing key |
 
 ### getPlatformsFeesInfo
 
@@ -432,6 +454,30 @@ This function is used to increase the daily rate collateral for a specific borro
 |---|---|---|
 | borrowingKey | bytes32 | The unique identifier of the borrowing. |
 | collateralAmt | uint256 | The amount of collateral to be added. |
+
+### loansInfo
+
+```solidity
+function loansInfo(bytes32, uint256) external view returns (uint128 liquidity, uint256 tokenId)
+```
+
+
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | bytes32 | undefined |
+| _1 | uint256 | undefined |
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| liquidity | uint128 | undefined |
+| tokenId | uint256 | undefined |
 
 ### owner
 
@@ -536,26 +582,27 @@ function specificTokenLiquidationBonus(address, uint256) external view returns (
 |---|---|---|
 | _0 | uint256 | undefined |
 
-### transferOwnership
+### takeOverDebt
 
 ```solidity
-function transferOwnership(address newOwner) external nonpayable
+function takeOverDebt(bytes32 borrowingKey, uint256 collateralAmt) external nonpayable
 ```
 
+Take over debt by transferring ownership of a borrowing to the current caller
 
-
-*Transfers ownership of the contract to a new account (`newOwner`). Can only be called by the current owner.*
+*This function allows the current caller to take over a debt from another borrower. The function validates the borrowingKey and checks if the collateral balance is negative. If the conditions are met, the function transfers ownership of the borrowing to the current caller, updates the daily rate collateral balance, and pays the collateral amount to the vault. Emits a `TakeOverDebt` event.*
 
 #### Parameters
 
 | Name | Type | Description |
 |---|---|---|
-| newOwner | address | undefined |
+| borrowingKey | bytes32 | The unique key associated with the borrowing to be taken over |
+| collateralAmt | uint256 | The amount of collateral to be provided by the new borrower |
 
-### underlyingPosBorrowingKeys
+### tokenBorrowingKeys
 
 ```solidity
-function underlyingPosBorrowingKeys(uint256, uint256) external view returns (bytes32)
+function tokenBorrowingKeys(uint256, uint256) external view returns (bytes32)
 ```
 
 tokenId =&gt; BorrowingKeys[]
@@ -574,6 +621,22 @@ tokenId =&gt; BorrowingKeys[]
 | Name | Type | Description |
 |---|---|---|
 | _0 | bytes32 | undefined |
+
+### transferOwnership
+
+```solidity
+function transferOwnership(address newOwner) external nonpayable
+```
+
+
+
+*Transfers ownership of the contract to a new account (`newOwner`). Can only be called by the current owner.*
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| newOwner | address | undefined |
 
 ### underlyingPositionManager
 
@@ -803,6 +866,25 @@ event Repay(address borrower, address liquidator, bytes32 borrowingKey)
 | borrower  | address | undefined |
 | liquidator  | address | undefined |
 | borrowingKey  | bytes32 | undefined |
+
+### TakeOverDebt
+
+```solidity
+event TakeOverDebt(address oldBorrower, address newBorrower, bytes32 oldBorrowingKey, bytes32 newBorrowingKey)
+```
+
+
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| oldBorrower  | address | undefined |
+| newBorrower  | address | undefined |
+| oldBorrowingKey  | bytes32 | undefined |
+| newBorrowingKey  | bytes32 | undefined |
 
 ### UpdateHoldTokenDailyRate
 
