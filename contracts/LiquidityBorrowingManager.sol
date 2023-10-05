@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "./abstract/LiquidityManager.sol";
 import "./abstract/OwnerSettings.sol";
 import "./abstract/DailyRateAndCollateral.sol";
+import "./libraries/ErrLib.sol";
 
 // import "hardhat/console.sol";
 
@@ -21,6 +22,7 @@ contract LiquidityBorrowingManager is
     ReentrancyGuard
 {
     using { Keys.removeKey, Keys.addKeyIfNotExists } for bytes32[];
+    using { ErrLib.revertError } for bool;
 
     /// @title BorrowParams
     /// @notice This struct represents the parameters required for borrowing.
@@ -99,7 +101,7 @@ contract LiquidityBorrowingManager is
     /// borrower => BorrowingKeys[]
     mapping(address => bytes32[]) public userBorrowingKeys;
     /// tokenId => BorrowingKeys[]
-    mapping(uint256 => bytes32[]) public tokenBorrowingKeys;
+    mapping(uint256 => bytes32[]) public tokenIdToBorrowingKeys;
 
     ///  token => FeesAmt
     mapping(address => uint256) private platformsFeesInfo;
@@ -114,6 +116,7 @@ contract LiquidityBorrowingManager is
     );
 
     event Repay(address borrower, address liquidator, bytes32 borrowingKey);
+    event EmergencyLoanClosure(address borrower, address lender, bytes32 borrowingKey);
     event CollectProtocol(address recipient, address[] tokens, uint256[] amounts);
     event UpdateHoldTokenDailyRate(address saleToken, address holdToken, uint256 value);
     event IncreaseCollateralBalance(address borrower, bytes32 borrowingKey, uint256 collateralAmt);
@@ -128,7 +131,7 @@ contract LiquidityBorrowingManager is
 
     /// @dev Modifier to check if the current block timestamp is before or equal to the deadline.
     modifier checkDeadline(uint256 deadline) {
-        require(_blockTimestamp() <= deadline, "Transaction too old");
+        (_blockTimestamp() > deadline).revertError(ErrLib.ErrorCode.TOO_OLD_TRANSACTION);
         _;
     }
 
@@ -161,13 +164,10 @@ contract LiquidityBorrowingManager is
         bytes4 funcSelector,
         bool isAllowed
     ) external onlyOwner {
-        require(
-            swapTarget != VAULT_ADDRESS &&
-                swapTarget != address(this) &&
-                swapTarget != address(underlyingPositionManager),
-            "forbidden target"
-        );
-        require(funcSelector != IERC20.transferFrom.selector, "forbidden selector");
+        (swapTarget == VAULT_ADDRESS ||
+            swapTarget == address(this) ||
+            swapTarget == address(underlyingPositionManager) ||
+            funcSelector == IERC20.transferFrom.selector).revertError(ErrLib.ErrorCode.FORBIDDEN);
         whitelistedCall[swapTarget][funcSelector] = isAllowed;
     }
 
@@ -209,7 +209,7 @@ contract LiquidityBorrowingManager is
         address holdToken,
         uint256 value
     ) external {
-        require(msg.sender == dailyRateOperator, "invalid caller");
+        (msg.sender != dailyRateOperator).revertError(ErrLib.ErrorCode.INVALID_CALLER);
         if (value > Constants.MAX_DAILY_RATE || value < Constants.MIN_DAILY_RATE) {
             revert InvalidSettingsValue(value);
         }
@@ -250,7 +250,7 @@ contract LiquidityBorrowingManager is
     function getLenderCreditsInfo(
         uint256 tokenId
     ) external view returns (BorrowingInfoExt[] memory extinfo) {
-        bytes32[] memory borrowingKeys = tokenBorrowingKeys[tokenId];
+        bytes32[] memory borrowingKeys = tokenIdToBorrowingKeys[tokenId];
         extinfo = _getDebtsInfo(borrowingKeys);
     }
 
@@ -272,7 +272,7 @@ contract LiquidityBorrowingManager is
      * @return count The total number of loans associated with the token.
      */
     function getLenderCreditsCount(uint256 tokenId) external view returns (uint256 count) {
-        bytes32[] memory borrowingKeys = tokenBorrowingKeys[tokenId];
+        bytes32[] memory borrowingKeys = tokenIdToBorrowingKeys[tokenId];
         count = borrowingKeys.length;
     }
 
@@ -299,6 +299,11 @@ contract LiquidityBorrowingManager is
         (currentDailyRate, holdTokenRateInfo) = _getHoldTokenRateInfo(saleToken, holdToken);
     }
 
+    /**
+     * @dev Returns the fees information for multiple tokens in an array.
+     * @param tokens An array of token addresses for which the fees are to be retrieved.
+     * @return fees An array containing the fees for each token.
+     */
     function getPlatformsFeesInfo(
         address[] calldata tokens
     ) external view returns (uint256[] memory fees) {
@@ -356,10 +361,10 @@ contract LiquidityBorrowingManager is
      */
     function increaseCollateralBalance(bytes32 borrowingKey, uint256 collateralAmt) external {
         BorrowingInfo storage borrowing = borrowingsInfo[borrowingKey];
-        require(
-            borrowing.borrowedAmount > 0 && borrowing.borrower == address(msg.sender),
-            "invalid borrowingKey"
+        (borrowing.borrowedAmount == 0 || borrowing.borrower != address(msg.sender)).revertError(
+            ErrLib.ErrorCode.INVALID_BORROWING_KEY
         );
+
         borrowing.dailyRateCollateralBalance +=
             collateralAmt *
             Constants.COLLATERAL_BALANCE_PRECISION;
@@ -379,7 +384,7 @@ contract LiquidityBorrowingManager is
      */
     function takeOverDebt(bytes32 borrowingKey, uint256 collateralAmt) external {
         BorrowingInfo memory oldBorrowing = borrowingsInfo[borrowingKey];
-        require(oldBorrowing.borrowedAmount > 0, "invalid borrowingKey");
+        (oldBorrowing.borrowedAmount == 0).revertError(ErrLib.ErrorCode.INVALID_BORROWING_KEY);
 
         (, TokenInfo storage holdTokenRateInfo) = _updateTokenRateInfo(
             oldBorrowing.saleToken,
@@ -393,13 +398,13 @@ contract LiquidityBorrowingManager is
             accLoanRatePerSeconds
         );
 
-        require(collateralBalance < 0, "forbidden");
+        (collateralBalance >= 0).revertError(ErrLib.ErrorCode.FORBIDDEN);
         currentFees = _pickUpPlatformFees(oldBorrowing.holdToken, currentFees);
         oldBorrowing.feesOwed += currentFees;
 
         uint256 minPayment = (uint256(-collateralBalance) /
             Constants.COLLATERAL_BALANCE_PRECISION) + 1;
-        require(collateralAmt > minPayment, "collateralAmt is not enough");
+        (collateralAmt <= minPayment).revertError(ErrLib.ErrorCode.COLLATERAL_AMOUNT_IS_NOT_ENOUGH);
 
         LoanInfo[] memory oldLoans = loansInfo[borrowingKey];
         _removeKeysAndClearStorage(oldBorrowing.borrower, borrowingKey, oldLoans);
@@ -454,7 +459,9 @@ contract LiquidityBorrowingManager is
             Constants.COLLATERAL_BALANCE_PRECISION;
 
         uint256 borrowingCollateral = cache.borrowedAmount - cache.holdTokenBalance;
-        require(borrowingCollateral <= params.maxCollateral, "too much borrowing collateral");
+        (borrowingCollateral > params.maxCollateral).revertError(
+            ErrLib.ErrorCode.TOO_BIG_COLLATERAL
+        );
 
         // Transfer the required tokens to the VAULT_ADDRESS for collateral and holdTokenBalance
         _pay(
@@ -491,11 +498,11 @@ contract LiquidityBorrowingManager is
         uint256 deadline
     ) external nonReentrant checkDeadline(deadline) {
         BorrowingInfo memory borrowing = borrowingsInfo[params.borrowingKey];
-        require(borrowing.borrowedAmount > 0, "invalid borrowingKey");
+        (borrowing.borrowedAmount == 0).revertError(ErrLib.ErrorCode.INVALID_BORROWING_KEY);
 
         bool zeroForSaleToken = borrowing.saleToken < borrowing.holdToken;
-        uint256 feesOwed;
         uint256 liquidationBonus = borrowing.liquidationBonus;
+        int256 collateralBalance;
         (, TokenInfo storage holdTokenRateInfo) = _updateTokenRateInfo(
             borrowing.saleToken,
             borrowing.holdToken
@@ -505,14 +512,17 @@ contract LiquidityBorrowingManager is
             //int256 collateralBalance;
 
             uint256 accLoanRatePerSeconds = holdTokenRateInfo.accLoanRatePerSeconds;
-            (int256 collateralBalance, uint256 currentFees) = _calculateCollateralBalance(
+            uint256 currentFees;
+            (collateralBalance, currentFees) = _calculateCollateralBalance(
                 borrowing.borrowedAmount,
                 borrowing.accLoanRatePerSeconds,
                 borrowing.dailyRateCollateralBalance,
                 accLoanRatePerSeconds
             );
 
-            require(msg.sender == borrowing.borrower || collateralBalance < 0, "invalid caller");
+            (msg.sender != borrowing.borrower && collateralBalance >= 0).revertError(
+                ErrLib.ErrorCode.INVALID_CALLER
+            );
 
             // Calculate liquidation bonus and adjust fees owed
 
@@ -521,61 +531,106 @@ contract LiquidityBorrowingManager is
                 (currentFees + borrowing.feesOwed) / Constants.COLLATERAL_BALANCE_PRECISION >
                 Constants.MINIMUM_FEES_AMOUNT
             ) {
-                feesOwed = currentFees;
                 liquidationBonus +=
                     uint256(collateralBalance) /
                     Constants.COLLATERAL_BALANCE_PRECISION;
             } else {
-                feesOwed = borrowing.dailyRateCollateralBalance;
+                currentFees = borrowing.dailyRateCollateralBalance;
             }
 
             // Calculate platform fees and adjust fees owed
-            feesOwed = _pickUpPlatformFees(borrowing.holdToken, feesOwed);
+            borrowing.feesOwed += _pickUpPlatformFees(borrowing.holdToken, currentFees);
         }
+        if (params.isEmergency) {
+            (collateralBalance >= 0).revertError(ErrLib.ErrorCode.FORBIDDEN);
+            (
+                uint256 removedAmt,
+                uint256 feesAmt,
+                uint256 loansInfoLength
+            ) = _calculateEmergencyLoanClosure(
+                    zeroForSaleToken,
+                    params.borrowingKey,
+                    borrowing.feesOwed,
+                    borrowing.borrowedAmount
+                );
+            (removedAmt == 0).revertError(ErrLib.ErrorCode.LIQUIDITY_IS_ZERO);
+            // prevent overspent
+            borrowing.borrowedAmount -= removedAmt;
+            borrowing.feesOwed -= feesAmt;
+            feesAmt /= Constants.COLLATERAL_BALANCE_PRECISION;
 
-        feesOwed += borrowing.feesOwed;
-        // Transfer borrowed tokens from VAULT to contract
-        Vault(VAULT_ADDRESS).transferToken(
-            borrowing.holdToken,
-            address(this),
-            borrowing.borrowedAmount + liquidationBonus
-        );
-        // Restore liquidity using borrowed amount and pay a daily rate fees
-        LoanInfo[] memory loans = loansInfo[params.borrowingKey];
-        _maxApproveIfNecessary(
-            borrowing.holdToken,
-            address(underlyingPositionManager),
-            type(uint128).max
-        );
-        _maxApproveIfNecessary(
-            borrowing.saleToken,
-            address(underlyingPositionManager),
-            type(uint128).max
-        );
+            holdTokenRateInfo.totalBorrowed -= removedAmt;
 
-        _restoreLiquidity(
-            RestoreLiquidityParams({
-                zeroForSaleToken: zeroForSaleToken,
-                fee: params.internalSwapPoolfee,
-                slippageBP1000: params.swapSlippageBP1000,
-                totalfeesOwed: feesOwed,
-                totalBorrowedAmount: borrowing.borrowedAmount
-            }),
-            params.externalSwap,
-            loans
-        );
-        holdTokenRateInfo.totalBorrowed -= borrowing.borrowedAmount;
-        (uint256 saleTokenBalance, uint256 holdTokenBalance) = _getPairBalance(
-            borrowing.saleToken,
-            borrowing.holdToken
-        );
-        // Remove borrowing key from related data structures
-        _removeKeysAndClearStorage(borrowing.borrower, params.borrowingKey, loans);
-        // Pay a profit to a msg.sender
-        _pay(borrowing.holdToken, address(this), msg.sender, holdTokenBalance);
-        _pay(borrowing.saleToken, address(this), msg.sender, saleTokenBalance);
+            if (loansInfoLength == 0) {
+                LoanInfo[] memory empty;
+                _removeKeysAndClearStorage(borrowing.borrower, params.borrowingKey, empty);
+                feesAmt += liquidationBonus;
+            } else {
+                BorrowingInfo storage borrowingStorage = borrowingsInfo[params.borrowingKey];
+                borrowingStorage.dailyRateCollateralBalance = 0;
+                borrowingStorage.feesOwed = borrowing.feesOwed;
+                borrowingStorage.borrowedAmount = borrowing.borrowedAmount;
+                borrowingStorage.accLoanRatePerSeconds =
+                    holdTokenRateInfo.accLoanRatePerSeconds -
+                    FullMath.mulDiv(
+                        uint256(-collateralBalance),
+                        Constants.BP,
+                        borrowing.borrowedAmount // new amount
+                    );
+            }
 
-        emit Repay(borrowing.borrower, msg.sender, params.borrowingKey);
+            Vault(VAULT_ADDRESS).transferToken(
+                borrowing.holdToken,
+                msg.sender,
+                removedAmt + feesAmt
+            );
+            emit EmergencyLoanClosure(borrowing.borrower, msg.sender, params.borrowingKey);
+        } else {
+            holdTokenRateInfo.totalBorrowed -= borrowing.borrowedAmount;
+
+            // Transfer borrowed tokens from VAULT to contract
+            Vault(VAULT_ADDRESS).transferToken(
+                borrowing.holdToken,
+                address(this),
+                borrowing.borrowedAmount + liquidationBonus
+            );
+            // Restore liquidity using borrowed amount and pay a daily rate fees
+            LoanInfo[] memory loans = loansInfo[params.borrowingKey];
+            _maxApproveIfNecessary(
+                borrowing.holdToken,
+                address(underlyingPositionManager),
+                type(uint128).max
+            );
+            _maxApproveIfNecessary(
+                borrowing.saleToken,
+                address(underlyingPositionManager),
+                type(uint128).max
+            );
+
+            _restoreLiquidity(
+                RestoreLiquidityParams({
+                    zeroForSaleToken: zeroForSaleToken,
+                    fee: params.internalSwapPoolfee,
+                    slippageBP1000: params.swapSlippageBP1000,
+                    totalfeesOwed: borrowing.feesOwed,
+                    totalBorrowedAmount: borrowing.borrowedAmount
+                }),
+                params.externalSwap,
+                loans
+            );
+
+            (uint256 saleTokenBalance, uint256 holdTokenBalance) = _getPairBalance(
+                borrowing.saleToken,
+                borrowing.holdToken
+            );
+            // Remove borrowing key from related data structures
+            _removeKeysAndClearStorage(borrowing.borrower, params.borrowingKey, loans);
+            // Pay a profit to a msg.sender
+            _pay(borrowing.holdToken, address(this), msg.sender, holdTokenBalance);
+            _pay(borrowing.saleToken, address(this), msg.sender, saleTokenBalance);
+
+            emit Repay(borrowing.borrower, msg.sender, params.borrowingKey);
+        }
     }
 
     /**
@@ -605,6 +660,44 @@ contract LiquidityBorrowingManager is
         }
     }
 
+    /**
+     * @notice Calculates the amount to be repaid in an emergency situation.
+     * @dev This function removes loans associated with a borrowing key owned by the `msg.sender`.
+     * @param zeroForSaleToken A boolean value indicating whether the token for sale is the 0th token or not.
+     * @param borrowingKey The identifier for the borrowing key.
+     * @param totalfeesOwed The total fees owed without pending fees.
+     * @param totalBorrowedAmount The total borrowed amount.
+     * @return removedAmt The amount of debt removed from the loan.
+     * @return feesAmt The calculated fees amount.
+     * @return loansInfoLength The length of the `loansInfo` array after removal.
+     */
+    function _calculateEmergencyLoanClosure(
+        bool zeroForSaleToken,
+        bytes32 borrowingKey,
+        uint256 totalfeesOwed,
+        uint256 totalBorrowedAmount
+    ) private returns (uint256 removedAmt, uint256 feesAmt, uint256 loansInfoLength) {
+        RestoreLiquidityCache memory cache;
+        LoanInfo[] storage loans = loansInfo[borrowingKey];
+        for (uint256 i; i < loans.length; ) {
+            LoanInfo memory loan = loans[i];
+            address creditor = underlyingPositionManager.ownerOf(loan.tokenId);
+            if (creditor == msg.sender) {
+                loans[i] = loans[loans.length - 1];
+                loans.pop();
+                tokenIdToBorrowingKeys[loan.tokenId].removeKey(borrowingKey);
+                _upRestoreLiquidityCache(zeroForSaleToken, loan, cache);
+                removedAmt += cache.holdTokenDebt;
+                feesAmt += FullMath.mulDiv(totalfeesOwed, cache.holdTokenDebt, totalBorrowedAmount);
+            } else {
+                unchecked {
+                    ++i;
+                }
+            }
+        }
+        loansInfoLength = loans.length;
+    }
+
     function _removeKeysAndClearStorage(
         address borrower,
         bytes32 borrowingKey,
@@ -612,7 +705,7 @@ contract LiquidityBorrowingManager is
     ) private {
         // Remove borrowing key from related data structures
         for (uint256 i; i < loans.length; ) {
-            tokenBorrowingKeys[loans[i].tokenId].removeKey(borrowingKey);
+            tokenIdToBorrowingKeys[loans[i].tokenId].removeKey(borrowingKey);
             unchecked {
                 ++i;
             }
@@ -631,7 +724,7 @@ contract LiquidityBorrowingManager is
         LoanInfo[] storage loans = loansInfo[borrowingKey];
         for (uint256 i; i < sourceLoans.length; ) {
             LoanInfo memory loan = sourceLoans[i];
-            bytes32[] storage tokenIdLoansKeys = tokenBorrowingKeys[loan.tokenId];
+            bytes32[] storage tokenIdLoansKeys = tokenIdToBorrowingKeys[loan.tokenId];
             update
                 ? tokenIdLoansKeys.addKeyIfNotExists(borrowingKey)
                 : tokenIdLoansKeys.push(borrowingKey);
@@ -641,13 +734,14 @@ contract LiquidityBorrowingManager is
             }
         }
         // Ensure that the number of loans does not exceed the maximum limit
-        require(loans.length < Constants.MAX_NUM_LOANS_PER_POSITION, "too many loans");
+        (loans.length > Constants.MAX_NUM_LOANS_PER_POSITION).revertError(
+            ErrLib.ErrorCode.TOO_MANY_LOANS_PER_POSITION
+        );
         if (!update) {
             // If it's a new position, ensure that the user does not have too many positions
             bytes32[] storage allUserBorrowingKeys = userBorrowingKeys[msg.sender];
-            require(
-                allUserBorrowingKeys.length < Constants.MAX_NUM_USER_POSOTION,
-                "too many positions"
+            (allUserBorrowingKeys.length > Constants.MAX_NUM_USER_POSOTION).revertError(
+                ErrLib.ErrorCode.TOO_MANY_USER_POSITIONS
             );
             // Add the borrowingKey to the user's borrowing keys
             allUserBorrowingKeys.push(borrowingKey);
@@ -674,10 +768,7 @@ contract LiquidityBorrowingManager is
                 params.holdToken,
                 params.loans
             );
-            require(
-                cache.borrowedAmount >= Constants.MINIMUM_BORROWED_AMOUNT,
-                "too little borrowed amount"
-            );
+
             holdTokenRateInfo.totalBorrowed += cache.borrowedAmount;
         }
 
@@ -733,6 +824,9 @@ contract LiquidityBorrowingManager is
         borrowing = borrowingsInfo[borrowingKey];
 
         if (borrowing.borrowedAmount > 0) {
+            (borrowing.borrower != address(msg.sender)).revertError(
+                ErrLib.ErrorCode.INVALID_BORROWING_KEY
+            );
             (int256 collateralBalance, uint256 currentFees) = _calculateCollateralBalance(
                 borrowing.borrowedAmount,
                 borrowing.accLoanRatePerSeconds,

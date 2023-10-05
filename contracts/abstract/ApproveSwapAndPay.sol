@@ -6,12 +6,14 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IUniswapV3Pool } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import { SafeCast } from "@uniswap/v3-core/contracts/libraries/SafeCast.sol";
 import "../libraries/ExternalCall.sol";
+import "../libraries/ErrLib.sol";
 
 abstract contract ApproveSwapAndPay {
     using SafeCast for uint256;
     using SafeERC20 for IERC20;
     using { ExternalCall._patchAmountAndCall } for address;
     using { ExternalCall._readFirstBytes4 } for bytes;
+    using { ErrLib.revertError } for bool;
 
     struct v3SwapExactInputParams {
         uint24 fee;
@@ -69,7 +71,7 @@ abstract contract ApproveSwapAndPay {
                     require(_tryApprove(token, spender, 0));
                     if (!_tryApprove(token, spender, type(uint256).max)) {
                         if (!_tryApprove(token, spender, type(uint256).max - 1)) {
-                            revert("failed to approve");
+                            true.revertError(ErrLib.ErrorCode.ERC20_APPROVE_DID_NOT_SUCCEED);
                         }
                     }
                 }
@@ -100,10 +102,10 @@ abstract contract ApproveSwapAndPay {
         uint256 amountOutMin
     ) internal returns (uint256 amountOut) {
         bytes4 funcSelector = externalSwap.swapData._readFirstBytes4();
-        require(
-            whitelistedCall[externalSwap.swapTarget][funcSelector],
-            "swap call params is not supported"
+        (!whitelistedCall[externalSwap.swapTarget][funcSelector]).revertError(
+            ErrLib.ErrorCode.SWAP_TARGET_NOT_APPROVED
         );
+
         _maxApproveIfNecessary(tokenIn, externalSwap.swapTarget, amountIn);
         uint256 balanceOutBefore = _getBalance(tokenOut);
 
@@ -153,13 +155,15 @@ abstract contract ApproveSwapAndPay {
         int256 amount1Delta,
         bytes calldata data
     ) external {
-        if (amount0Delta <= 0 && amount1Delta <= 0) revert("invalid swap"); // swaps entirely within 0-liquidity regions are not supported
+        (amount0Delta <= 0 && amount1Delta <= 0).revertError(ErrLib.ErrorCode.INVALID_SWAP); // swaps entirely within 0-liquidity regions are not supported
 
         (uint24 fee, address tokenIn, address tokenOut) = abi.decode(
             data,
             (uint24, address, address)
         );
-        if (computePoolAddress(tokenIn, tokenOut, fee) != msg.sender) revert("invalid caller");
+        (computePoolAddress(tokenIn, tokenOut, fee) != msg.sender).revertError(
+            ErrLib.ErrorCode.INVALID_CALLER
+        );
         uint256 amountToPay = amount0Delta > 0 ? uint256(amount0Delta) : uint256(amount1Delta);
         _pay(tokenIn, address(this), msg.sender, amountToPay);
     }

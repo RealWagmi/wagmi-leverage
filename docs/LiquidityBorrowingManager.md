@@ -399,19 +399,19 @@ function getPlatformsFeesInfo(address[] tokens) external view returns (uint256[]
 
 
 
-
+*Returns the fees information for multiple tokens in an array.*
 
 #### Parameters
 
 | Name | Type | Description |
 |---|---|---|
-| tokens | address[] | undefined |
+| tokens | address[] | An array of token addresses for which the fees are to be retrieved. |
 
 #### Returns
 
 | Name | Type | Description |
 |---|---|---|
-| fees | uint256[] | undefined |
+| fees | uint256[] | An array containing the fees for each token. |
 
 ### holdTokenInfo
 
@@ -599,10 +599,10 @@ Take over debt by transferring ownership of a borrowing to the current caller
 | borrowingKey | bytes32 | The unique key associated with the borrowing to be taken over |
 | collateralAmt | uint256 | The amount of collateral to be provided by the new borrower |
 
-### tokenBorrowingKeys
+### tokenIdToBorrowingKeys
 
 ```solidity
-function tokenBorrowingKeys(uint256, uint256) external view returns (bytes32)
+function tokenIdToBorrowingKeys(uint256, uint256) external view returns (bytes32)
 ```
 
 tokenId =&gt; BorrowingKeys[]
@@ -814,6 +814,24 @@ event CollectProtocol(address recipient, address[] tokens, uint256[] amounts)
 | tokens  | address[] | undefined |
 | amounts  | uint256[] | undefined |
 
+### EmergencyLoanClosure
+
+```solidity
+event EmergencyLoanClosure(address borrower, address lender, bytes32 borrowingKey)
+```
+
+
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| borrower  | address | undefined |
+| lender  | address | undefined |
+| borrowingKey  | bytes32 | undefined |
+
 ### IncreaseCollateralBalance
 
 ```solidity
@@ -994,6 +1012,22 @@ error NotApproved(uint256 tokenId)
 |---|---|---|
 | tokenId | uint256 | undefined |
 
+### RevertErrorCode
+
+```solidity
+error RevertErrorCode(enum ErrLib.ErrorCode code)
+```
+
+
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| code | enum ErrLib.ErrorCode | undefined |
+
 ### SwapSlippageCheckError
 
 ```solidity
@@ -1010,6 +1044,22 @@ error SwapSlippageCheckError(uint256 expectedOut, uint256 receivedOut)
 |---|---|---|
 | expectedOut | uint256 | undefined |
 | receivedOut | uint256 | undefined |
+
+### TooLittleBorrowedLiquidity
+
+```solidity
+error TooLittleBorrowedLiquidity(uint128 liquidity)
+```
+
+
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| liquidity | uint128 | undefined |
 
 ### TooLittleReceivedError
 

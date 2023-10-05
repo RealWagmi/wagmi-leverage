@@ -3,8 +3,9 @@ pragma solidity 0.8.21;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "./interfaces/IVault.sol";
 
-contract Vault is Ownable {
+contract Vault is Ownable, IVault {
     using SafeERC20 for IERC20;
 
     /**
