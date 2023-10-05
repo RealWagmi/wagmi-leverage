@@ -386,25 +386,30 @@ contract LiquidityBorrowingManager is
         BorrowingInfo memory oldBorrowing = borrowingsInfo[borrowingKey];
         (oldBorrowing.borrowedAmount == 0).revertError(ErrLib.ErrorCode.INVALID_BORROWING_KEY);
 
-        (, TokenInfo storage holdTokenRateInfo) = _updateTokenRateInfo(
-            oldBorrowing.saleToken,
-            oldBorrowing.holdToken
-        );
-        uint256 accLoanRatePerSeconds = holdTokenRateInfo.accLoanRatePerSeconds;
-        (int256 collateralBalance, uint256 currentFees) = _calculateCollateralBalance(
-            oldBorrowing.borrowedAmount,
-            oldBorrowing.accLoanRatePerSeconds,
-            oldBorrowing.dailyRateCollateralBalance,
-            accLoanRatePerSeconds
-        );
+        uint256 accLoanRatePerSeconds;
+        uint256 minPayment;
+        {
+            (, TokenInfo storage holdTokenRateInfo) = _updateTokenRateInfo(
+                oldBorrowing.saleToken,
+                oldBorrowing.holdToken
+            );
+            accLoanRatePerSeconds = holdTokenRateInfo.accLoanRatePerSeconds;
+            (int256 collateralBalance, uint256 currentFees) = _calculateCollateralBalance(
+                oldBorrowing.borrowedAmount,
+                oldBorrowing.accLoanRatePerSeconds,
+                oldBorrowing.dailyRateCollateralBalance,
+                accLoanRatePerSeconds
+            );
 
-        (collateralBalance >= 0).revertError(ErrLib.ErrorCode.FORBIDDEN);
-        currentFees = _pickUpPlatformFees(oldBorrowing.holdToken, currentFees);
-        oldBorrowing.feesOwed += currentFees;
+            (collateralBalance >= 0).revertError(ErrLib.ErrorCode.FORBIDDEN);
+            currentFees = _pickUpPlatformFees(oldBorrowing.holdToken, currentFees);
+            oldBorrowing.feesOwed += currentFees;
 
-        uint256 minPayment = (uint256(-collateralBalance) /
-            Constants.COLLATERAL_BALANCE_PRECISION) + 1;
-        (collateralAmt <= minPayment).revertError(ErrLib.ErrorCode.COLLATERAL_AMOUNT_IS_NOT_ENOUGH);
+            minPayment = (uint256(-collateralBalance) / Constants.COLLATERAL_BALANCE_PRECISION) + 1;
+            (collateralAmt <= minPayment).revertError(
+                ErrLib.ErrorCode.COLLATERAL_AMOUNT_IS_NOT_ENOUGH
+            );
+        }
 
         LoanInfo[] memory oldLoans = loansInfo[borrowingKey];
         _removeKeysAndClearStorage(oldBorrowing.borrower, borrowingKey, oldLoans);
