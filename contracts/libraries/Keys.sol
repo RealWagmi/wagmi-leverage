@@ -1,29 +1,28 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity 0.8.21;
+import "@openzeppelin/contracts/utils/Arrays.sol";
 
 library Keys {
+    using Arrays for bytes32[];
+
     function addKeyIfNotExists(bytes32[] storage self, bytes32 key) internal {
-        bytes32[] memory _self = self;
-        bool exists;
-        for (uint256 i; i < _self.length; ) {
-            if (_self[i] == key) {
-                exists = true;
-                break;
+        uint256 length = self.length;
+        for (uint256 i; i < length; ) {
+            if (self.unsafeAccess(i).value == key) {
+                return;
             }
             unchecked {
                 ++i;
             }
         }
-        if (!exists) {
-            self.push(key);
-        }
+        self.push(key);
     }
 
     function removeKey(bytes32[] storage self, bytes32 key) internal {
-        bytes32[] memory _self = self;
-        for (uint256 i; i < _self.length; ) {
-            if (_self[i] == key) {
-                self[i] = _self[_self.length - 1];
+        uint256 length = self.length;
+        for (uint256 i; i < length; ) {
+            if (self.unsafeAccess(i).value == key) {
+                self.unsafeAccess(i).value = self.unsafeAccess(self.length - 1).value;
                 self.pop();
                 break;
             }
