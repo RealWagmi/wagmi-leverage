@@ -22,7 +22,7 @@ library Keys {
         uint256 length = self.length;
         for (uint256 i; i < length; ) {
             if (self.unsafeAccess(i).value == key) {
-                self.unsafeAccess(i).value = self.unsafeAccess(self.length - 1).value;
+                self.unsafeAccess(i).value = self.unsafeAccess(length - 1).value;
                 self.pop();
                 break;
             }
