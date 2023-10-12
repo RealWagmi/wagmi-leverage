@@ -15,6 +15,17 @@ abstract contract DailyRateAndCollateral {
     /// pairKey => TokenInfo
     mapping(bytes32 => TokenInfo) public holdTokenInfo;
 
+    /**
+     * @notice This internal view function retrieves the current daily rate for the hold token specified by `holdToken`
+     * in relation to the sale token specified by `saleToken`. It also returns detailed information about the hold token rate stored
+     * in the `holdTokenInfo` mapping. If the rate is not set, it defaults to `Constants.DEFAULT_DAILY_RATE`. If there are any existing
+     * borrowings for the hold token, the accumulated loan rate per second is updated based on the time difference since the last update and the
+     * current daily rate. The latest update timestamp is also recorded for future calculations.
+     * @param saleToken The address of the sale token in the pair.
+     * @param holdToken The address of the hold token in the pair.
+     * @return currentDailyRate The current daily rate for the hold token.
+     * @return holdTokenRateInfo The struct containing information about the hold token rate.
+     */
     function _getHoldTokenRateInfo(
         address saleToken,
         address holdToken
@@ -36,6 +47,17 @@ abstract contract DailyRateAndCollateral {
         holdTokenRateInfo.latestUpTimestamp = uint32(block.timestamp);
     }
 
+    /**
+     * @notice This internal function updates the hold token rate information for the pair of sale token specified by `saleToken`
+     * and hold token specified by `holdToken`. It retrieves the existing hold token rate information from the `holdTokenInfo` mapping,
+     * including the current daily rate. If the current daily rate is not set, it defaults to `Constants.DEFAULT_DAILY_RATE`.
+     * If there are any existing borrowings for the hold token, the accumulated loan rate per second is updated based on the time
+     * difference since the last update and the current daily rate. Finally, the latest update timestamp is recorded for future calculations.
+     * @param saleToken The address of the sale token in the pair.
+     * @param holdToken The address of the hold token in the pair.
+     * @return currentDailyRate The updated current daily rate for the hold token.
+     * @return holdTokenRateInfo The struct containing the updated hold token rate information.
+     */
     function _updateTokenRateInfo(
         address saleToken,
         address holdToken
@@ -57,6 +79,20 @@ abstract contract DailyRateAndCollateral {
         holdTokenRateInfo.latestUpTimestamp = uint32(block.timestamp);
     }
 
+    /**
+     * @notice This internal function calculates the collateral balance and current fees.
+     * If the `borrowedAmount` is greater than 0, it calculates the fees based on the difference between the current accumulated
+     * loan rate per second (`accLoanRatePerSeconds`) and the accumulated loan rate per share at the time of borrowing (`borrowingAccLoanRatePerShare`).
+     * The fees are calculated using the FullMath library's `mulDivRoundingUp()` function, rounding up the result to the nearest integer.
+     * The collateral balance is then calculated by subtracting the fees from the daily rate collateral at the time of borrowing (`borrowingDailyRateCollateral`).
+     * Both the collateral balance and fees are returned as the function's output.
+     * @param borrowedAmount The amount borrowed.
+     * @param borrowingAccLoanRatePerShare The accumulated loan rate per share at the time of borrowing.
+     * @param borrowingDailyRateCollateral The daily rate collateral at the time of borrowing.
+     * @param accLoanRatePerSeconds The current accumulated loan rate per second.
+     * @return collateralBalance The calculated collateral balance after deducting fees.
+     * @return currentFees The calculated fees for the borrowing operation.
+     */
     function _calculateCollateralBalance(
         uint256 borrowedAmount,
         uint256 borrowingAccLoanRatePerShare,

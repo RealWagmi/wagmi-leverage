@@ -50,7 +50,7 @@ function UNDERLYING_V3_POOL_INIT_CODE_HASH() external view returns (bytes32)
 function VAULT_ADDRESS() external view returns (address)
 ```
 
-
+The address of the vault contract.
 
 
 
@@ -197,18 +197,13 @@ function computePoolAddress(address tokenA, address tokenB, uint24 fee) external
 ### dafaultLiquidationBonusBP
 
 ```solidity
-function dafaultLiquidationBonusBP(uint256) external view returns (uint256)
+function dafaultLiquidationBonusBP() external view returns (uint256)
 ```
 
 
 
 
 
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | uint256 | undefined |
 
 #### Returns
 
@@ -285,7 +280,7 @@ function getHoldTokenDailyRateInfo(address saleToken, address holdToken) externa
 
 
 
-*Returns the current daily rate for holding tokens.*
+*Returns the current daily rate for holding token.*
 
 #### Parameters
 
@@ -298,7 +293,7 @@ function getHoldTokenDailyRateInfo(address saleToken, address holdToken) externa
 
 | Name | Type | Description |
 |---|---|---|
-| currentDailyRate | uint256 | The current daily rate for holding tokens. |
+| currentDailyRate | uint256 | The current daily rate . |
 | holdTokenRateInfo | DailyRateAndCollateral.TokenInfo | undefined |
 
 ### getLenderCreditsCount
@@ -309,7 +304,7 @@ function getLenderCreditsCount(uint256 tokenId) external view returns (uint256 c
 
 
 
-*Returns the number of loans associated with a given token ID.*
+*Returns the number of loans associated with a given NonfungiblePositionManager tokenId.*
 
 #### Parameters
 
@@ -321,7 +316,7 @@ function getLenderCreditsCount(uint256 tokenId) external view returns (uint256 c
 
 | Name | Type | Description |
 |---|---|---|
-| count | uint256 | The total number of loans associated with the token. |
+| count | uint256 | The total number of loans associated with the tokenId. |
 
 ### getLenderCreditsInfo
 
@@ -329,7 +324,7 @@ function getLenderCreditsCount(uint256 tokenId) external view returns (uint256 c
 function getLenderCreditsInfo(uint256 tokenId) external view returns (struct LiquidityBorrowingManager.BorrowingInfoExt[] extinfo)
 ```
 
-Retrieves the borrowing information for a specific tokenId.
+Retrieves the borrowing information for a specific NonfungiblePositionManager tokenId.
 
 
 
@@ -343,7 +338,7 @@ Retrieves the borrowing information for a specific tokenId.
 
 | Name | Type | Description |
 |---|---|---|
-| extinfo | LiquidityBorrowingManager.BorrowingInfoExt[] | An array of BorrowingInfoExt structs representing the borrowing information associated with the token. |
+| extinfo | LiquidityBorrowingManager.BorrowingInfoExt[] | An array of BorrowingInfoExt structs representing the borrowing information. |
 
 ### getLiquidationBonus
 
@@ -455,13 +450,36 @@ This function is used to increase the daily rate collateral for a specific borro
 | borrowingKey | bytes32 | The unique identifier of the borrowing. |
 | collateralAmt | uint256 | The amount of collateral to be added. |
 
+### liquidationBonusForToken
+
+```solidity
+function liquidationBonusForToken(address) external view returns (uint256 bonusBP, uint256 minBonusAmount)
+```
+
+
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | address | undefined |
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| bonusBP | uint256 | undefined |
+| minBonusAmount | uint256 | undefined |
+
 ### loansInfo
 
 ```solidity
 function loansInfo(bytes32, uint256) external view returns (uint128 liquidity, uint256 tokenId)
 ```
 
-
+borrowingKey=&gt;LoanInfo
 
 
 
@@ -549,7 +567,7 @@ function setSwapCallToWhitelist(address swapTarget, bytes4 funcSelector, bool is
 
 
 
-*Adds or removes a swap call to the whitelist.*
+*Adds or removes a swap call params to the whitelist.*
 
 #### Parameters
 
@@ -558,29 +576,6 @@ function setSwapCallToWhitelist(address swapTarget, bytes4 funcSelector, bool is
 | swapTarget | address | The address of the target contract for the swap call. |
 | funcSelector | bytes4 | The function selector of the swap call. |
 | isAllowed | bool | A boolean indicating whether the swap call is allowed or not. |
-
-### specificTokenLiquidationBonus
-
-```solidity
-function specificTokenLiquidationBonus(address, uint256) external view returns (uint256)
-```
-
-
-
-
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | address | undefined |
-| _1 | uint256 | undefined |
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | uint256 | undefined |
 
 ### takeOverDebt
 
@@ -605,7 +600,7 @@ Take over debt by transferring ownership of a borrowing to the current caller
 function tokenIdToBorrowingKeys(uint256, uint256) external view returns (bytes32)
 ```
 
-tokenId =&gt; BorrowingKeys[]
+NonfungiblePositionManager tokenId =&gt; BorrowingKeys[]
 
 
 
@@ -644,7 +639,7 @@ function transferOwnership(address newOwner) external nonpayable
 function underlyingPositionManager() external view returns (contract INonfungiblePositionManager)
 ```
 
-
+The Nonfungible Position Manager contract.
 
 
 
@@ -661,7 +656,7 @@ function underlyingPositionManager() external view returns (contract INonfungibl
 function underlyingQuoterV2() external view returns (contract IQuoterV2)
 ```
 
-
+The QuoterV2 contract.
 
 
 
@@ -696,7 +691,7 @@ function uniswapV3SwapCallback(int256 amount0Delta, int256 amount1Delta, bytes d
 function updateHoldTokenDailyRate(address saleToken, address holdToken, uint256 value) external nonpayable
 ```
 
-This function is used to update the daily rate for holding a borrow position.
+This function is used to update the daily rate for holding token for specific pair.
 
 *Only the daily rate operator can call this function.The value must be within the range of MIN_DAILY_RATE and MAX_DAILY_RATE.*
 
@@ -706,7 +701,7 @@ This function is used to update the daily rate for holding a borrow position.
 |---|---|---|
 | saleToken | address | The address of the sale token. |
 | holdToken | address | The address of the hold token. |
-| value | uint256 | The new value of the daily rate for the hold token. |
+| value | uint256 | The new value of the daily rate for the hold token will be calculated based on the volatility of the pair and the popularity of loans in it |
 
 ### updateSettings
 
@@ -714,7 +709,7 @@ This function is used to update the daily rate for holding a borrow position.
 function updateSettings(enum OwnerSettings.ITEM _item, uint256[] values) external nonpayable
 ```
 
-Updates the settings for a given item.
+This external function is used to update the settings for a particular item. The function requires two parameters: `_item`, which is the item to be updated, and `values`, which is an array of values containing the new settings. Only the owner of the contract has the permission to call this function.
 
 *Can only be called by the owner of the contract.*
 
@@ -781,7 +776,7 @@ swapTarget   =&gt; (func.selector =&gt; is allowed)
 event Borrow(address borrower, bytes32 borrowingKey, uint256 borrowedAmount, uint256 borrowingCollateral, uint256 liquidationBonus, uint256 dailyRatePrepayment)
 ```
 
-
+Indicates that a borrower has made a new loan
 
 
 
@@ -802,7 +797,7 @@ event Borrow(address borrower, bytes32 borrowingKey, uint256 borrowedAmount, uin
 event CollectProtocol(address recipient, address[] tokens, uint256[] amounts)
 ```
 
-
+Indicates that the protocol has collected fee tokens
 
 
 
@@ -820,7 +815,7 @@ event CollectProtocol(address recipient, address[] tokens, uint256[] amounts)
 event EmergencyLoanClosure(address borrower, address lender, bytes32 borrowingKey)
 ```
 
-
+Indicates that a loan has been closed due to an emergency situation
 
 
 
@@ -838,7 +833,7 @@ event EmergencyLoanClosure(address borrower, address lender, bytes32 borrowingKe
 event IncreaseCollateralBalance(address borrower, bytes32 borrowingKey, uint256 collateralAmt)
 ```
 
-
+Indicates that a borrower has increased their collateral balance for a loan
 
 
 
@@ -873,7 +868,7 @@ event OwnershipTransferred(address indexed previousOwner, address indexed newOwn
 event Repay(address borrower, address liquidator, bytes32 borrowingKey)
 ```
 
-
+Indicates that a borrower has repaid their loan, optionally with the help of a liquidator
 
 
 
@@ -891,7 +886,7 @@ event Repay(address borrower, address liquidator, bytes32 borrowingKey)
 event TakeOverDebt(address oldBorrower, address newBorrower, bytes32 oldBorrowingKey, bytes32 newBorrowingKey)
 ```
 
-
+Indicates that a new borrower has taken over the debt from an old borrower
 
 
 
@@ -910,7 +905,7 @@ event TakeOverDebt(address oldBorrower, address newBorrower, bytes32 oldBorrowin
 event UpdateHoldTokenDailyRate(address saleToken, address holdToken, uint256 value)
 ```
 
-
+Indicates that the daily interest rate for holding token(for specific pair) has been updated
 
 
 

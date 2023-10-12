@@ -8,14 +8,26 @@ import "./ApproveSwapAndPay.sol";
 import "../Vault.sol";
 import { Constants } from "../libraries/Constants.sol";
 
-// import "hardhat/console.sol";
-
 abstract contract LiquidityManager is ApproveSwapAndPay {
+    /**
+     * @notice Represents information about a loan.
+     * @dev This struct is used to store liquidity and tokenId for a loan.
+     * @param liquidity The amount of liquidity for the loan represented by a uint128 value.
+     * @param tokenId The token ID associated with the loan represented by a uint256 value.
+     */
     struct LoanInfo {
         uint128 liquidity;
         uint256 tokenId;
     }
-
+    /**
+     * @notice Contains parameters for restoring liquidity.
+     * @dev This struct is used to store various parameters required for restoring liquidity.
+     * @param zeroForSaleToken A boolean value indicating whether the token for sale is the 0th token or not.
+     * @param fee The fee associated with the internal swap pool is represented by a uint24 value.
+     * @param slippageBP1000 The slippage in basis points (BP) represented by a uint256 value.
+     * @param totalfeesOwed The total fees owed represented by a uint256 value.
+     * @param totalBorrowedAmount The total borrowed amount represented by a uint256 value.
+     */
     struct RestoreLiquidityParams {
         bool zeroForSaleToken;
         uint24 fee;
@@ -23,7 +35,17 @@ abstract contract LiquidityManager is ApproveSwapAndPay {
         uint256 totalfeesOwed;
         uint256 totalBorrowedAmount;
     }
-
+    /**
+     * @notice Contains cache data for restoring liquidity.
+     * @dev This struct is used to store cached values required for restoring liquidity.
+     * @param tickLower The lower tick boundary represented by an int24 value.
+     * @param tickUpper The upper tick boundary represented by an int24 value.
+     * @param fee The fee associated with the restoring liquidity pool.
+     * @param saleToken The address of the token being sold.
+     * @param holdToken The address of the token being held.
+     * @param sqrtPriceX96 The square root of the price represented by a uint160 value.
+     * @param holdTokenDebt The debt amount associated with the hold token represented by a uint256 value.
+     */
     struct RestoreLiquidityCache {
         int24 tickLower;
         int24 tickUpper;
@@ -33,9 +55,17 @@ abstract contract LiquidityManager is ApproveSwapAndPay {
         uint160 sqrtPriceX96;
         uint256 holdTokenDebt;
     }
-
+    /**
+     * @notice The address of the vault contract.
+     */
     address public immutable VAULT_ADDRESS;
+    /**
+     * @notice The Nonfungible Position Manager contract.
+     */
     INonfungiblePositionManager public immutable underlyingPositionManager;
+    /**
+     * @notice The QuoterV2 contract.
+     */
     IQuoterV2 public immutable underlyingQuoterV2;
 
     constructor(
@@ -276,6 +306,14 @@ abstract contract LiquidityManager is ApproveSwapAndPay {
         }
     }
 
+    /**
+     * @dev Retrieves the current square root price in X96 representation.
+     * @param zeroForA Flag indicating whether to treat the tokenA as the 0th token or not.
+     * @param tokenA The address of token A.
+     * @param tokenB The address of token B.
+     * @param fee The fee associated with the Uniswap V3 pool.
+     * @return sqrtPriceX96 The current square root price in X96 representation.
+     */
     function _getCurrentSqrtPriceX96(
         bool zeroForA,
         address tokenA,

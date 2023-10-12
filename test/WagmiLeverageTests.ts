@@ -158,31 +158,31 @@ describe("WagmiLeverageTests", () => {
         await borrowingManager.connect(owner).updateSettings(0, [2000]);
         expect(await borrowingManager.platformFeesBP()).to.equal(2000);
 
-        // LIQUIDATION_BONUS_BP
-        await expect(borrowingManager.connect(owner).updateSettings(1, [101, 20])).to.be.reverted; ////MAX_LIQUIDATION_BONUS = 100;
-        await expect(borrowingManager.connect(owner).updateSettings(1, [101, 20, 4])).to.be.reverted;
-        await borrowingManager.connect(owner).updateSettings(1, [100, 20]);
-        expect(await borrowingManager.dafaultLiquidationBonusBP(0)).to.equal(100);
+        // DEFAULT_LIQUIDATION_BONUS
+        await expect(borrowingManager.connect(owner).updateSettings(1, [101])).to.be.reverted; ////MAX_LIQUIDATION_BONUS = 100;
+        await expect(borrowingManager.connect(owner).updateSettings(1, [101, 4])).to.be.reverted;
+        await borrowingManager.connect(owner).updateSettings(1, [100]);
+        expect(await borrowingManager.dafaultLiquidationBonusBP()).to.equal(100);
 
         // DAILY_RATE_OPERATOR
         await expect(borrowingManager.connect(owner).updateSettings(2, [bob.address, 20, 4])).to.be.reverted;
         await borrowingManager.connect(owner).updateSettings(2, [bob.address]);
         expect(await borrowingManager.dailyRateOperator()).to.equal(bob.address);
 
-        // SPECIFIC_TOKEN_LIQUIDATION_BONUS_BP
+        // LIQUIDATION_BONUS_FOR_TOKEN
         await expect(borrowingManager.connect(owner).updateSettings(3, [USDT_ADDRESS, 101, 1000000])).to.be.reverted; ////MAX_LIQUIDATION_BONUS = 100;
         await expect(borrowingManager.connect(owner).updateSettings(3, [USDT_ADDRESS, 101, 1000000, 2])).to.be.reverted; ////MAX_LIQUIDATION_BONUS = 100;
         await borrowingManager.connect(owner).updateSettings(3, [USDT_ADDRESS, 99, 1000000]);
-        expect(await borrowingManager.specificTokenLiquidationBonus(USDT_ADDRESS, 0)).to.equal(99);
-        expect(await borrowingManager.specificTokenLiquidationBonus(USDT_ADDRESS, 1)).to.equal(1000000);
+        expect((await borrowingManager.liquidationBonusForToken(USDT_ADDRESS)).bonusBP).to.equal(99);
+        expect((await borrowingManager.liquidationBonusForToken(USDT_ADDRESS)).minBonusAmount).to.equal(1000000);
         await snapshot.restore();
     });
 
     it("approve positionManager NFT and check event", async () => {
         expect(
             await borrowingManager.getLiquidationBonus(WETH_ADDRESS, ethers.utils.parseUnits("100", 18), 1)
-        ).to.be.equal(ethers.utils.parseUnits("100", 18));
-        // UP SPECIFIC_TOKEN_LIQUIDATION_BONUS
+        ).to.be.equal(ethers.utils.parseUnits("0.69", 18));
+        // UP LIQUIDATION_BONUS_FOR_TOKEN
         await borrowingManager.connect(owner).updateSettings(3, [WETH_ADDRESS, 69, 1000000]);
         await borrowingManager.connect(owner).updateSettings(3, [WBTC_ADDRESS, 69, 1000]);
         await borrowingManager.connect(owner).updateSettings(3, [USDT_ADDRESS, 69, 1000]);
@@ -223,9 +223,7 @@ describe("WagmiLeverageTests", () => {
             bob
         );
         expect(pos.liquidity).to.be.above(BigNumber.from(0));
-        await expect(
-            nonfungiblePositionManager.connect(bob).approve(borrowingManager.address, pos.tokenId.toNumber())
-        )
+        await expect(nonfungiblePositionManager.connect(bob).approve(borrowingManager.address, pos.tokenId.toNumber()))
             .to.emit(nonfungiblePositionManager, "Approval")
             .withArgs(bob.address, borrowingManager.address, pos.tokenId);
         nftpos.push(pos);
@@ -273,9 +271,7 @@ describe("WagmiLeverageTests", () => {
             bob
         );
         expect(pos.liquidity).to.be.above(BigNumber.from(0));
-        await expect(
-            nonfungiblePositionManager.connect(bob).approve(borrowingManager.address, pos.tokenId.toNumber())
-        )
+        await expect(nonfungiblePositionManager.connect(bob).approve(borrowingManager.address, pos.tokenId.toNumber()))
             .to.emit(nonfungiblePositionManager, "Approval")
             .withArgs(bob.address, borrowingManager.address, pos.tokenId);
         nftpos.push(pos);
@@ -992,7 +988,8 @@ describe("WagmiLeverageTests", () => {
     });
 
     it("emergency repay will be successful for PosManNFT owner if the collateral is depleted", async () => {
-        let debt: LiquidityBorrowingManager.BorrowingInfoExtStructOutput[] = (await borrowingManager.getBorrowerDebtsInfo(bob.address));
+        let debt: LiquidityBorrowingManager.BorrowingInfoExtStructOutput[] =
+            await borrowingManager.getBorrowerDebtsInfo(bob.address);
         await time.increase(debt[1].estimatedLifeTime.toNumber() + 1);
 
         let borrowingKey = await borrowingManager.userBorrowingKeys(bob.address, 1);
@@ -1012,21 +1009,18 @@ describe("WagmiLeverageTests", () => {
         };
 
         let params: LiquidityBorrowingManager.RepayParamsStruct = {
-            isEmergency: true,//emergency
+            isEmergency: true, //emergency
             internalSwapPoolfee: 0,
             externalSwap: swapParams,
             borrowingKey: borrowingKey,
             swapSlippageBP1000: 0,
         };
 
-
         //console.log(debt);
         let loans: LiquidityManager.LoanInfoStructOutput[] = await borrowingManager.getLoansInfo(borrowingKey);
         expect(loans.length).to.equal(3);
         //console.log(loans);
-        await expect(
-            borrowingManager.connect(alice).repay(params, deadline)
-        )
+        await expect(borrowingManager.connect(alice).repay(params, deadline))
             .to.emit(borrowingManager, "EmergencyLoanClosure")
             .withArgs(bob.address, alice.address, borrowingKey);
 
@@ -1038,16 +1032,14 @@ describe("WagmiLeverageTests", () => {
         expect(await borrowingManager.getLenderCreditsCount(nftpos[5].tokenId)).to.be.gt(0);
         expect(await borrowingManager.getBorrowerDebtsCount(bob.address)).to.be.equal(2);
 
-        debt = (await borrowingManager.getBorrowerDebtsInfo(bob.address));
+        debt = await borrowingManager.getBorrowerDebtsInfo(bob.address);
         //console.log(debt);
         loans = await borrowingManager.getLoansInfo(borrowingKey);
         expect(loans.length).to.equal(2);
 
         await time.increase(100);
         deadline = (await time.latest()) + 60;
-        await expect(
-            borrowingManager.connect(bob).repay(params, deadline)
-        )
+        await expect(borrowingManager.connect(bob).repay(params, deadline))
             .to.emit(borrowingManager, "EmergencyLoanClosure")
             .withArgs(bob.address, bob.address, borrowingKey);
         expect(await borrowingManager.getLenderCreditsCount(nftpos[0].tokenId)).to.be.equal(0);
@@ -1057,16 +1049,14 @@ describe("WagmiLeverageTests", () => {
         expect(await borrowingManager.getLenderCreditsCount(nftpos[4].tokenId)).to.be.gt(0);
         expect(await borrowingManager.getLenderCreditsCount(nftpos[5].tokenId)).to.be.gt(0);
         expect(await borrowingManager.getBorrowerDebtsCount(bob.address)).to.be.equal(2);
-        debt = (await borrowingManager.getBorrowerDebtsInfo(bob.address));
+        debt = await borrowingManager.getBorrowerDebtsInfo(bob.address);
         //console.log(debt);
         loans = await borrowingManager.getLoansInfo(borrowingKey);
         expect(loans.length).to.equal(1);
 
         await time.increase(100);
         deadline = (await time.latest()) + 60;
-        await expect(
-            borrowingManager.connect(owner).repay(params, deadline)
-        )
+        await expect(borrowingManager.connect(owner).repay(params, deadline))
             .to.emit(borrowingManager, "EmergencyLoanClosure")
             .withArgs(bob.address, owner.address, borrowingKey);
         expect(await borrowingManager.getLenderCreditsCount(nftpos[0].tokenId)).to.be.equal(0);
@@ -1076,8 +1066,6 @@ describe("WagmiLeverageTests", () => {
         expect(await borrowingManager.getLenderCreditsCount(nftpos[4].tokenId)).to.be.gt(0);
         expect(await borrowingManager.getLenderCreditsCount(nftpos[5].tokenId)).to.be.gt(0);
         expect(await borrowingManager.getBorrowerDebtsCount(bob.address)).to.be.equal(1);
-
-
     });
 
     it("Loan liquidation will be successful for anyone if the collateral is depleted", async () => {
@@ -1438,5 +1426,4 @@ describe("WagmiLeverageTests", () => {
         expect(self.length).to.be.equal(0);
         expect(await $approveSwapAndPay.$_removeKey(key0)).to.be.ok;
     });
-
 });

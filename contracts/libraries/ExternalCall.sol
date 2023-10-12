@@ -1,8 +1,16 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.21;
 
-/// @title Constant state
 library ExternalCall {
+    /**
+     * @dev Executes a call to the `target` address with the given `data`, gas limit `maxGas`, and optional patching of a swapAmount value.
+     * @param target The address of the contract or external function to call.
+     * @param data The calldata to include in the call.
+     * @param maxGas The maximum amount of gas to be used for the call. If set to 0, it uses the remaining gas.
+     * @param swapAmountInDataIndex The index at which to patch the `swapAmountInDataValue` in the calldata.
+     * @param swapAmountInDataValue The value to be patched at the specified index in the calldata. Can be 0 to skip patching.
+     * @return success A boolean indicating whether the call was successful.
+     */
     function _patchAmountAndCall(
         address target,
         bytes calldata data,
@@ -38,6 +46,11 @@ library ExternalCall {
         }
     }
 
+    /**
+     * @dev Reads the first 4 bytes from the given `swapData` parameter and returns them as a bytes4 value.
+     * @param swapData The calldata containing the data to read the first 4 bytes from.
+     * @return result The first 4 bytes of the `swapData` as a bytes4 value.
+     */
     function _readFirstBytes4(bytes calldata swapData) internal pure returns (bytes4 result) {
         // Read the bytes4 from array memory
         assembly ("memory-safe") {

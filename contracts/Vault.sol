@@ -20,6 +20,11 @@ contract Vault is Ownable, IVault {
         }
     }
 
+    /**
+     * @dev Retrieves the balances of multiple tokens for this contract.
+     * @param tokens The array of token addresses for which to retrieve the balances.
+     * @return balances An array of uint256 values representing the balances of the corresponding tokens in the `tokens` array.
+     */
     function getBalances(
         address[] calldata tokens
     ) external view returns (uint256[] memory balances) {

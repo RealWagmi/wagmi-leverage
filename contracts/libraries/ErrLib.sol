@@ -20,6 +20,11 @@ library ErrLib {
 
     error RevertErrorCode(ErrorCode code);
 
+    /**
+     * @dev Reverts with a custom error message based on the provided condition and error code.
+     * @param condition The condition to check for reverting.
+     * @param code The ErrorCode representing the specific error.
+     */
     function revertError(bool condition, ErrorCode code) internal pure {
         if (condition) {
             revert RevertErrorCode(code);

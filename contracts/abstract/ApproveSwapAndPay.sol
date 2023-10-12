@@ -57,6 +57,15 @@ abstract contract ApproveSwapAndPay {
         UNDERLYING_V3_POOL_INIT_CODE_HASH = _UNDERLYING_V3_POOL_INIT_CODE_HASH;
     }
 
+    /**
+     * @dev This internal function attempts to approve a specific amount of tokens for a spender.
+     * It performs a call to the `approve` function on the token contract using the provided parameters,
+     * and returns a boolean indicating whether the approval was successful or not.
+     * @param token The address of the token contract.
+     * @param spender The address of the spender.
+     * @param amount The amount of tokens to be approved.
+     * @return A boolean indicating whether the approval was successful or not.
+     */
     function _tryApprove(address token, address spender, uint256 amount) private returns (bool) {
         (bool success, bytes memory data) = token.call(
             abi.encodeWithSelector(IERC20.approve.selector, spender, amount)
@@ -64,6 +73,15 @@ abstract contract ApproveSwapAndPay {
         return success && (data.length == 0 || abi.decode(data, (bool)));
     }
 
+    /**
+     * @dev This internal function ensures that the allowance for a spender is at least the specified amount.
+     * If the current allowance is less than the specified amount, it attempts to approve the maximum possible value,
+     * and if that fails, it retries with the maximum possible value minus one. If both attempts fail,
+     * it reverts with an error indicating that the approval did not succeed.
+     * @param token The address of the token contract.
+     * @param spender The address of the spender.
+     * @param amount The minimum required allowance.
+     */
     function _maxApproveIfNecessary(address token, address spender, uint256 amount) internal {
         if (IERC20(token).allowance(address(this), spender) < amount) {
             if (!_tryApprove(token, spender, type(uint256).max)) {
@@ -79,6 +97,13 @@ abstract contract ApproveSwapAndPay {
         }
     }
 
+    /**
+     * @dev This internal view function retrieves the balance of the contract for a specific token.
+     * It performs a staticcall to the `balanceOf` function on the token contract using the provided parameter,
+     * and returns the balance as a uint256 value.
+     * @param token The address of the token contract.
+     * @return balance The balance of the contract for the specified token.
+     */
     function _getBalance(address token) internal view returns (uint256 balance) {
         bytes memory callData = abi.encodeWithSelector(IERC20.balanceOf.selector, address(this));
         (bool success, bytes memory data) = token.staticcall(callData);
@@ -86,6 +111,13 @@ abstract contract ApproveSwapAndPay {
         balance = abi.decode(data, (uint256));
     }
 
+    /**
+     * @dev Retrieves the balance of two tokens in the contract.
+     * @param tokenA The address of the first token.
+     * @param tokenB The address of the second token.
+     * @return balanceA The balance of the first token in the contract.
+     * @return balanceB The balance of the second token in the contract.
+     */
     function _getPairBalance(
         address tokenA,
         address tokenB
@@ -94,6 +126,17 @@ abstract contract ApproveSwapAndPay {
         balanceB = _getBalance(tokenB);
     }
 
+    /**
+     * @dev Executes a swap between two tokens using an external contract.
+     * @param tokenIn The address of the token to be swapped.
+     * @param tokenOut The address of the token to receive in the swap.
+     * @param externalSwap The swap parameters from the external contract.
+     * @param amountIn The amount of `tokenIn` to be swapped.
+     * @param amountOutMin The minimum amount of `tokenOut` expected to receive from the swap.
+     * @return amountOut The actual amount of `tokenOut` received from the swap.
+     * @notice This function will revert if the swap target is not approved or the resulting amountOut
+     * is zero or below the specified minimum amountOut.
+     */
     function _patchAmountsAndCallSwap(
         address tokenIn,
         address tokenOut,
@@ -121,6 +164,15 @@ abstract contract ApproveSwapAndPay {
         }
     }
 
+    /**
+     * @dev Transfers a specified amount of tokens from the `payer` to the `recipient`.
+     * @param token The address of the token to be transferred.
+     * @param payer The address from which the tokens will be transferred.
+     * @param recipient The address that will receive the tokens.
+     * @param value The amount of tokens to be transferred.
+     * @notice If the specified `value` is greater than zero, this function will transfer the tokens either by calling `safeTransfer`
+     * if the `payer` is equal to `address(this)`, or by calling `safeTransferFrom` otherwise.
+     */
     function _pay(address token, address payer, address recipient, uint256 value) internal {
         if (value > 0) {
             if (payer == address(this)) {
@@ -131,6 +183,15 @@ abstract contract ApproveSwapAndPay {
         }
     }
 
+    /**
+     * @dev Performs a token swap using Uniswap V3 with exact input.
+     * @param params The struct containing all swap parameters.
+     * @return amountOut The amount of tokens received as output from the swap.
+     * @notice This internal function swaps the exact amount of `params.amountIn` tokens from `params.tokenIn` to `params.tokenOut`.
+     * The swapped amount is calculated based on the current pool ratio between `params.tokenIn` and `params.tokenOut`.
+     * If the resulting `amountOut` is less than `params.amountOutMinimum`, the function will revert with a `SwapSlippageCheckError`
+     * indicating the minimum expected amount was not met.
+     */
     function _v3SwapExactInput(
         v3SwapExactInputParams memory params
     ) internal returns (uint256 amountOut) {
