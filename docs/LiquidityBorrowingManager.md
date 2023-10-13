@@ -178,21 +178,21 @@ function computePoolAddress(address tokenA, address tokenB, uint24 fee) external
 
 
 
-
+*Computes the address of a Uniswap V3 pool based on the provided parameters. This function calculates the address of a Uniswap V3 pool contract using the token addresses and fee. It follows the same logic as Uniswap&#39;s pool initialization process.*
 
 #### Parameters
 
 | Name | Type | Description |
 |---|---|---|
-| tokenA | address | undefined |
-| tokenB | address | undefined |
-| fee | uint24 | undefined |
+| tokenA | address | The address of one of the tokens in the pair. |
+| tokenB | address | The address of the other token in the pair. |
+| fee | uint24 | The fee level of the pool. |
 
 #### Returns
 
 | Name | Type | Description |
 |---|---|---|
-| pool | address | undefined |
+| pool | address | The computed address of the Uniswap V3 pool. |
 
 ### dafaultLiquidationBonusBP
 
@@ -675,15 +675,15 @@ function uniswapV3SwapCallback(int256 amount0Delta, int256 amount1Delta, bytes d
 
 
 
-
+*Callback function invoked by Uniswap V3 swap. This function is called when a swap is executed on a Uniswap V3 pool. It performs the necessary validations and payment processing. Requirements: - The swap must not entirely fall within 0-liquidity regions, as it is not supported. - The caller must be the expected Uniswap V3 pool contract.*
 
 #### Parameters
 
 | Name | Type | Description |
 |---|---|---|
-| amount0Delta | int256 | undefined |
-| amount1Delta | int256 | undefined |
-| data | bytes | undefined |
+| amount0Delta | int256 | The change in token0 balance resulting from the swap. |
+| amount1Delta | int256 | The change in token1 balance resulting from the swap. |
+| data | bytes | Additional data required for processing the swap, encoded as `(uint24, address, address)`. |
 
 ### updateHoldTokenDailyRate
 

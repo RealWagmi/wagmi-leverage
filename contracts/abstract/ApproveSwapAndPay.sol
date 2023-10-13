@@ -15,11 +15,17 @@ abstract contract ApproveSwapAndPay {
     using { ExternalCall._readFirstBytes4 } for bytes;
     using { ErrLib.revertError } for bool;
 
+    /// @notice Struct representing the parameters for a Uniswap V3 exact input swap.
     struct v3SwapExactInputParams {
+        /// @dev The fee tier to be used for the swap.
         uint24 fee;
+        /// @dev The address of the token to be swapped from.
         address tokenIn;
+        /// @dev The address of the token to be swapped to.
         address tokenOut;
+        /// @dev The amount of `tokenIn` to be swapped.
         uint256 amountIn;
+        /// @dev The minimum amount of `tokenOut` expected to receive from the swap.
         uint256 amountOutMinimum;
     }
 
@@ -145,20 +151,23 @@ abstract contract ApproveSwapAndPay {
         uint256 amountOutMin
     ) internal returns (uint256 amountOut) {
         bytes4 funcSelector = externalSwap.swapData._readFirstBytes4();
+        // Verifying if the swap target is whitelisted for the specified function selector
         (!whitelistedCall[externalSwap.swapTarget][funcSelector]).revertError(
             ErrLib.ErrorCode.SWAP_TARGET_NOT_APPROVED
         );
-
+        // Maximizing approval if necessary
         _maxApproveIfNecessary(tokenIn, externalSwap.swapTarget, amountIn);
         uint256 balanceOutBefore = _getBalance(tokenOut);
-
+        // Patching the amount and calling the external swap
         externalSwap.swapTarget._patchAmountAndCall(
             externalSwap.swapData,
             externalSwap.maxGasForCall,
             externalSwap.swapAmountInDataIndex,
             amountIn
         );
+        // Calculating the actual amount of output tokens received
         amountOut = _getBalance(tokenOut) - balanceOutBefore;
+        // Checking if the received amount satisfies the minimum requirement
         if (amountOut == 0 || amountOut < amountOutMin) {
             revert SwapSlippageCheckError(amountOutMin, amountOut);
         }
@@ -195,7 +204,10 @@ abstract contract ApproveSwapAndPay {
     function _v3SwapExactInput(
         v3SwapExactInputParams memory params
     ) internal returns (uint256 amountOut) {
+        // Determine if tokenIn has a 0th token
         bool zeroForTokenIn = params.tokenIn < params.tokenOut;
+        // Compute the address of the Uniswap V3 pool based on tokenIn, tokenOut, and fee
+        // Call the swap function on the Uniswap V3 pool contract
         (int256 amount0Delta, int256 amount1Delta) = IUniswapV3Pool(
             computePoolAddress(params.tokenIn, params.tokenOut, params.fee)
         ).swap(
@@ -205,12 +217,28 @@ abstract contract ApproveSwapAndPay {
                 (zeroForTokenIn ? MIN_SQRT_RATIO + 1 : MAX_SQRT_RATIO - 1),
                 abi.encode(params.fee, params.tokenIn, params.tokenOut)
             );
+        // Calculate the actual amount of output tokens received
         amountOut = uint256(-(zeroForTokenIn ? amount1Delta : amount0Delta));
+        // Check if the received amount satisfies the minimum requirement
         if (amountOut < params.amountOutMinimum) {
             revert SwapSlippageCheckError(params.amountOutMinimum, amountOut);
         }
     }
 
+    /**
+     * @dev Callback function invoked by Uniswap V3 swap.
+     *
+     * This function is called when a swap is executed on a Uniswap V3 pool. It performs the necessary validations
+     * and payment processing.
+     *
+     * Requirements:
+     * - The swap must not entirely fall within 0-liquidity regions, as it is not supported.
+     * - The caller must be the expected Uniswap V3 pool contract.
+     *
+     * @param amount0Delta The change in token0 balance resulting from the swap.
+     * @param amount1Delta The change in token1 balance resulting from the swap.
+     * @param data Additional data required for processing the swap, encoded as `(uint24, address, address)`.
+     */
     function uniswapV3SwapCallback(
         int256 amount0Delta,
         int256 amount1Delta,
@@ -229,6 +257,17 @@ abstract contract ApproveSwapAndPay {
         _pay(tokenIn, address(this), msg.sender, amountToPay);
     }
 
+    /**
+     * @dev Computes the address of a Uniswap V3 pool based on the provided parameters.
+     *
+     * This function calculates the address of a Uniswap V3 pool contract using the token addresses and fee.
+     * It follows the same logic as Uniswap's pool initialization process.
+     *
+     * @param tokenA The address of one of the tokens in the pair.
+     * @param tokenB The address of the other token in the pair.
+     * @param fee The fee level of the pool.
+     * @return pool The computed address of the Uniswap V3 pool.
+     */
     function computePoolAddress(
         address tokenA,
         address tokenB,

@@ -68,15 +68,26 @@ abstract contract LiquidityManager is ApproveSwapAndPay {
      */
     IQuoterV2 public immutable underlyingQuoterV2;
 
+    /**
+     * @dev Contract constructor.
+     * @param _underlyingPositionManagerAddress Address of the underlying position manager contract.
+     * @param _underlyingQuoterV2 Address of the underlying quoterV2 contract.
+     * @param _underlyingV3Factory Address of the underlying V3 factory contract.
+     * @param _underlyingV3PoolInitCodeHash The init code hash of the underlying V3 pool.
+     */
     constructor(
         address _underlyingPositionManagerAddress,
         address _underlyingQuoterV2,
         address _underlyingV3Factory,
         bytes32 _underlyingV3PoolInitCodeHash
     ) ApproveSwapAndPay(_underlyingV3Factory, _underlyingV3PoolInitCodeHash) {
+        // Assign the underlying position manager contract address
         underlyingPositionManager = INonfungiblePositionManager(_underlyingPositionManagerAddress);
+        // Assign the underlying quoterV2 contract address
         underlyingQuoterV2 = IQuoterV2(_underlyingQuoterV2);
+        // Generate a unique salt for the new Vault contract
         bytes32 salt = keccak256(abi.encode(block.timestamp, address(this)));
+        // Deploy a new Vault contract using the generated salt and assign its address to VAULT_ADDRESS
         VAULT_ADDRESS = address(new Vault{ salt: salt }());
     }
 
@@ -210,6 +221,7 @@ abstract contract LiquidityManager is ApproveSwapAndPay {
      * @param loans An array of LoanInfo struct instances containing loan information.
      */
     function _restoreLiquidity(
+        // Create a cache struct to store temporary data
         RestoreLiquidityParams memory params,
         SwapParams calldata externalSwap,
         LoanInfo[] memory loans
@@ -219,7 +231,7 @@ abstract contract LiquidityManager is ApproveSwapAndPay {
             // Update the cache for the current loan
             LoanInfo memory loan = loans[i];
             _upRestoreLiquidityCache(params.zeroForSaleToken, loan, cache);
-
+            // Calculate the hold token amount to be used for swapping
             (uint256 holdTokenAmountIn, uint256 amount0, uint256 amount1) = _getHoldTokenAmountIn(
                 params.zeroForSaleToken,
                 cache.tickLower,
@@ -274,12 +286,14 @@ abstract contract LiquidityManager is ApproveSwapAndPay {
                                 Constants.BPS
                         })
                     );
+                    // Update the value of sqrtPriceX96 in the cache using the _getCurrentSqrtPriceX96 function
                     cache.sqrtPriceX96 = _getCurrentSqrtPriceX96(
                         params.zeroForSaleToken,
                         cache.saleToken,
                         cache.holdToken,
                         cache.fee
                     );
+                    // Calculate the amounts of token0 and token1 for a given liquidity
                     (amount0, amount1) = LiquidityAmounts.getAmountsForLiquidity(
                         cache.sqrtPriceX96,
                         TickMath.getSqrtRatioAtTick(cache.tickLower),
@@ -288,7 +302,7 @@ abstract contract LiquidityManager is ApproveSwapAndPay {
                     );
                 }
             }
-
+            // Get the owner of the Nonfungible Position Manager token by its tokenId
             address creditor = underlyingPositionManager.ownerOf(loan.tokenId);
             // Increase liquidity and transfer liquidity owner reward
             _increaseLiquidity(cache.saleToken, cache.holdToken, loan, amount0, amount1);
@@ -333,6 +347,8 @@ abstract contract LiquidityManager is ApproveSwapAndPay {
      * @param liquidity The amount of liquidity to be removed.
      */
     function _decreaseLiquidity(uint256 tokenId, uint128 liquidity) private {
+        // Call the decreaseLiquidity function of underlyingPositionManager contract
+        // with DecreaseLiquidityParams struct as argument
         (uint256 amount0, uint256 amount1) = underlyingPositionManager.decreaseLiquidity(
             INonfungiblePositionManager.DecreaseLiquidityParams({
                 tokenId: tokenId,
@@ -342,11 +358,13 @@ abstract contract LiquidityManager is ApproveSwapAndPay {
                 deadline: block.timestamp
             })
         );
-
+        // Check if both amount0 and amount1 are zero after decreasing liquidity
+        // If true, revert with InvalidBorrowedLiquidity exception
         if (amount0 == 0 && amount1 == 0) {
             revert InvalidBorrowedLiquidity(tokenId);
         }
-
+        // Call the collect function of underlyingPositionManager contract
+        // with CollectParams struct as argument
         (amount0, amount1) = underlyingPositionManager.collect(
             INonfungiblePositionManager.CollectParams({
                 tokenId: tokenId,
@@ -372,13 +390,11 @@ abstract contract LiquidityManager is ApproveSwapAndPay {
         uint256 amount0,
         uint256 amount1
     ) private {
-        if (amount0 > 0) {
-            ++amount0;
-        }
-        if (amount1 > 0) {
-            ++amount1;
-        }
-
+        // increase if not equal to zero to avoid rounding down the amount of restored liquidity.
+        if (amount0 > 0) ++amount0;
+        if (amount1 > 0) ++amount1;
+        // Call the increaseLiquidity function of underlyingPositionManager contract
+        // with IncreaseLiquidityParams struct as argument
         (uint128 restoredLiquidity, , ) = underlyingPositionManager.increaseLiquidity(
             INonfungiblePositionManager.IncreaseLiquidityParams({
                 tokenId: loan.tokenId,
@@ -389,8 +405,10 @@ abstract contract LiquidityManager is ApproveSwapAndPay {
                 deadline: block.timestamp
             })
         );
-
+        // Check if the restored liquidity is less than the loan liquidity amount
+        // If true, revert with InvalidRestoredLiquidity exception
         if (restoredLiquidity < loan.liquidity) {
+            // Get the balance of holdToken and saleToken
             (uint256 holdTokentBalance, uint256 saleTokenBalance) = _getPairBalance(
                 holdToken,
                 saleToken
@@ -428,15 +446,22 @@ abstract contract LiquidityManager is ApproveSwapAndPay {
         uint128 liquidity,
         uint256 holdTokenDebt
     ) private pure returns (uint256 holdTokenAmountIn, uint256 amount0, uint256 amount1) {
+        // Call getAmountsForLiquidity function from LiquidityAmounts library
+        // to get the amounts of token0 and token1 for a given liquidity position
         (amount0, amount1) = LiquidityAmounts.getAmountsForLiquidity(
             sqrtPriceX96,
             TickMath.getSqrtRatioAtTick(tickLower),
             TickMath.getSqrtRatioAtTick(tickUpper),
             liquidity
         );
+        // Calculate the holdTokenAmountIn based on the zeroForSaleToken flag
         if (zeroForSaleToken) {
+            // If zeroForSaleToken is true, check if amount0 is zero
+            // If true, holdTokenAmountIn will be zero. Otherwise, it will be holdTokenDebt - amount1
             holdTokenAmountIn = amount0 == 0 ? 0 : holdTokenDebt - amount1;
         } else {
+            // If zeroForSaleToken is false, check if amount1 is zero
+            // If true, holdTokenAmountIn will be zero. Otherwise, it will be holdTokenDebt - amount0
             holdTokenAmountIn = amount1 == 0 ? 0 : holdTokenDebt - amount0;
         }
     }
@@ -452,6 +477,7 @@ abstract contract LiquidityManager is ApproveSwapAndPay {
         LoanInfo memory loan,
         RestoreLiquidityCache memory cache
     ) internal view {
+        // Get the positions data from `PositionManager` and store it in the cache variables
         (
             ,
             ,
@@ -466,17 +492,18 @@ abstract contract LiquidityManager is ApproveSwapAndPay {
             ,
 
         ) = underlyingPositionManager.positions(loan.tokenId);
-
+        // Swap saleToken and holdToken if zeroForSaleToken is false
         if (!zeroForSaleToken) {
             (cache.saleToken, cache.holdToken) = (cache.holdToken, cache.saleToken);
         }
-
+        // Calculate the holdTokenDebt using
         cache.holdTokenDebt = _getSingleSideRoundUpBorrowedAmount(
             zeroForSaleToken,
             cache.tickLower,
             cache.tickUpper,
             loan.liquidity
         );
+        // Calculate the square root price using `_getCurrentSqrtPriceX96` function
         cache.sqrtPriceX96 = _getCurrentSqrtPriceX96(
             zeroForSaleToken,
             cache.saleToken,

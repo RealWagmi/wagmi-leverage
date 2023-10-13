@@ -4,21 +4,48 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import { Constants } from "../libraries/Constants.sol";
 
 abstract contract OwnerSettings is Ownable {
+    /**
+     * @dev Enum representing various items.
+     *
+     * @param PLATFORM_FEES_BP The percentage of platform fees in basis points.
+     * @param DEFAULT_LIQUIDATION_BONUS The default liquidation bonus.
+     * @param DAILY_RATE_OPERATOR The operator for calculating the daily rate.
+     * @param LIQUIDATION_BONUS_FOR_TOKEN The liquidation bonus for a specific token.
+     */
     enum ITEM {
         PLATFORM_FEES_BP,
         DEFAULT_LIQUIDATION_BONUS,
         DAILY_RATE_OPERATOR,
         LIQUIDATION_BONUS_FOR_TOKEN
     }
-
+    /**
+     * @dev Struct representing liquidation parameters.
+     *
+     * @param bonusBP The bonus in basis points that will be applied during a liquidation.
+     * @param minBonusAmount The minimum amount of bonus that can be applied during a liquidation.
+     */
     struct Liquidation {
         uint256 bonusBP;
         uint256 minBonusAmount;
     }
-
+    /**
+     * @dev Address of the daily rate operator.
+     */
     address public dailyRateOperator;
-    uint256 public platformFeesBP = 2000; // 20 % of daily rate
-    uint256 public dafaultLiquidationBonusBP = 69; // 0.69% (per extracted liquidity)
+    /**
+     * @dev Platform fees in basis points.
+     * 2000 BP represents a 20% fee on the daily rate.
+     */
+    uint256 public platformFeesBP = 2000;
+    /**
+     * @dev Default liquidation bonus in basis points.
+     * 69 BP represents a 0.69% bonus per extracted liquidity.
+     */
+    uint256 public dafaultLiquidationBonusBP = 69;
+    /**
+     * @dev Mapping to store liquidation bonuses for each token address.
+     * The keys are token addresses and values are instances of the `Liquidation` struct.
+     */
     mapping(address => Liquidation) public liquidationBonusForToken;
 
     error InvalidSettingsValue(uint256 value);
