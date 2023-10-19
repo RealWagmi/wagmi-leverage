@@ -438,7 +438,7 @@ contract LiquidityBorrowingManager is
                 accLoanRatePerSeconds
             );
         // Add the new borrowing key and old loans to the newBorrowing
-        _addKeysAndLoansInfo(newBorrowing.borrowedAmount > 0, borrowingKey, oldLoans);
+        _addKeysAndLoansInfo(newBorrowing.borrowedAmount > 0, newBorrowingKey, oldLoans);
         // Increase the borrowed amount, liquidation bonus, and fees owed of the newBorrowing based on the oldBorrowing
         newBorrowing.borrowedAmount += oldBorrowing.borrowedAmount;
         newBorrowing.liquidationBonus += oldBorrowing.liquidationBonus;
