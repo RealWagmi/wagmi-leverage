@@ -1131,7 +1131,7 @@ describe("WagmiLeverageTests", () => {
     it("takeOverDebt should be correct if the collateral is depleted", async () => {
         snapshot_global.restore();
         const aliceBorrowingsCount = await borrowingManager.getBorrowerDebtsCount(alice.address);
-        console.log(aliceBorrowingsCount);
+
         const bobBorrowingsCount = await borrowingManager.getBorrowerDebtsCount(bob.address);
         let debt: LiquidityBorrowingManager.BorrowingInfoExtStructOutput = (
             await borrowingManager.getBorrowerDebtsInfo(bob.address)

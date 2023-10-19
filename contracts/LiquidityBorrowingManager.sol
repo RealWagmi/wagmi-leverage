@@ -817,11 +817,11 @@ contract LiquidityBorrowingManager is
         if (!update) {
             // If it's a new position, ensure that the user does not have too many positions
             bytes32[] storage allUserBorrowingKeys = userBorrowingKeys[msg.sender];
+            // Add the borrowingKey to the user's borrowing keys
+            allUserBorrowingKeys.push(borrowingKey);
             (allUserBorrowingKeys.length > Constants.MAX_NUM_USER_POSOTION).revertError(
                 ErrLib.ErrorCode.TOO_MANY_USER_POSITIONS
             );
-            // Add the borrowingKey to the user's borrowing keys
-            allUserBorrowingKeys.push(borrowingKey);
         }
     }
 
