@@ -580,7 +580,7 @@ function setSwapCallToWhitelist(address swapTarget, bytes4 funcSelector, bool is
 ### takeOverDebt
 
 ```solidity
-function takeOverDebt(bytes32 borrowingKey, uint256 collateralAmt) external nonpayable
+function takeOverDebt(bytes32 borrowingKey, uint256 collateralAmt, uint256 minBorrowedAmount, uint256 deadline) external nonpayable
 ```
 
 Take over debt by transferring ownership of a borrowing to the current caller
@@ -593,6 +593,8 @@ Take over debt by transferring ownership of a borrowing to the current caller
 |---|---|---|
 | borrowingKey | bytes32 | The unique key associated with the borrowing to be taken over |
 | collateralAmt | uint256 | The amount of collateral to be provided by the new borrower |
+| minBorrowedAmount | uint256 | The minimum borrowed amount required to take over the debt. |
+| deadline | uint256 | The deadline timestamp after which the transaction is considered invalid. |
 
 ### tokenIdToBorrowingKeys
 

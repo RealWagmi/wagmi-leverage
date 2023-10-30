@@ -1199,6 +1199,7 @@ describe("WagmiLeverageTests", () => {
     it("takeOverDebt should be correct if the collateral is depleted", async () => {
         snapshot_global.restore();
         const aliceBorrowingsCount = await borrowingManager.getBorrowerDebtsCount(alice.address);
+        let deadline = (await time.latest()) + 60;
 
         const bobBorrowingsCount = await borrowingManager.getBorrowerDebtsCount(bob.address);
         let debt: LiquidityBorrowingManager.BorrowingInfoExtStructOutput = (
@@ -1206,13 +1207,14 @@ describe("WagmiLeverageTests", () => {
         )[0];
         expect(debt.collateralBalance).to.be.gte(0);
         let collateralDebt = debt.collateralBalance.div(COLLATERAL_BALANCE_PRECISION);
-        await expect(borrowingManager.connect(alice).takeOverDebt(debt.key, collateralDebt)).to.be.reverted; // forbidden
+        await expect(borrowingManager.connect(alice).takeOverDebt(debt.key, collateralDebt, debt.info.borrowedAmount, deadline)).to.be.reverted; // forbidden
         await time.increase(debt.estimatedLifeTime.toNumber() + 10);
+        deadline = (await time.latest()) + 60;
         debt = (await borrowingManager.getBorrowerDebtsInfo(bob.address))[0];
         expect(debt.collateralBalance).to.be.lt(0);
         collateralDebt = debt.collateralBalance.abs().div(COLLATERAL_BALANCE_PRECISION).add(1);
-        await expect(borrowingManager.connect(alice).takeOverDebt(debt.key, collateralDebt)).to.be.reverted; //collateralAmt is not enough
-        await borrowingManager.connect(alice).takeOverDebt(debt.key, collateralDebt.add(5));
+        await expect(borrowingManager.connect(alice).takeOverDebt(debt.key, collateralDebt, debt.info.borrowedAmount, deadline)).to.be.reverted; //collateralAmt is not enough
+        await borrowingManager.connect(alice).takeOverDebt(debt.key, collateralDebt.add(5), debt.info.borrowedAmount, deadline);
         expect(await borrowingManager.getBorrowerDebtsCount(bob.address)).to.be.equal(bobBorrowingsCount.sub(1));
         expect(await borrowingManager.getBorrowerDebtsCount(alice.address)).to.be.equal(aliceBorrowingsCount.add(1));//new 
         let loansInfo: LiquidityManager.LoanInfoStructOutput[] = await borrowingManager.getLoansInfo(debt.key);

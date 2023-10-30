@@ -15,7 +15,8 @@ library ErrLib {
         ERC20_APPROVE_DID_NOT_SUCCEED, // 9
         SWAP_TARGET_NOT_APPROVED, // 10
         INVALID_SWAP, //11
-        INVALID_CALLER //12
+        INVALID_CALLER, //12
+        UNEXPECTED_CHANGES //13
     }
 
     error RevertErrorCode(ErrorCode code);

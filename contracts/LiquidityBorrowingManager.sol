@@ -391,11 +391,22 @@ contract LiquidityBorrowingManager is
      * Emits a `TakeOverDebt` event.
      * @param borrowingKey The unique key associated with the borrowing to be taken over
      * @param collateralAmt The amount of collateral to be provided by the new borrower
+     * @param minBorrowedAmount The minimum borrowed amount required to take over the debt.
+     * @param deadline The deadline timestamp after which the transaction is considered invalid.
      */
-    function takeOverDebt(bytes32 borrowingKey, uint256 collateralAmt) external nonReentrant {
+    function takeOverDebt(
+        bytes32 borrowingKey,
+        uint256 collateralAmt,
+        uint256 minBorrowedAmount,
+        uint256 deadline
+    ) external nonReentrant checkDeadline(deadline) {
         BorrowingInfo memory oldBorrowing = borrowingsInfo[borrowingKey];
         // Ensure that the borrowed position exists
         (oldBorrowing.borrowedAmount == 0).revertError(ErrLib.ErrorCode.INVALID_BORROWING_KEY);
+        // Ensure that the borrowedAmount hasn't changed
+        (oldBorrowing.borrowedAmount < minBorrowedAmount).revertError(
+            ErrLib.ErrorCode.UNEXPECTED_CHANGES
+        );
 
         uint256 accLoanRatePerSeconds;
         uint256 minPayment;
