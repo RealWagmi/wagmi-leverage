@@ -1131,6 +1131,7 @@ describe("WagmiLeverageTests", () => {
     it("takeOverDebt should be correct if the collateral is depleted", async () => {
         snapshot_global.restore();
         const aliceBorrowingsCount = await borrowingManager.getBorrowerDebtsCount(alice.address);
+
         const bobBorrowingsCount = await borrowingManager.getBorrowerDebtsCount(bob.address);
         let debt: LiquidityBorrowingManager.BorrowingInfoExtStructOutput = (
             await borrowingManager.getBorrowerDebtsInfo(bob.address)
@@ -1145,9 +1146,18 @@ describe("WagmiLeverageTests", () => {
         await expect(borrowingManager.connect(alice).takeOverDebt(debt.key, collateralDebt)).to.be.reverted; //collateralAmt is not enough
         await borrowingManager.connect(alice).takeOverDebt(debt.key, collateralDebt.add(5));
         expect(await borrowingManager.getBorrowerDebtsCount(bob.address)).to.be.equal(bobBorrowingsCount.sub(1));
-        expect(await borrowingManager.getBorrowerDebtsCount(alice.address)).to.be.equal(aliceBorrowingsCount.add(1));
+        expect(await borrowingManager.getBorrowerDebtsCount(alice.address)).to.be.equal(aliceBorrowingsCount.add(1));//new 
+        let loansInfo: LiquidityManager.LoanInfoStructOutput[] = await borrowingManager.getLoansInfo(debt.key);
+        expect(loansInfo.length).to.be.equal(0);
         const borrowingsInfo = await borrowingManager.borrowingsInfo(debt.key);
         expect(borrowingsInfo.borrower).to.be.equal(constants.AddressZero);
+        const newBorrowingKey = await borrowingManager.userBorrowingKeys(alice.address, aliceBorrowingsCount);//aliceBorrowingsCount==0
+        expect(newBorrowingKey).to.be.not.equal(debt.key);
+        loansInfo = await borrowingManager.getLoansInfo(newBorrowingKey);
+        expect(loansInfo.length).to.be.equal(3);
+        debt = (await borrowingManager.getBorrowerDebtsInfo(alice.address))[0];
+        expect(newBorrowingKey).to.be.equal(debt.key);
+        expect(alice.address).to.be.equal(debt.info.borrower);
     });
 
     it("increase the collateral balance should be correct", async () => {

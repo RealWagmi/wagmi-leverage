@@ -438,7 +438,7 @@ contract LiquidityBorrowingManager is
                 accLoanRatePerSeconds
             );
         // Add the new borrowing key and old loans to the newBorrowing
-        _addKeysAndLoansInfo(newBorrowing.borrowedAmount > 0, borrowingKey, oldLoans);
+        _addKeysAndLoansInfo(newBorrowing.borrowedAmount > 0, newBorrowingKey, oldLoans);
         // Increase the borrowed amount, liquidation bonus, and fees owed of the newBorrowing based on the oldBorrowing
         newBorrowing.borrowedAmount += oldBorrowing.borrowedAmount;
         newBorrowing.liquidationBonus += oldBorrowing.liquidationBonus;
@@ -817,11 +817,11 @@ contract LiquidityBorrowingManager is
         if (!update) {
             // If it's a new position, ensure that the user does not have too many positions
             bytes32[] storage allUserBorrowingKeys = userBorrowingKeys[msg.sender];
+            // Add the borrowingKey to the user's borrowing keys
+            allUserBorrowingKeys.push(borrowingKey);
             (allUserBorrowingKeys.length > Constants.MAX_NUM_USER_POSOTION).revertError(
                 ErrLib.ErrorCode.TOO_MANY_USER_POSITIONS
             );
-            // Add the borrowingKey to the user's borrowing keys
-            allUserBorrowingKeys.push(borrowingKey);
         }
     }
 
