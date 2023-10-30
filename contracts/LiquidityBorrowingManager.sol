@@ -413,7 +413,7 @@ contract LiquidityBorrowingManager is
                 oldBorrowing.dailyRateCollateralBalance,
                 accLoanRatePerSeconds
             );
-            // Ensure that the collateral balance is greater than or equal to 0
+            // Ensure the position is under liquidation
             (collateralBalance >= 0).revertError(ErrLib.ErrorCode.FORBIDDEN);
             // Pick up platform fees from the oldBorrowing's holdToken and add them to the feesOwed
             currentFees = _pickUpPlatformFees(oldBorrowing.holdToken, currentFees);
@@ -447,7 +447,6 @@ contract LiquidityBorrowingManager is
         newBorrowing.dailyRateCollateralBalance +=
             (collateralAmt - minPayment) *
             Constants.COLLATERAL_BALANCE_PRECISION;
-        //newBorrowing.accLoanRatePerSeconds = oldBorrowing.accLoanRatePerSeconds;
         _pay(oldBorrowing.holdToken, msg.sender, VAULT_ADDRESS, collateralAmt + feesDebt);
         emit TakeOverDebt(oldBorrowing.borrower, msg.sender, borrowingKey, newBorrowingKey);
     }
@@ -562,11 +561,14 @@ contract LiquidityBorrowingManager is
 
             // Calculate liquidation bonus and adjust fees owed
 
-            if (
-                collateralBalance > 0 &&
-                (currentFees + borrowing.feesOwed) / Constants.COLLATERAL_BALANCE_PRECISION >
-                Constants.MINIMUM_AMOUNT
-            ) {
+            if (collateralBalance > 0) {
+                uint256 compensation = _calcFeeCompensationUpToMin(
+                    collateralBalance,
+                    currentFees,
+                    borrowing.feesOwed
+                );
+                currentFees += compensation;
+                collateralBalance -= int256(compensation);
                 liquidationBonus +=
                     uint256(collateralBalance) /
                     Constants.COLLATERAL_BALANCE_PRECISION;
@@ -700,6 +702,28 @@ contract LiquidityBorrowingManager is
             liquidationBonus = liq.minBonusAmount;
         }
         liquidationBonus *= times;
+    }
+
+    /**
+     * @dev Calculates the fee compensation up to the minimum amount.
+     * @param collateralBalance The current balance of collateral.
+     * @param currentFees The current fees.
+     * @param feesOwed The fees owed.
+     * @return compensation The fee compensation up to the minimum amount.
+     */
+    function _calcFeeCompensationUpToMin(
+        int256 collateralBalance,
+        uint256 currentFees,
+        uint256 feesOwed
+    ) private pure returns (uint256 compensation) {
+        uint256 minimum = Constants.MINIMUM_AMOUNT * Constants.COLLATERAL_BALANCE_PRECISION;
+        uint256 total = currentFees + feesOwed;
+        if (total < minimum) {
+            compensation = minimum - total;
+            if (uint256(collateralBalance) < compensation) {
+                compensation = uint256(collateralBalance);
+            }
+        }
     }
 
     /**

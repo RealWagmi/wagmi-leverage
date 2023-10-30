@@ -295,6 +295,74 @@ describe("WagmiLeverageTests", () => {
         snapshot_global = await takeSnapshot();
     });
 
+    it("The token flow should be correct(borrow then repay)", async () => {
+        const amountWBTC = ethers.utils.parseUnits("0.05", 8); //token0
+        const deadline = (await time.latest()) + 60;
+        const minLeverageDesired = 50;
+        const maxCollateralWBTC = amountWBTC.div(minLeverageDesired);
+
+        const loans = [
+            {
+                liquidity: nftpos[3].liquidity,
+                tokenId: nftpos[3].tokenId,
+            },
+        ];
+
+        const swapParams: ApproveSwapAndPay.SwapParamsStruct = {
+            swapTarget: constants.AddressZero,
+            swapAmountInDataIndex: 0,
+            maxGasForCall: 0,
+            swapData: swapData,
+        };
+
+        const borrowParams: LiquidityBorrowingManager.BorrowParamsStruct = {
+            internalSwapPoolfee: 500,
+            saleToken: WETH_ADDRESS,
+            holdToken: WBTC_ADDRESS,
+            minHoldTokenOut: amountWBTC,
+            maxCollateral: maxCollateralWBTC,
+            externalSwap: swapParams,
+            loans: loans,
+        };
+
+        //borrow tokens
+        await borrowingManager.connect(bob).borrow(borrowParams, deadline);
+
+        const borrowingKey = await borrowingManager.userBorrowingKeys(bob.address, 0);
+
+        let repayParams = {
+            isEmergency: false,
+            internalSwapPoolfee: 500,
+            externalSwap: swapParams,
+            borrowingKey: borrowingKey,
+            swapSlippageBP1000: 990, //1%
+        };
+
+        const WBTC: IERC20 = await ethers.getContractAt("IERC20", WBTC_ADDRESS);
+        const prevBalanceLender = await WBTC.balanceOf(alice.address);
+        const prevBalance = await WBTC.balanceOf(bob.address);
+        const prevPlatformsFees = (await borrowingManager.getPlatformsFeesInfo([WBTC_ADDRESS]))[0];
+
+        //query amount of collateral available
+        const borrowingsInfo = await borrowingManager.borrowingsInfo(borrowingKey);
+        const dailyCollateral = borrowingsInfo.dailyRateCollateralBalance.div(COLLATERAL_BALANCE_PRECISION);
+        const liquidationBonus = borrowingsInfo.liquidationBonus;
+        //should be more than 0
+        expect(dailyCollateral).to.be.gt(0);
+        expect(liquidationBonus).to.be.gt(0);
+        //console.log("dailyCollateral", dailyCollateral.toString());
+
+        //BOB repay his loan but loose his dailyCollateral even tho it hasn't been a day
+        await borrowingManager.connect(bob).repay(repayParams, deadline);
+
+        const newBalance = await WBTC.balanceOf(bob.address);
+        const newBalanceLender = await WBTC.balanceOf(alice.address);
+        const newPlatformsFees = (await borrowingManager.getPlatformsFeesInfo([WBTC_ADDRESS]))[0];
+        expect(newPlatformsFees).to.be.equal(prevPlatformsFees.add(200));//+20% of MINIMUM_AMOUNT
+        expect(newBalanceLender).to.be.equal(prevBalanceLender.add(800));//+80% of MINIMUM_AMOUNT
+        expect(newBalance).to.be.equal(prevBalance.add(liquidationBonus).add(dailyCollateral.sub(1000)));//- MINIMUM_AMOUNT
+    });
+
     it("LEFT_OUTRANGE_TOKEN_1 borrowing liquidity (long position WBTC zeroForSaleToken = false)  will be successful", async () => {
         const amountWBTC = ethers.utils.parseUnits("0.05", 8); //token0
         const deadline = (await time.latest()) + 60;
