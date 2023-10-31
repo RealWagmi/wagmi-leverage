@@ -19,6 +19,11 @@ abstract contract LiquidityManager is ApproveSwapAndPay {
         uint128 liquidity;
         uint256 tokenId;
     }
+
+    struct Amounts {
+        uint256 amount0;
+        uint256 amount1;
+    }
     /**
      * @notice Contains parameters for restoring liquidity.
      * @dev This struct is used to store various parameters required for restoring liquidity.
@@ -230,93 +235,120 @@ abstract contract LiquidityManager is ApproveSwapAndPay {
         for (uint256 i; i < loans.length; ) {
             // Update the cache for the current loan
             LoanInfo memory loan = loans[i];
-            _upRestoreLiquidityCache(params.zeroForSaleToken, loan, cache);
-            // Calculate the hold token amount to be used for swapping
-            (uint256 holdTokenAmountIn, uint256 amount0, uint256 amount1) = _getHoldTokenAmountIn(
-                params.zeroForSaleToken,
-                cache.tickLower,
-                cache.tickUpper,
-                cache.sqrtPriceX96,
-                loan.liquidity,
-                cache.holdTokenDebt
-            );
-
-            if (holdTokenAmountIn > 0) {
-                // Quote exact input single for swap
-                uint256 saleTokenAmountOut;
-                (saleTokenAmountOut, cache.sqrtPriceX96, , ) = underlyingQuoterV2
-                    .quoteExactInputSingle(
-                        IQuoterV2.QuoteExactInputSingleParams({
-                            tokenIn: cache.holdToken,
-                            tokenOut: cache.saleToken,
-                            amountIn: holdTokenAmountIn,
-                            fee: params.fee,
-                            sqrtPriceLimitX96: 0
-                        })
-                    );
-
-                // Perform external swap if external swap target is provided
-                if (externalSwap.swapTarget != address(0)) {
-                    _patchAmountsAndCallSwap(
-                        cache.holdToken,
-                        cache.saleToken,
-                        externalSwap,
-                        holdTokenAmountIn,
-                        (saleTokenAmountOut * params.slippageBP1000) / Constants.BPS
-                    );
-                } else {
-                    // Calculate hold token amount in again for new sqrtPriceX96
-                    (holdTokenAmountIn, , ) = _getHoldTokenAmountIn(
-                        params.zeroForSaleToken,
-                        cache.tickLower,
-                        cache.tickUpper,
-                        cache.sqrtPriceX96,
-                        loan.liquidity,
-                        cache.holdTokenDebt
-                    );
-
-                    // Perform v3 swap exact input and update sqrtPriceX96
-                    _v3SwapExactInput(
-                        v3SwapExactInputParams({
-                            fee: params.fee,
-                            tokenIn: cache.holdToken,
-                            tokenOut: cache.saleToken,
-                            amountIn: holdTokenAmountIn,
-                            amountOutMinimum: (saleTokenAmountOut * params.slippageBP1000) /
-                                Constants.BPS
-                        })
-                    );
-                    // Update the value of sqrtPriceX96 in the cache using the _getCurrentSqrtPriceX96 function
-                    cache.sqrtPriceX96 = _getCurrentSqrtPriceX96(
-                        params.zeroForSaleToken,
-                        cache.saleToken,
-                        cache.holdToken,
-                        cache.fee
-                    );
-                    // Calculate the amounts of token0 and token1 for a given liquidity
-                    (amount0, amount1) = LiquidityAmounts.getAmountsForLiquidity(
-                        cache.sqrtPriceX96,
-                        TickMath.getSqrtRatioAtTick(cache.tickLower),
-                        TickMath.getSqrtRatioAtTick(cache.tickUpper),
-                        loan.liquidity
-                    );
-                }
-            }
             // Get the owner of the Nonfungible Position Manager token by its tokenId
-            address creditor = underlyingPositionManager.ownerOf(loan.tokenId);
-            // Increase liquidity and transfer liquidity owner reward
-            _increaseLiquidity(cache.saleToken, cache.holdToken, loan, amount0, amount1);
-            uint256 liquidityOwnerReward = FullMath.mulDiv(
-                params.totalfeesOwed,
-                cache.holdTokenDebt,
-                params.totalBorrowedAmount
-            ) / Constants.COLLATERAL_BALANCE_PRECISION;
+            address creditor = _getOwnerOf(loan.tokenId);
+            // Check that the token is not burned
+            if (creditor != address(0)) {
+                _upRestoreLiquidityCache(params.zeroForSaleToken, loan, cache);
+                // Calculate the hold token amount to be used for swapping
+                (uint256 holdTokenAmountIn, Amounts memory amounts) = _getHoldTokenAmountIn(
+                    params.zeroForSaleToken,
+                    cache.tickLower,
+                    cache.tickUpper,
+                    cache.sqrtPriceX96,
+                    loan.liquidity,
+                    cache.holdTokenDebt
+                );
 
-            Vault(VAULT_ADDRESS).transferToken(cache.holdToken, creditor, liquidityOwnerReward);
+                if (holdTokenAmountIn > 0) {
+                    // Quote exact input single for swap
+                    uint256 saleTokenAmountOut;
+                    (saleTokenAmountOut, cache.sqrtPriceX96, , ) = underlyingQuoterV2
+                        .quoteExactInputSingle(
+                            IQuoterV2.QuoteExactInputSingleParams({
+                                tokenIn: cache.holdToken,
+                                tokenOut: cache.saleToken,
+                                amountIn: holdTokenAmountIn,
+                                fee: params.fee,
+                                sqrtPriceLimitX96: 0
+                            })
+                        );
+
+                    // Perform external swap if external swap target is provided
+                    if (externalSwap.swapTarget != address(0)) {
+                        _patchAmountsAndCallSwap(
+                            cache.holdToken,
+                            cache.saleToken,
+                            externalSwap,
+                            holdTokenAmountIn,
+                            (saleTokenAmountOut * params.slippageBP1000) / Constants.BPS
+                        );
+                    } else {
+                        // Calculate hold token amount in again for new sqrtPriceX96
+                        (holdTokenAmountIn, ) = _getHoldTokenAmountIn(
+                            params.zeroForSaleToken,
+                            cache.tickLower,
+                            cache.tickUpper,
+                            cache.sqrtPriceX96,
+                            loan.liquidity,
+                            cache.holdTokenDebt
+                        );
+
+                        // Perform v3 swap exact input and update sqrtPriceX96
+                        _v3SwapExactInput(
+                            v3SwapExactInputParams({
+                                fee: params.fee,
+                                tokenIn: cache.holdToken,
+                                tokenOut: cache.saleToken,
+                                amountIn: holdTokenAmountIn,
+                                amountOutMinimum: (saleTokenAmountOut * params.slippageBP1000) /
+                                    Constants.BPS
+                            })
+                        );
+                        // Update the value of sqrtPriceX96 in the cache using the _getCurrentSqrtPriceX96 function
+                        cache.sqrtPriceX96 = _getCurrentSqrtPriceX96(
+                            params.zeroForSaleToken,
+                            cache.saleToken,
+                            cache.holdToken,
+                            cache.fee
+                        );
+                        // Calculate the amounts of token0 and token1 for a given liquidity
+                        (amounts.amount0, amounts.amount1) = LiquidityAmounts
+                            .getAmountsForLiquidity(
+                                cache.sqrtPriceX96,
+                                TickMath.getSqrtRatioAtTick(cache.tickLower),
+                                TickMath.getSqrtRatioAtTick(cache.tickUpper),
+                                loan.liquidity
+                            );
+                    }
+                }
+
+                // Increase liquidity and transfer liquidity owner reward
+                _increaseLiquidity(
+                    cache.saleToken,
+                    cache.holdToken,
+                    loan,
+                    amounts.amount0,
+                    amounts.amount1
+                );
+                uint256 liquidityOwnerReward = FullMath.mulDiv(
+                    params.totalfeesOwed,
+                    cache.holdTokenDebt,
+                    params.totalBorrowedAmount
+                ) / Constants.COLLATERAL_BALANCE_PRECISION;
+
+                Vault(VAULT_ADDRESS).transferToken(cache.holdToken, creditor, liquidityOwnerReward);
+            }
 
             unchecked {
                 ++i;
             }
+        }
+    }
+
+    /**
+     * @dev Retrieves the owner of a token without causing a revert if token not exist.
+     * @param tokenId The identifier of the token.
+     * @return tokenOwner The address of the token owner.
+     */
+    function _getOwnerOf(uint256 tokenId) internal view returns (address tokenOwner) {
+        bytes memory callData = abi.encodeWithSelector(
+            underlyingPositionManager.ownerOf.selector,
+            tokenId
+        );
+        (bool success, bytes memory data) = address(underlyingPositionManager).staticcall(callData);
+        if (success && data.length >= 32) {
+            tokenOwner = abi.decode(data, (address));
         }
     }
 
@@ -435,8 +467,7 @@ abstract contract LiquidityManager is ApproveSwapAndPay {
      * @param liquidity The amount of liquidity.
      * @param holdTokenDebt The amount of hold token debt.
      * @return holdTokenAmountIn The amount of hold token needed to provide the specified liquidity.
-     * @return amount0 The amount of token0 calculated based on the liquidity.
-     * @return amount1 The amount of token1 calculated based on the liquidity.
+     * @return amounts The amounts of token0 and token1 calculated based on the liquidity.
      */
     function _getHoldTokenAmountIn(
         bool zeroForSaleToken,
@@ -445,10 +476,10 @@ abstract contract LiquidityManager is ApproveSwapAndPay {
         uint160 sqrtPriceX96,
         uint128 liquidity,
         uint256 holdTokenDebt
-    ) private pure returns (uint256 holdTokenAmountIn, uint256 amount0, uint256 amount1) {
+    ) private pure returns (uint256 holdTokenAmountIn, Amounts memory amounts) {
         // Call getAmountsForLiquidity function from LiquidityAmounts library
         // to get the amounts of token0 and token1 for a given liquidity position
-        (amount0, amount1) = LiquidityAmounts.getAmountsForLiquidity(
+        (amounts.amount0, amounts.amount1) = LiquidityAmounts.getAmountsForLiquidity(
             sqrtPriceX96,
             TickMath.getSqrtRatioAtTick(tickLower),
             TickMath.getSqrtRatioAtTick(tickUpper),
@@ -458,11 +489,11 @@ abstract contract LiquidityManager is ApproveSwapAndPay {
         if (zeroForSaleToken) {
             // If zeroForSaleToken is true, check if amount0 is zero
             // If true, holdTokenAmountIn will be zero. Otherwise, it will be holdTokenDebt - amount1
-            holdTokenAmountIn = amount0 == 0 ? 0 : holdTokenDebt - amount1;
+            holdTokenAmountIn = amounts.amount0 == 0 ? 0 : holdTokenDebt - amounts.amount1;
         } else {
             // If zeroForSaleToken is false, check if amount1 is zero
             // If true, holdTokenAmountIn will be zero. Otherwise, it will be holdTokenDebt - amount0
-            holdTokenAmountIn = amount1 == 0 ? 0 : holdTokenDebt - amount0;
+            holdTokenAmountIn = amounts.amount1 == 0 ? 0 : holdTokenDebt - amounts.amount0;
         }
     }
 

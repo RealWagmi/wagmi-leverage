@@ -766,7 +766,7 @@ contract LiquidityBorrowingManager is
         for (uint256 i; i < loans.length; ) {
             LoanInfo memory loan = loans[i];
             // Get the owner address of the loan's token ID using the underlyingPositionManager contract.
-            address creditor = underlyingPositionManager.ownerOf(loan.tokenId);
+            address creditor = _getOwnerOf(loan.tokenId);
             // Check if the owner of the loan's token ID is equal to the `msg.sender`.
             if (creditor == msg.sender) {
                 // If the owner matches the `msg.sender`, replace the current loan with the last loan in the loans array
