@@ -158,6 +158,9 @@ abstract contract ApproveSwapAndPay {
         // Maximizing approval if necessary
         _maxApproveIfNecessary(tokenIn, externalSwap.swapTarget, amountIn);
         uint256 balanceOutBefore = _getBalance(tokenOut);
+        (externalSwap.swapAmountInDataIndex > externalSwap.swapData.length / 0x20).revertError(
+            ErrLib.ErrorCode.INVALID_SWAP
+        );
         // Patching the amount and calling the external swap
         externalSwap.swapTarget._patchAmountAndCall(
             externalSwap.swapData,
