@@ -5,7 +5,7 @@ library ErrLib {
     enum ErrorCode {
         INVALID_BORROWING_KEY, // 0
         LIQUIDITY_IS_ZERO, // 1
-        TOO_BIG_COLLATERAL, // 2
+        TOO_BIG_MARGIN_DEPOSIT, // 2
         TOO_OLD_TRANSACTION, // 3
         FORBIDDEN, // 4
         COLLATERAL_AMOUNT_IS_NOT_ENOUGH, // 5
@@ -16,7 +16,8 @@ library ErrLib {
         SWAP_TARGET_NOT_APPROVED, // 10
         INVALID_SWAP, //11
         INVALID_CALLER, //12
-        UNEXPECTED_CHANGES //13
+        UNEXPECTED_CHANGES, //13
+        TOO_BIG_DAILY_RATE //14
     }
 
     error RevertErrorCode(ErrorCode code);

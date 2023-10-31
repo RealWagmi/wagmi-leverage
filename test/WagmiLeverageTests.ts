@@ -299,7 +299,7 @@ describe("WagmiLeverageTests", () => {
         const amountWBTC = ethers.utils.parseUnits("0.05", 8); //token0
         const deadline = (await time.latest()) + 60;
         const minLeverageDesired = 50;
-        const maxCollateralWBTC = amountWBTC.div(minLeverageDesired);
+        const maxMarginDepositWBTC = amountWBTC.div(minLeverageDesired);
 
         const loans = [
             {
@@ -315,15 +315,19 @@ describe("WagmiLeverageTests", () => {
             swapData: swapData,
         };
 
-        const borrowParams: LiquidityBorrowingManager.BorrowParamsStruct = {
+
+        let borrowParams: LiquidityBorrowingManager.BorrowParamsStruct = {
             internalSwapPoolfee: 500,
             saleToken: WETH_ADDRESS,
             holdToken: WBTC_ADDRESS,
             minHoldTokenOut: amountWBTC,
-            maxCollateral: maxCollateralWBTC,
+            maxMarginDeposit: maxMarginDepositWBTC,
+            maxDailyRate: 0,
             externalSwap: swapParams,
             loans: loans,
         };
+
+        borrowParams.maxDailyRate = (await borrowingManager.getHoldTokenDailyRateInfo(borrowParams.saleToken, borrowParams.holdToken))[0];
 
         //borrow tokens
         await borrowingManager.connect(bob).borrow(borrowParams, deadline);
@@ -367,7 +371,7 @@ describe("WagmiLeverageTests", () => {
         const amountWBTC = ethers.utils.parseUnits("0.05", 8); //token0
         const deadline = (await time.latest()) + 60;
         const minLeverageDesired = 50;
-        const maxCollateralWBTC = amountWBTC.div(minLeverageDesired);
+        const maxMarginDepositWBTC = amountWBTC.div(minLeverageDesired);
 
         const loans = [
             {
@@ -383,12 +387,15 @@ describe("WagmiLeverageTests", () => {
             swapData: swapData,
         };
 
+        const maxDailyRate = (await borrowingManager.getHoldTokenDailyRateInfo(WETH_ADDRESS, WBTC_ADDRESS))[0];
+
         let params: LiquidityBorrowingManager.BorrowParamsStruct = {
             internalSwapPoolfee: 500,
             saleToken: WETH_ADDRESS,
             holdToken: WBTC_ADDRESS,
             minHoldTokenOut: amountWBTC.mul(2), //<=TooLittleReceivedError
-            maxCollateral: maxCollateralWBTC,
+            maxMarginDeposit: maxMarginDepositWBTC,
+            maxDailyRate: maxDailyRate,
             externalSwap: swapParams,
             loans: loans,
         };
@@ -400,7 +407,8 @@ describe("WagmiLeverageTests", () => {
             saleToken: WETH_ADDRESS,
             holdToken: WBTC_ADDRESS,
             minHoldTokenOut: amountWBTC,
-            maxCollateral: maxCollateralWBTC,
+            maxMarginDeposit: maxMarginDepositWBTC,
+            maxDailyRate: maxDailyRate,
             externalSwap: swapParams,
             loans: loans,
         };
@@ -412,7 +420,7 @@ describe("WagmiLeverageTests", () => {
         const amountWBTC = ethers.utils.parseUnits("0.05", 8); //token0
         const deadline = (await time.latest()) + 60;
         const minLeverageDesired = 50;
-        const maxCollateralWBTC = amountWBTC.div(minLeverageDesired);
+        const maxMarginDepositWBTC = amountWBTC.div(minLeverageDesired);
 
         const loans = [
             {
@@ -428,15 +436,20 @@ describe("WagmiLeverageTests", () => {
             swapData: swapData,
         };
 
+        const maxDailyRate = (await borrowingManager.getHoldTokenDailyRateInfo(WETH_ADDRESS, WBTC_ADDRESS))[0];
+
         const params: LiquidityBorrowingManager.BorrowParamsStruct = {
             internalSwapPoolfee: 500,
             saleToken: WETH_ADDRESS,
             holdToken: WBTC_ADDRESS,
             minHoldTokenOut: amountWBTC,
-            maxCollateral: maxCollateralWBTC,
+            maxMarginDeposit: maxMarginDepositWBTC,
+            maxDailyRate: maxDailyRate,
             externalSwap: swapParams,
             loans: loans,
         };
+
+
         let snapshot: SnapshotRestorer = await takeSnapshot();
         await time.increase(86400);
         await expect(borrowingManager.connect(bob).borrow(params, deadline)).to.be.reverted; //'Transaction too old'
@@ -449,7 +462,7 @@ describe("WagmiLeverageTests", () => {
         const amountWBTC = ethers.utils.parseUnits("0.05", 8); //token0
         const deadline = (await time.latest()) + 60;
         const minLeverageDesired = 50;
-        const maxCollateralWBTC = amountWBTC.div(minLeverageDesired);
+        const maxMarginDepositWBTC = amountWBTC.div(minLeverageDesired);
 
         const loans = [
             {
@@ -465,12 +478,15 @@ describe("WagmiLeverageTests", () => {
             swapData: swapData,
         };
 
+        const maxDailyRate = (await borrowingManager.getHoldTokenDailyRateInfo(WETH_ADDRESS, WBTC_ADDRESS))[0];
+
         const params: LiquidityBorrowingManager.BorrowParamsStruct = {
             internalSwapPoolfee: 500,
             saleToken: WETH_ADDRESS,
             holdToken: WBTC_ADDRESS,
             minHoldTokenOut: amountWBTC,
-            maxCollateral: maxCollateralWBTC,
+            maxMarginDeposit: maxMarginDepositWBTC,
+            maxDailyRate: maxDailyRate,
             externalSwap: swapParams,
             loans: loans,
         };
@@ -525,7 +541,7 @@ describe("WagmiLeverageTests", () => {
         const amountWETH = ethers.utils.parseUnits("0.88", 18);
         const deadline = (await time.latest()) + 60;
         const minLeverageDesired = 50;
-        const maxCollateral = amountWETH.div(minLeverageDesired);
+        const maxMarginDeposit = amountWETH.div(minLeverageDesired);
 
         const loans = [
             {
@@ -541,12 +557,16 @@ describe("WagmiLeverageTests", () => {
             swapData: swapData,
         };
 
+        const maxDailyRate = (await borrowingManager.getHoldTokenDailyRateInfo(WBTC_ADDRESS, WETH_ADDRESS))[0];
+
+
         let params: LiquidityBorrowingManager.BorrowParamsStruct = {
             internalSwapPoolfee: 500,
             saleToken: WBTC_ADDRESS,
             holdToken: WETH_ADDRESS,
             minHoldTokenOut: amountWETH.mul(2), //<=TooLittleReceivedError
-            maxCollateral: maxCollateral,
+            maxMarginDeposit: maxMarginDeposit,
+            maxDailyRate: maxDailyRate,
             externalSwap: swapParams,
             loans: loans,
         };
@@ -558,7 +578,8 @@ describe("WagmiLeverageTests", () => {
             saleToken: WBTC_ADDRESS,
             holdToken: WETH_ADDRESS,
             minHoldTokenOut: amountWETH,
-            maxCollateral: maxCollateral,
+            maxMarginDeposit: maxMarginDeposit,
+            maxDailyRate: maxDailyRate,
             externalSwap: swapParams,
             loans: loans,
         };
@@ -570,7 +591,7 @@ describe("WagmiLeverageTests", () => {
         const amountWETH = ethers.utils.parseUnits("0.88", 18);
         const deadline = (await time.latest()) + 60;
         const minLeverageDesired = 50;
-        const maxCollateral = amountWETH.div(minLeverageDesired);
+        const maxMarginDeposit = amountWETH.div(minLeverageDesired);
 
         const loans = [
             {
@@ -586,12 +607,15 @@ describe("WagmiLeverageTests", () => {
             swapData: swapData,
         };
 
+        const maxDailyRate = (await borrowingManager.getHoldTokenDailyRateInfo(WBTC_ADDRESS, WETH_ADDRESS))[0];
+
         const params: LiquidityBorrowingManager.BorrowParamsStruct = {
             internalSwapPoolfee: 500,
             saleToken: WBTC_ADDRESS,
             holdToken: WETH_ADDRESS,
             minHoldTokenOut: amountWETH,
-            maxCollateral: maxCollateral,
+            maxMarginDeposit: maxMarginDeposit,
+            maxDailyRate: maxDailyRate,
             externalSwap: swapParams,
             loans: loans,
         };
@@ -607,7 +631,7 @@ describe("WagmiLeverageTests", () => {
         const amountWETH = ethers.utils.parseUnits("0.88", 18);
         const deadline = (await time.latest()) + 60;
         const minLeverageDesired = 50;
-        const maxCollateral = amountWETH.div(minLeverageDesired);
+        const maxMarginDeposit = amountWETH.div(minLeverageDesired);
 
         const loans = [
             {
@@ -623,12 +647,15 @@ describe("WagmiLeverageTests", () => {
             swapData: swapData,
         };
 
+        const maxDailyRate = (await borrowingManager.getHoldTokenDailyRateInfo(WBTC_ADDRESS, WETH_ADDRESS))[0];
+
         const params: LiquidityBorrowingManager.BorrowParamsStruct = {
             internalSwapPoolfee: 500,
             saleToken: WBTC_ADDRESS,
             holdToken: WETH_ADDRESS,
             minHoldTokenOut: amountWETH,
-            maxCollateral: maxCollateral,
+            maxMarginDeposit: maxMarginDeposit,
+            maxDailyRate: maxDailyRate,
             externalSwap: swapParams,
             loans: loans,
         };
@@ -683,7 +710,7 @@ describe("WagmiLeverageTests", () => {
         const amountWETH = ethers.utils.parseUnits("0.88", 18);
         const deadline = (await time.latest()) + 60;
         const minLeverageDesired = 50;
-        const maxCollateral = amountWETH.div(minLeverageDesired);
+        const maxMarginDeposit = amountWETH.div(minLeverageDesired);
 
         const loans = [
             {
@@ -699,12 +726,15 @@ describe("WagmiLeverageTests", () => {
             swapData: swapData,
         };
 
+        const maxDailyRate = (await borrowingManager.getHoldTokenDailyRateInfo(USDT_ADDRESS, WETH_ADDRESS))[0];
+
         let params: LiquidityBorrowingManager.BorrowParamsStruct = {
             internalSwapPoolfee: 500,
             saleToken: USDT_ADDRESS,
             holdToken: WETH_ADDRESS,
             minHoldTokenOut: amountWETH.mul(2), //<=TooLittleReceivedError
-            maxCollateral: maxCollateral,
+            maxMarginDeposit: maxMarginDeposit,
+            maxDailyRate: maxDailyRate,
             externalSwap: swapParams,
             loans: loans,
         };
@@ -716,7 +746,8 @@ describe("WagmiLeverageTests", () => {
             saleToken: USDT_ADDRESS,
             holdToken: WETH_ADDRESS,
             minHoldTokenOut: amountWETH,
-            maxCollateral: maxCollateral,
+            maxMarginDeposit: maxMarginDeposit,
+            maxDailyRate: maxDailyRate,
             externalSwap: swapParams,
             loans: loans,
         };
@@ -728,7 +759,7 @@ describe("WagmiLeverageTests", () => {
         const amountWETH = ethers.utils.parseUnits("0.88", 18);
         const deadline = (await time.latest()) + 60;
         const minLeverageDesired = 50;
-        const maxCollateral = amountWETH.div(minLeverageDesired);
+        const maxMarginDeposit = amountWETH.div(minLeverageDesired);
 
         const loans = [
             {
@@ -744,12 +775,15 @@ describe("WagmiLeverageTests", () => {
             swapData: swapData,
         };
 
+        const maxDailyRate = (await borrowingManager.getHoldTokenDailyRateInfo(USDT_ADDRESS, WETH_ADDRESS))[0];
+
         const params: LiquidityBorrowingManager.BorrowParamsStruct = {
             internalSwapPoolfee: 500,
             saleToken: USDT_ADDRESS,
             holdToken: WETH_ADDRESS,
             minHoldTokenOut: amountWETH,
-            maxCollateral: maxCollateral,
+            maxMarginDeposit: maxMarginDeposit,
+            maxDailyRate: maxDailyRate,
             externalSwap: swapParams,
             loans: loans,
         };
@@ -762,7 +796,7 @@ describe("WagmiLeverageTests", () => {
         const amountWETH = ethers.utils.parseUnits("0.88", 18);
         let deadline = (await time.latest()) + 60;
         const minLeverageDesired = 50;
-        const maxCollateral = amountWETH.div(minLeverageDesired);
+        const maxMarginDeposit = amountWETH.div(minLeverageDesired);
 
         const loans = [
             {
@@ -778,12 +812,15 @@ describe("WagmiLeverageTests", () => {
             swapData: swapData,
         };
 
+        const maxDailyRate = (await borrowingManager.getHoldTokenDailyRateInfo(USDT_ADDRESS, WETH_ADDRESS))[0];
+
         const params: LiquidityBorrowingManager.BorrowParamsStruct = {
             internalSwapPoolfee: 500,
             saleToken: USDT_ADDRESS,
             holdToken: WETH_ADDRESS,
             minHoldTokenOut: amountWETH,
-            maxCollateral: maxCollateral,
+            maxMarginDeposit: maxMarginDeposit,
+            maxDailyRate: maxDailyRate,
             externalSwap: swapParams,
             loans: loans,
         };
@@ -836,7 +873,7 @@ describe("WagmiLeverageTests", () => {
         const amountWBTC = ethers.utils.parseUnits("0.2", 8); //token0
         const deadline = (await time.latest()) + 60;
         const minLeverageDesired = 80;
-        const maxCollateralWBTC = amountWBTC.div(minLeverageDesired);
+        const maxMarginDepositWBTC = amountWBTC.div(minLeverageDesired);
 
         let swap_params = ethers.utils.defaultAbiCoder.encode(
             ["address", "address", "uint256", "uint256"],
@@ -866,12 +903,15 @@ describe("WagmiLeverageTests", () => {
             },
         ];
 
+        const maxDailyRate = (await borrowingManager.getHoldTokenDailyRateInfo(WETH_ADDRESS, WBTC_ADDRESS))[0];
+
         let params = {
             internalSwapPoolfee: 500,
             saleToken: WETH_ADDRESS,
             holdToken: WBTC_ADDRESS,
             minHoldTokenOut: BigNumber.from(1), //amountWBTC,
-            maxCollateral: maxCollateralWBTC,
+            maxMarginDeposit: maxMarginDepositWBTC,
+            maxDailyRate: maxDailyRate,
             externalSwap: swapParams,
             loans: loans,
         };
@@ -883,7 +923,7 @@ describe("WagmiLeverageTests", () => {
         const amountWBTC = ethers.utils.parseUnits("0.2", 8); //token0
         const deadline = (await time.latest()) + 60;
         const minLeverageDesired = 80;
-        const maxCollateralWBTC = amountWBTC.div(minLeverageDesired);
+        const maxMarginDepositWBTC = amountWBTC.div(minLeverageDesired);
 
         let swap_params = ethers.utils.defaultAbiCoder.encode(
             ["address", "address", "uint256", "uint256"],
@@ -913,12 +953,15 @@ describe("WagmiLeverageTests", () => {
             },
         ];
 
+        const maxDailyRate = (await borrowingManager.getHoldTokenDailyRateInfo(WETH_ADDRESS, WBTC_ADDRESS))[0];
+
         let params: LiquidityBorrowingManager.BorrowParamsStruct = {
             internalSwapPoolfee: 500,
             saleToken: WETH_ADDRESS,
             holdToken: WBTC_ADDRESS,
             minHoldTokenOut: amountWBTC,
-            maxCollateral: maxCollateralWBTC,
+            maxMarginDeposit: maxMarginDepositWBTC,
+            maxDailyRate: maxDailyRate,
             externalSwap: swapParams,
             loans: loans,
         };
@@ -931,8 +974,8 @@ describe("WagmiLeverageTests", () => {
         const amountWETH = ethers.utils.parseUnits("2.90", 18); //token0
         const deadline = (await time.latest()) + 60;
         const minLeverageDesired = 80;
-        const maxCollateral = amountWETH.div(minLeverageDesired);
-        const maxCollateralWBTC = amountWBTC.div(minLeverageDesired);
+        const maxMarginDeposit = amountWETH.div(minLeverageDesired);
+        const maxMarginDepositWBTC = amountWBTC.div(minLeverageDesired);
 
         let swap_params = ethers.utils.defaultAbiCoder.encode(
             ["address", "address", "uint256", "uint256"],
@@ -962,12 +1005,15 @@ describe("WagmiLeverageTests", () => {
             },
         ];
 
+        let maxDailyRate = (await borrowingManager.getHoldTokenDailyRateInfo(WETH_ADDRESS, WBTC_ADDRESS))[0];
+
         let params = {
             internalSwapPoolfee: 500,
             saleToken: WETH_ADDRESS,
             holdToken: WBTC_ADDRESS,
             minHoldTokenOut: amountWBTC,
-            maxCollateral: maxCollateralWBTC,
+            maxMarginDeposit: maxMarginDepositWBTC,
+            maxDailyRate: maxDailyRate,
             externalSwap: swapParams,
             loans: loans,
         };
@@ -1008,12 +1054,15 @@ describe("WagmiLeverageTests", () => {
             },
         ];
 
+        maxDailyRate = (await borrowingManager.getHoldTokenDailyRateInfo(USDT_ADDRESS, WETH_ADDRESS))[0];
+
         params = {
             internalSwapPoolfee: 500,
             saleToken: USDT_ADDRESS,
             holdToken: WETH_ADDRESS,
             minHoldTokenOut: amountWETH,
-            maxCollateral: maxCollateral,
+            maxMarginDeposit: maxMarginDeposit,
+            maxDailyRate: maxDailyRate,
             externalSwap: swapParams,
             loans: loans,
         };

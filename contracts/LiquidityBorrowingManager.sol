@@ -32,8 +32,10 @@ contract LiquidityBorrowingManager is
         address holdToken;
         /// @notice The minimum amount of holdToken that must be obtained
         uint256 minHoldTokenOut;
-        /// @notice The maximum amount of collateral that can be provided for the loan
-        uint256 maxCollateral;
+        /// @notice The maximum amount of margin deposit that can be provided
+        uint256 maxMarginDeposit;
+        /// @notice The maximum allowable daily rate
+        uint256 maxDailyRate;
         /// @notice The SwapParams struct representing the external swap parameters
         SwapParams externalSwap;
         /// @notice An array of LoanInfo structs representing multiple loans
@@ -498,10 +500,10 @@ contract LiquidityBorrowingManager is
         borrowing.dailyRateCollateralBalance +=
             cache.dailyRateCollateral *
             Constants.COLLATERAL_BALANCE_PRECISION;
-        // Checking if borrowing collateral exceeds the maximum allowed collateral
-        uint256 borrowingCollateral = cache.borrowedAmount - cache.holdTokenBalance;
-        (borrowingCollateral > params.maxCollateral).revertError(
-            ErrLib.ErrorCode.TOO_BIG_COLLATERAL
+        // Checking if borrowing marginDeposit exceeds the maximum allowed
+        uint256 marginDeposit = cache.borrowedAmount - cache.holdTokenBalance;
+        (marginDeposit > params.maxMarginDeposit).revertError(
+            ErrLib.ErrorCode.TOO_BIG_MARGIN_DEPOSIT
         );
 
         // Transfer the required tokens to the VAULT_ADDRESS for collateral and holdTokenBalance
@@ -509,7 +511,7 @@ contract LiquidityBorrowingManager is
             params.holdToken,
             msg.sender,
             VAULT_ADDRESS,
-            borrowingCollateral + liquidationBonus + cache.dailyRateCollateral + feesDebt
+            marginDeposit + liquidationBonus + cache.dailyRateCollateral + feesDebt
         );
         // Transferring holdTokenBalance to VAULT_ADDRESS
         _pay(params.holdToken, address(this), VAULT_ADDRESS, cache.holdTokenBalance);
@@ -518,7 +520,7 @@ contract LiquidityBorrowingManager is
             msg.sender,
             borrowingKey,
             cache.borrowedAmount,
-            borrowingCollateral,
+            marginDeposit,
             liquidationBonus,
             cache.dailyRateCollateral
         );
@@ -877,6 +879,11 @@ contract LiquidityBorrowingManager is
                 params.saleToken,
                 params.holdToken
             );
+
+            (cache.dailyRateCollateral > params.maxDailyRate).revertError(
+                ErrLib.ErrorCode.TOO_BIG_DAILY_RATE
+            );
+
             // Set the accumulated loan rate per second from the updated holdTokenRateInfo
             cache.accLoanRatePerSeconds = holdTokenRateInfo.accLoanRatePerSeconds;
             // Extract liquidity and store the borrowed amount in the cache
