@@ -501,7 +501,9 @@ contract LiquidityBorrowingManager is
             cache.dailyRateCollateral *
             Constants.COLLATERAL_BALANCE_PRECISION;
         // Checking if borrowing marginDeposit exceeds the maximum allowed
-        uint256 marginDeposit = cache.borrowedAmount - cache.holdTokenBalance;
+        uint256 marginDeposit = cache.borrowedAmount > cache.holdTokenBalance
+            ? cache.borrowedAmount - cache.holdTokenBalance
+            : 0;
         (marginDeposit > params.maxMarginDeposit).revertError(
             ErrLib.ErrorCode.TOO_BIG_MARGIN_DEPOSIT
         );
