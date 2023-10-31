@@ -6,6 +6,7 @@ import "./abstract/LiquidityManager.sol";
 import "./abstract/OwnerSettings.sol";
 import "./abstract/DailyRateAndCollateral.sol";
 import "./libraries/ErrLib.sol";
+import { EnumerableSet } from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
 /**
  * @title LiquidityBorrowingManager
@@ -20,6 +21,7 @@ contract LiquidityBorrowingManager is
 {
     using { Keys.removeKey, Keys.addKeyIfNotExists } for bytes32[];
     using { ErrLib.revertError } for bool;
+    using EnumerableSet for EnumerableSet.Bytes32Set;
 
     /// @title BorrowParams
     /// @notice This struct represents the parameters required for borrowing.
@@ -99,8 +101,8 @@ contract LiquidityBorrowingManager is
     mapping(bytes32 => BorrowingInfo) public borrowingsInfo;
     /// borrower => BorrowingKeys[]
     mapping(address => bytes32[]) public userBorrowingKeys;
-    /// NonfungiblePositionManager tokenId => BorrowingKeys[]
-    mapping(uint256 => bytes32[]) public tokenIdToBorrowingKeys;
+    /// NonfungiblePositionManager tokenId => EnumerableSet.Bytes32Set
+    mapping(uint256 => EnumerableSet.Bytes32Set) private tokenIdToBorrowingKeys;
 
     ///  token => FeesAmt
     mapping(address => uint256) private platformsFeesInfo;
@@ -258,8 +260,19 @@ contract LiquidityBorrowingManager is
     function getLenderCreditsInfo(
         uint256 tokenId
     ) external view returns (BorrowingInfoExt[] memory extinfo) {
-        bytes32[] memory borrowingKeys = tokenIdToBorrowingKeys[tokenId];
+        bytes32[] memory borrowingKeys = getBorrowingKeysForTokenId(tokenId);
         extinfo = _getDebtsInfo(borrowingKeys);
+    }
+
+    /**
+     * @dev Retrieves the borrowing keys associated with a token ID.
+     * @param tokenId The identifier of the token.
+     * @return borrowingKeys An array of borrowing keys.
+     */
+    function getBorrowingKeysForTokenId(
+        uint256 tokenId
+    ) public view returns (bytes32[] memory borrowingKeys) {
+        borrowingKeys = tokenIdToBorrowingKeys[tokenId].values();
     }
 
     /**
@@ -280,7 +293,7 @@ contract LiquidityBorrowingManager is
      * @return count The total number of loans associated with the tokenId.
      */
     function getLenderCreditsCount(uint256 tokenId) external view returns (uint256 count) {
-        bytes32[] memory borrowingKeys = tokenIdToBorrowingKeys[tokenId];
+        bytes32[] memory borrowingKeys = tokenIdToBorrowingKeys[tokenId].values();
         count = borrowingKeys.length;
     }
 
@@ -774,7 +787,7 @@ contract LiquidityBorrowingManager is
                 loans[i] = loans[loans.length - 1];
                 loans.pop();
                 // Remove the borrowing key from the tokenIdToBorrowingKeys mapping.
-                tokenIdToBorrowingKeys[loan.tokenId].removeKey(borrowingKey);
+                tokenIdToBorrowingKeys[loan.tokenId].remove(borrowingKey);
                 // Update the liquidity cache based on the loan information.
                 _upRestoreLiquidityCache(zeroForSaleToken, loan, cache);
                 // Add the holdTokenDebt value to the removedAmt.
@@ -807,7 +820,7 @@ contract LiquidityBorrowingManager is
     ) private {
         // Remove the borrowing key from the tokenIdToBorrowingKeys mapping for each loan in the loans array.
         for (uint256 i; i < loans.length; ) {
-            tokenIdToBorrowingKeys[loans[i].tokenId].removeKey(borrowingKey);
+            tokenIdToBorrowingKeys[loans[i].tokenId].remove(borrowingKey);
             unchecked {
                 ++i;
             }
@@ -838,11 +851,7 @@ contract LiquidityBorrowingManager is
             // Get the current loan from the sourceLoans array
             LoanInfo memory loan = sourceLoans[i];
             // Get the storage reference to the tokenIdLoansKeys array for the loan's token ID
-            bytes32[] storage tokenIdLoansKeys = tokenIdToBorrowingKeys[loan.tokenId];
-            // Conditionally add or push the borrowing key to the tokenIdLoansKeys array based on the 'update' flag
-            update
-                ? tokenIdLoansKeys.addKeyIfNotExists(borrowingKey)
-                : tokenIdLoansKeys.push(borrowingKey);
+            tokenIdToBorrowingKeys[loan.tokenId].add(borrowingKey);
             // Push the current loan to the loans array
             loans.push(loan);
             unchecked {

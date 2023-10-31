@@ -272,6 +272,28 @@ Retrieves the debts information for a specific borrower.
 |---|---|---|
 | extinfo | LiquidityBorrowingManager.BorrowingInfoExt[] | An array of BorrowingInfoExt structs representing the borrowing information. |
 
+### getBorrowingKeysForTokenId
+
+```solidity
+function getBorrowingKeysForTokenId(uint256 tokenId) external view returns (bytes32[] borrowingKeys)
+```
+
+
+
+*Retrieves the borrowing keys associated with a token ID.*
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| tokenId | uint256 | The identifier of the token. |
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| borrowingKeys | bytes32[] | An array of borrowing keys. |
+
 ### getHoldTokenDailyRateInfo
 
 ```solidity
@@ -595,29 +617,6 @@ Take over debt by transferring ownership of a borrowing to the current caller
 | collateralAmt | uint256 | The amount of collateral to be provided by the new borrower |
 | minBorrowedAmount | uint256 | The minimum borrowed amount required to take over the debt. |
 | deadline | uint256 | The deadline timestamp after which the transaction is considered invalid. |
-
-### tokenIdToBorrowingKeys
-
-```solidity
-function tokenIdToBorrowingKeys(uint256, uint256) external view returns (bytes32)
-```
-
-NonfungiblePositionManager tokenId =&gt; BorrowingKeys[]
-
-
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | uint256 | undefined |
-| _1 | uint256 | undefined |
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | bytes32 | undefined |
 
 ### transferOwnership
 
