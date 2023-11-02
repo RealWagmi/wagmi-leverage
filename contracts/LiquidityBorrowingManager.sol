@@ -92,8 +92,10 @@ contract LiquidityBorrowingManager is
         SwapParams externalSwap;
         /// @notice The unique borrowing key associated with the loan
         bytes32 borrowingKey;
-        /// @notice The slippage allowance for the swap in basis points (1/10th of a percent)
-        uint256 swapSlippageBP1000;
+        /// @dev sqrtPriceLimitX96 The Q64.96 sqrt price limit. when liquidity is restored, a hold token is sold therefore,
+        /// If zeroForSaleToken==false, the price cannot be less than this value after the swap.
+        /// If zeroForSaleToken==true, the price cannot be greater than this value after the swap
+        uint160 sqrtPriceLimitX96;
     }
     /// borrowingKey=>LoanInfo
     mapping(bytes32 => LoanInfo[]) public loansInfo;
@@ -681,7 +683,7 @@ contract LiquidityBorrowingManager is
                 RestoreLiquidityParams({
                     zeroForSaleToken: zeroForSaleToken,
                     fee: params.internalSwapPoolfee,
-                    slippageBP1000: params.swapSlippageBP1000,
+                    sqrtPriceLimitX96: params.sqrtPriceLimitX96,
                     totalfeesOwed: borrowing.feesOwed,
                     totalBorrowedAmount: borrowing.borrowedAmount
                 }),
@@ -941,8 +943,7 @@ contract LiquidityBorrowingManager is
                         fee: params.internalSwapPoolfee,
                         tokenIn: params.saleToken,
                         tokenOut: params.holdToken,
-                        amountIn: saleTokenBalance,
-                        amountOutMinimum: 0
+                        amountIn: saleTokenBalance
                     })
                 );
             }

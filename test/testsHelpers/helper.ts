@@ -22,8 +22,14 @@ import {
 } from "../../typechain-types";
 
 import { ApproveSwapAndPay } from "../../typechain-types/contracts/LiquidityBorrowingManager";
-import { BigNumber } from "@ethersproject/bignumber";
+import { BigNumber, BigNumberish } from "@ethersproject/bignumber";
 const { constants } = ethers;
+
+import BN from "bn.js";
+
+
+import { Logger } from "@ethersproject/logger";
+const logger = new Logger("bignumber/5.7.0");
 
 export interface Asset {
     tokenAddress: string;
@@ -177,6 +183,98 @@ export async function swap(
         amountIn: amountIn,
         amountOutMinimum: 0,
     });
+}
+
+function toHex(value: string | BN): string {
+
+    // For BN, call on the hex string
+    if (typeof (value) !== "string") {
+        return toHex(value.toString(16));
+    }
+
+    // If negative, prepend the negative sign to the normalized positive value
+    if (value[0] === "-") {
+        // Strip off the negative sign
+        value = value.substring(1);
+
+        // Cannot have multiple negative signs (e.g. "--0x04")
+        if (value[0] === "-") { logger.throwArgumentError("invalid hex", "value", value); }
+
+        // Call toHex on the positive component
+        value = toHex(value);
+
+        // Do not allow "-0x00"
+        if (value === "0x00") { return value; }
+
+        // Negate the value
+        return "-" + value;
+    }
+
+    // Add a "0x" prefix if missing
+    if (value.substring(0, 2) !== "0x") { value = "0x" + value; }
+
+    // Normalize zero
+    if (value === "0x") { return "0x00"; }
+
+    // Make the string even length
+    if (value.length % 2) { value = "0x0" + value.substring(2); }
+
+    // Trim to smallest even-length string
+    while (value.length > 4 && value.substring(0, 4) === "0x00") {
+        value = "0x" + value.substring(4);
+    }
+
+    return value;
+}
+
+function toBigNumber(value: BN): BigNumber {
+    return BigNumber.from(toHex(value));
+}
+
+function toBN(value: BigNumberish): BN {
+    const hex = BigNumber.from(value).toHexString();
+    if (hex[0] === "-") {
+        return (new BN("-" + hex.substring(3), 16));
+    }
+    return new BN(hex.substring(2), 16);
+}
+// https://github.com/dholms/bn-sqrt/blob/main/index.ts
+export const sqrt = (num: BN): BN => {
+    if (num.lt(new BN(0))) {
+        throw new Error("Sqrt only works on non-negtiave inputs")
+    }
+    if (num.lt(new BN(2))) {
+        return num
+    }
+
+    const smallCand = sqrt(num.shrn(2)).shln(1)
+    const largeCand = smallCand.add(new BN(1))
+
+    if (largeCand.mul(largeCand).gt(num)) {
+        return smallCand
+    } else {
+        return largeCand
+    }
+}
+
+export async function getSqrtPriceLimitX96(
+    pool: IUniswapV3Pool,
+    tokenA: string,
+    tokenB: string,
+    slip: string
+): Promise<BigNumber> {
+
+    const zeroForSaleToken = BigNumber.from(tokenA).lt(BigNumber.from(tokenB));
+    let { sqrtPriceX96 } = await pool.slot0();
+    const slipBP = ethers.utils.parseUnits(slip, 2);
+    let deviation = sqrtPriceX96.pow(2).mul(slipBP).div(10000);
+    if (zeroForSaleToken) {
+        sqrtPriceX96 = sqrtPriceX96.pow(2).add(deviation);
+    } else {
+        sqrtPriceX96 = sqrtPriceX96.pow(2).sub(deviation);
+    }
+    sqrtPriceX96 = toBigNumber(sqrt(toBN(sqrtPriceX96)));
+    return sqrtPriceX96;
 }
 
 export async function zeroForOne(tokenA: string, tokenB: string): Promise<boolean> {

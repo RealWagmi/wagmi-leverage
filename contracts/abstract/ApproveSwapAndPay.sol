@@ -25,8 +25,6 @@ abstract contract ApproveSwapAndPay {
         address tokenOut;
         /// @dev The amount of `tokenIn` to be swapped.
         uint256 amountIn;
-        /// @dev The minimum amount of `tokenOut` expected to receive from the swap.
-        uint256 amountOutMinimum;
     }
 
     /// @notice Struct to hold parameters for swapping tokens
@@ -201,8 +199,6 @@ abstract contract ApproveSwapAndPay {
      * @return amountOut The amount of tokens received as output from the swap.
      * @notice This internal function swaps the exact amount of `params.amountIn` tokens from `params.tokenIn` to `params.tokenOut`.
      * The swapped amount is calculated based on the current pool ratio between `params.tokenIn` and `params.tokenOut`.
-     * If the resulting `amountOut` is less than `params.amountOutMinimum`, the function will revert with a `SwapSlippageCheckError`
-     * indicating the minimum expected amount was not met.
      */
     function _v3SwapExactInput(
         v3SwapExactInputParams memory params
@@ -217,15 +213,11 @@ abstract contract ApproveSwapAndPay {
                 address(this), //recipient
                 zeroForTokenIn,
                 params.amountIn.toInt256(),
-                (zeroForTokenIn ? MIN_SQRT_RATIO + 1 : MAX_SQRT_RATIO - 1),
+                zeroForTokenIn ? MIN_SQRT_RATIO + 1 : MAX_SQRT_RATIO - 1,
                 abi.encode(params.fee, params.tokenIn, params.tokenOut)
             );
         // Calculate the actual amount of output tokens received
         amountOut = uint256(-(zeroForTokenIn ? amount1Delta : amount0Delta));
-        // Check if the received amount satisfies the minimum requirement
-        if (amountOut < params.amountOutMinimum) {
-            revert SwapSlippageCheckError(params.amountOutMinimum, amountOut);
-        }
     }
 
     /**

@@ -7,8 +7,10 @@ import "../interfaces/IQuoterV2.sol";
 import "./ApproveSwapAndPay.sol";
 import "../Vault.sol";
 import { Constants } from "../libraries/Constants.sol";
+import { ErrLib } from "../libraries/ErrLib.sol";
 
 abstract contract LiquidityManager is ApproveSwapAndPay {
+    using { ErrLib.revertError } for bool;
     /**
      * @notice Represents information about a loan.
      * @dev This struct is used to store liquidity and tokenId for a loan.
@@ -36,7 +38,7 @@ abstract contract LiquidityManager is ApproveSwapAndPay {
     struct RestoreLiquidityParams {
         bool zeroForSaleToken;
         uint24 fee;
-        uint256 slippageBP1000;
+        uint160 sqrtPriceLimitX96;
         uint256 totalfeesOwed;
         uint256 totalBorrowedAmount;
     }
@@ -220,6 +222,65 @@ abstract contract LiquidityManager is ApproveSwapAndPay {
     }
 
     /**
+     * @dev This function is used to simulate a swap operation.
+     *
+     * It quotes the exact input single for the swap using the `underlyingQuoterV2` contract.
+     *
+     * @param fee The pool's fee in hundredths of a bip, i.e. 1e-6
+     * @param tokenIn The address of the token being used as input for the swap.
+     * @param tokenOut The address of the token being received as output from the swap.
+     * @param amountIn The amount of tokenIn to be used as input for the swap.
+     *
+     * @return sqrtPriceX96After The square root price after the swap.
+     * @return amountOut The amount of tokenOut received as output from the swap.
+     */
+    function _simulateSwap(
+        uint24 fee,
+        address tokenIn,
+        address tokenOut,
+        uint256 amountIn
+    ) private returns (uint160 sqrtPriceX96After, uint256 amountOut) {
+        // Quote exact input single for swap
+        (amountOut, sqrtPriceX96After, , ) = underlyingQuoterV2.quoteExactInputSingle(
+            IQuoterV2.QuoteExactInputSingleParams({
+                tokenIn: tokenIn,
+                tokenOut: tokenOut,
+                amountIn: amountIn,
+                fee: fee,
+                sqrtPriceLimitX96: 0
+            })
+        );
+    }
+
+    /**
+     * @dev This function is used to prevent front-running during a swap.
+     *
+     * We do not check slippage during a swap as we need to restore liquidity anyway despite the losses,
+     * so we only check the initial price state in the pool to prevent price manipulation.
+     *
+     * When liquidity is restored, a hold token is sold therefore,
+     * - If `zeroForSaleToken` is `false`, the current `sqrtPrice` cannot be less than `sqrtPriceLimitX96`.
+     * - If `zeroForSaleToken` is `true`, the current `sqrtPrice` cannot be greater than `sqrtPriceLimitX96`.
+     *
+     * @param zeroForSaleToken A boolean indicating whether the sale token is zero or not.
+     * @param fee The fee for the swap.
+     * @param sqrtPriceLimitX96 The square root price limit for the swap.
+     * @param saleToken The address of the token being sold.
+     * @param holdToken The address of the token being held.
+     */
+    function _frontRunningAttackPrevent(
+        bool zeroForSaleToken,
+        uint24 fee,
+        uint160 sqrtPriceLimitX96,
+        address saleToken,
+        address holdToken
+    ) internal view {
+        uint160 sqrtPriceX96 = _getCurrentSqrtPriceX96(zeroForSaleToken, saleToken, holdToken, fee);
+        (zeroForSaleToken ? sqrtPriceX96 > sqrtPriceLimitX96 : sqrtPriceX96 < sqrtPriceLimitX96)
+            .revertError(ErrLib.ErrorCode.UNACCEPTABLE_SQRT_PRICE);
+    }
+
+    /**
      * @dev Restores liquidity from loans.
      * @param params The RestoreLiquidityParams struct containing restoration parameters.
      * @param externalSwap The SwapParams struct containing external swap details.
@@ -251,38 +312,55 @@ abstract contract LiquidityManager is ApproveSwapAndPay {
                 );
 
                 if (holdTokenAmountIn > 0) {
-                    // Quote exact input single for swap
-                    uint256 saleTokenAmountOut;
-                    (saleTokenAmountOut, cache.sqrtPriceX96, , ) = underlyingQuoterV2
-                        .quoteExactInputSingle(
-                            IQuoterV2.QuoteExactInputSingleParams({
-                                tokenIn: cache.holdToken,
-                                tokenOut: cache.saleToken,
-                                amountIn: holdTokenAmountIn,
-                                fee: params.fee,
-                                sqrtPriceLimitX96: 0
-                            })
+                    if (params.sqrtPriceLimitX96 != 0) {
+                        _frontRunningAttackPrevent(
+                            params.zeroForSaleToken,
+                            params.fee,
+                            params.sqrtPriceLimitX96,
+                            cache.saleToken,
+                            cache.holdToken
                         );
-
+                    }
                     // Perform external swap if external swap target is provided
                     if (externalSwap.swapTarget != address(0)) {
+                        uint256 saleTokenAmountOut;
+                        if (params.sqrtPriceLimitX96 != 0) {
+                            (, saleTokenAmountOut) = _simulateSwap(
+                                params.fee,
+                                cache.holdToken,
+                                cache.saleToken,
+                                holdTokenAmountIn
+                            );
+                        }
                         _patchAmountsAndCallSwap(
                             cache.holdToken,
                             cache.saleToken,
                             externalSwap,
                             holdTokenAmountIn,
-                            (saleTokenAmountOut * params.slippageBP1000) / Constants.BPS
+                            // The minimum amount out should not be less than with an internal pool swap.
+                            // checking only once during the first swap when params.sqrtPriceLimitX96 != 0
+                            saleTokenAmountOut
                         );
                     } else {
-                        // Calculate hold token amount in again for new sqrtPriceX96
-                        (holdTokenAmountIn, ) = _getHoldTokenAmountIn(
-                            params.zeroForSaleToken,
-                            cache.tickLower,
-                            cache.tickUpper,
-                            cache.sqrtPriceX96,
-                            loan.liquidity,
-                            cache.holdTokenDebt
-                        );
+                        //  The internal swap in the same pool in which liquidity is restored.
+                        if (params.fee == cache.fee) {
+                            (cache.sqrtPriceX96, ) = _simulateSwap(
+                                params.fee,
+                                cache.holdToken,
+                                cache.saleToken,
+                                holdTokenAmountIn
+                            );
+
+                            // recalculate the hold token amount again for the new sqrtPriceX96
+                            (holdTokenAmountIn, ) = _getHoldTokenAmountIn(
+                                params.zeroForSaleToken,
+                                cache.tickLower,
+                                cache.tickUpper,
+                                cache.sqrtPriceX96, // updated by IQuoterV2.QuoteExactInputSingleParams
+                                loan.liquidity,
+                                cache.holdTokenDebt
+                            );
+                        }
 
                         // Perform v3 swap exact input and update sqrtPriceX96
                         _v3SwapExactInput(
@@ -290,9 +368,7 @@ abstract contract LiquidityManager is ApproveSwapAndPay {
                                 fee: params.fee,
                                 tokenIn: cache.holdToken,
                                 tokenOut: cache.saleToken,
-                                amountIn: holdTokenAmountIn,
-                                amountOutMinimum: (saleTokenAmountOut * params.slippageBP1000) /
-                                    Constants.BPS
+                                amountIn: holdTokenAmountIn
                             })
                         );
                         // Update the value of sqrtPriceX96 in the cache using the _getCurrentSqrtPriceX96 function
@@ -311,6 +387,8 @@ abstract contract LiquidityManager is ApproveSwapAndPay {
                                 loan.liquidity
                             );
                     }
+                    // the price manipulation check is carried out only once
+                    params.sqrtPriceLimitX96 = 0;
                 }
 
                 // Increase liquidity and transfer liquidity owner reward

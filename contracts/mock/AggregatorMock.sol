@@ -24,14 +24,18 @@ contract AggregatorMock {
     }
 
     function nonWhitelistedSwap(bytes calldata wrappedCallData) external {
-        _swap(wrappedCallData);
+        _swap(wrappedCallData, false);
     }
 
     function swap(bytes calldata wrappedCallData) external {
-        _swap(wrappedCallData);
+        _swap(wrappedCallData, false);
     }
 
-    function _swap(bytes calldata wrappedCallData) internal {
+    function badswap(bytes calldata wrappedCallData) external {
+        _swap(wrappedCallData, true);
+    }
+
+    function _swap(bytes calldata wrappedCallData, bool slip) internal {
         (address tokenIn, address tokenOut, uint256 amountIn, uint256 amountOutMin) = abi.decode(
             wrappedCallData,
             (address, address, uint256, uint256)
@@ -50,6 +54,6 @@ contract AggregatorMock {
 
         require(amountOut >= amountOutMin, "AggregatorMock: price slippage check");
         _safeTransferFrom(tokenIn, msg.sender, address(this), amountIn);
-        _safeTransfer(tokenOut, msg.sender, amountOut);
+        _safeTransfer(tokenOut, msg.sender, slip ? (amountOut * 100) / 10000 : amountOut);
     }
 }
