@@ -347,7 +347,7 @@ describe("WagmiLeverageTests", () => {
 
         const prevBalanceLender = await WBTC.balanceOf(alice.address);
         const prevBalance = await WBTC.balanceOf(bob.address);
-        const prevPlatformsFees = (await borrowingManager.getPlatformsFeesInfo([WBTC_ADDRESS]))[0];
+        const prevPlatformsFees = (await borrowingManager.getFeesInfo(constants.AddressZero, [WBTC_ADDRESS]))[0];
 
         //query amount of collateral available
         const borrowingsInfo = await borrowingManager.borrowingsInfo(borrowingKey);
@@ -362,9 +362,10 @@ describe("WagmiLeverageTests", () => {
         await borrowingManager.connect(bob).repay(repayParams, deadline);
 
         const newBalance = await WBTC.balanceOf(bob.address);
-        const newBalanceLender = await WBTC.balanceOf(alice.address);
-        const newPlatformsFees = (await borrowingManager.getPlatformsFeesInfo([WBTC_ADDRESS]))[0];
+        const newPlatformsFees = (await borrowingManager.getFeesInfo(constants.AddressZero, [WBTC_ADDRESS]))[0];
         expect(newPlatformsFees).to.be.equal(prevPlatformsFees.add(200));//+20% of MINIMUM_AMOUNT
+        await borrowingManager.connect(alice).collectLoansFees([WBTC_ADDRESS]);
+        const newBalanceLender = await WBTC.balanceOf(alice.address);
         expect(newBalanceLender).to.be.equal(prevBalanceLender.add(800));//+80% of MINIMUM_AMOUNT
         expect(newBalance).to.be.equal(prevBalance.add(liquidationBonus).add(dailyCollateral.sub(1000)));//- MINIMUM_AMOUNT
     });
@@ -1554,7 +1555,7 @@ describe("WagmiLeverageTests", () => {
 
     it("collect protocol fees should be successful", async () => {
         const aliceBalanceBefore = await getERC20Balance(WETH_ADDRESS, alice.address);
-        let fees = await borrowingManager.getPlatformsFeesInfo([USDT_ADDRESS, WETH_ADDRESS]);
+        let fees = await borrowingManager.getFeesInfo(constants.AddressZero, [USDT_ADDRESS, WETH_ADDRESS]);
         expect(fees[0]).to.be.equal(0);
         expect(fees[1]).to.be.gt(0);
         await expect(borrowingManager.connect(alice).collectProtocol(alice.address, [USDT_ADDRESS, WETH_ADDRESS])).to.be
@@ -1562,7 +1563,7 @@ describe("WagmiLeverageTests", () => {
         await borrowingManager.connect(owner).collectProtocol(alice.address, [USDT_ADDRESS, WETH_ADDRESS]);
         const aliceBalanceAfter = await getERC20Balance(WETH_ADDRESS, alice.address);
         expect(aliceBalanceAfter).to.be.equal(aliceBalanceBefore.add(fees[1]));
-        fees = await borrowingManager.getPlatformsFeesInfo([USDT_ADDRESS, WETH_ADDRESS]);
+        fees = await borrowingManager.getFeesInfo(constants.AddressZero, [USDT_ADDRESS, WETH_ADDRESS]);
         expect(fees[1]).to.be.equal(0);
     });
 

@@ -75,6 +75,9 @@ abstract contract LiquidityManager is ApproveSwapAndPay {
      */
     IQuoterV2 public immutable underlyingQuoterV2;
 
+    ///  msg.sender => token => FeesAmt
+    mapping(address => mapping(address => uint256)) internal loansFeesInfo;
+
     /**
      * @dev Contract constructor.
      * @param _underlyingPositionManagerAddress Address of the underlying position manager contract.
@@ -403,9 +406,9 @@ abstract contract LiquidityManager is ApproveSwapAndPay {
                     params.totalfeesOwed,
                     cache.holdTokenDebt,
                     params.totalBorrowedAmount
-                ) / Constants.COLLATERAL_BALANCE_PRECISION;
+                );
 
-                Vault(VAULT_ADDRESS).transferToken(cache.holdToken, creditor, liquidityOwnerReward);
+                loansFeesInfo[creditor][cache.holdToken] += liquidityOwnerReward;
             }
 
             unchecked {

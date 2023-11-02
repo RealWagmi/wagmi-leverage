@@ -153,6 +153,22 @@ This function is used to check the daily rate collateral for a specific borrowin
 | balance | int256 | The balance of the daily rate collateral. |
 | estimatedLifeTime | uint256 | The estimated lifetime of the collateral in seconds. |
 
+### collectLoansFees
+
+```solidity
+function collectLoansFees(address[] tokens) external nonpayable
+```
+
+This function allows the caller to collect their own loan fees for multiple tokens and transfer them to themselves.
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| tokens | address[] | An array of addresses representing the tokens for which fees will be collected. |
+
 ### collectProtocol
 
 ```solidity
@@ -294,6 +310,29 @@ function getBorrowingKeysForTokenId(uint256 tokenId) external view returns (byte
 |---|---|---|
 | borrowingKeys | bytes32[] | An array of borrowing keys. |
 
+### getFeesInfo
+
+```solidity
+function getFeesInfo(address feesOwner, address[] tokens) external view returns (uint256[] fees)
+```
+
+
+
+*Returns the fees information for multiple tokens in an array.*
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| feesOwner | address | The address of the owner of the fees OR address(0) for returns platformsFeesInfo. |
+| tokens | address[] | An array of token addresses for which the fees are to be retrieved. |
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| fees | uint256[] | An array containing the fees for each token. |
+
 ### getHoldTokenDailyRateInfo
 
 ```solidity
@@ -407,28 +446,6 @@ Get information about loans associated with a borrowing key
 | Name | Type | Description |
 |---|---|---|
 | loans | LiquidityManager.LoanInfo[] | An array containing LoanInfo structs representing the loans associated with the borrowing key |
-
-### getPlatformsFeesInfo
-
-```solidity
-function getPlatformsFeesInfo(address[] tokens) external view returns (uint256[] fees)
-```
-
-
-
-*Returns the fees information for multiple tokens in an array.*
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| tokens | address[] | An array of token addresses for which the fees are to be retrieved. |
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| fees | uint256[] | An array containing the fees for each token. |
 
 ### holdTokenInfo
 
@@ -791,6 +808,24 @@ Indicates that a borrower has made a new loan
 | borrowingCollateral  | uint256 | undefined |
 | liquidationBonus  | uint256 | undefined |
 | dailyRatePrepayment  | uint256 | undefined |
+
+### CollectLoansFees
+
+```solidity
+event CollectLoansFees(address recipient, address[] tokens, uint256[] amounts)
+```
+
+Indicates that the lender has collected fee tokens
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| recipient  | address | undefined |
+| tokens  | address[] | undefined |
+| amounts  | uint256[] | undefined |
 
 ### CollectProtocol
 

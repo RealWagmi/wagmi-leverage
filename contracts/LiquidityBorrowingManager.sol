@@ -124,6 +124,8 @@ contract LiquidityBorrowingManager is
     event EmergencyLoanClosure(address borrower, address lender, bytes32 borrowingKey);
     /// Indicates that the protocol has collected fee tokens
     event CollectProtocol(address recipient, address[] tokens, uint256[] amounts);
+    /// Indicates that the lender has collected fee tokens
+    event CollectLoansFees(address recipient, address[] tokens, uint256[] amounts);
     /// Indicates that the daily interest rate for holding token(for specific pair) has been updated
     event UpdateHoldTokenDailyRate(address saleToken, address holdToken, uint256 value);
     /// Indicates that a borrower has increased their collateral balance for a loan
@@ -188,21 +190,21 @@ contract LiquidityBorrowingManager is
      * @param tokens An array of addresses representing the tokens for which fees will be collected.
      */
     function collectProtocol(address recipient, address[] calldata tokens) external onlyOwner {
-        uint256[] memory amounts = new uint256[](tokens.length);
-        for (uint256 i; i < tokens.length; ) {
-            address token = tokens[i];
-            uint256 amount = platformsFeesInfo[token] / Constants.COLLATERAL_BALANCE_PRECISION;
-            if (amount > 0) {
-                platformsFeesInfo[token] = 0;
-                amounts[i] = amount;
-                Vault(VAULT_ADDRESS).transferToken(token, recipient, amount);
-            }
-            unchecked {
-                ++i;
-            }
-        }
+        uint256[] memory amounts = _collect(platformsFeesInfo, recipient, tokens);
 
         emit CollectProtocol(recipient, tokens, amounts);
+    }
+
+    /**
+     * @notice This function allows the caller to collect their own loan fees for multiple tokens
+     * and transfer them to themselves.
+     * @param tokens An array of addresses representing the tokens for which fees will be collected.
+     */
+    function collectLoansFees(address[] calldata tokens) external {
+        mapping(address => uint256) storage collection = loansFeesInfo[msg.sender];
+        uint256[] memory amounts = _collect(collection, msg.sender, tokens);
+
+        emit CollectLoansFees(msg.sender, tokens, amounts);
     }
 
     /**
@@ -324,16 +326,21 @@ contract LiquidityBorrowingManager is
 
     /**
      * @dev Returns the fees information for multiple tokens in an array.
+     * @param feesOwner The address of the owner of the fees OR address(0) for returns platformsFeesInfo.
      * @param tokens An array of token addresses for which the fees are to be retrieved.
      * @return fees An array containing the fees for each token.
      */
-    function getPlatformsFeesInfo(
+    function getFeesInfo(
+        address feesOwner,
         address[] calldata tokens
     ) external view returns (uint256[] memory fees) {
         fees = new uint256[](tokens.length);
+        mapping(address => uint256) storage collection = feesOwner == address(0)
+            ? platformsFeesInfo
+            : loansFeesInfo[msg.sender];
         for (uint256 i; i < tokens.length; ) {
             address token = tokens[i];
-            uint256 amount = platformsFeesInfo[token] / Constants.COLLATERAL_BALANCE_PRECISION;
+            uint256 amount = collection[token] / Constants.COLLATERAL_BALANCE_PRECISION;
             fees[i] = amount;
             unchecked {
                 ++i;
@@ -1094,6 +1101,26 @@ contract LiquidityBorrowingManager is
                 extinfo[i].collateralBalance,
                 extinfo[i].estimatedLifeTime
             ) = _getDebtInfo(key);
+            unchecked {
+                ++i;
+            }
+        }
+    }
+
+    function _collect(
+        mapping(address => uint256) storage collection,
+        address recipient,
+        address[] calldata tokens
+    ) private returns (uint256[] memory amounts) {
+        amounts = new uint256[](tokens.length);
+        for (uint256 i; i < tokens.length; ) {
+            address token = tokens[i];
+            uint256 amount = collection[token] / Constants.COLLATERAL_BALANCE_PRECISION;
+            if (amount > 0) {
+                collection[token] = 0;
+                amounts[i] = amount;
+                Vault(VAULT_ADDRESS).transferToken(token, recipient, amount);
+            }
             unchecked {
                 ++i;
             }
