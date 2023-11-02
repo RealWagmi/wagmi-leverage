@@ -475,7 +475,7 @@ pairKey =&gt; TokenInfo
 ### increaseCollateralBalance
 
 ```solidity
-function increaseCollateralBalance(bytes32 borrowingKey, uint256 collateralAmt) external nonpayable
+function increaseCollateralBalance(bytes32 borrowingKey, uint256 collateralAmt, uint256 deadline) external nonpayable
 ```
 
 This function is used to increase the daily rate collateral for a specific borrowing.
@@ -488,6 +488,7 @@ This function is used to increase the daily rate collateral for a specific borro
 |---|---|---|
 | borrowingKey | bytes32 | The unique identifier of the borrowing. |
 | collateralAmt | uint256 | The amount of collateral to be added. |
+| deadline | uint256 | The deadline timestamp after which the transaction is considered invalid. |
 
 ### liquidationBonusForToken
 

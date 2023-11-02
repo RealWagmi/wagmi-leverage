@@ -391,8 +391,13 @@ contract LiquidityBorrowingManager is
      * @notice This function is used to increase the daily rate collateral for a specific borrowing.
      * @param borrowingKey The unique identifier of the borrowing.
      * @param collateralAmt The amount of collateral to be added.
+     * @param deadline The deadline timestamp after which the transaction is considered invalid.
      */
-    function increaseCollateralBalance(bytes32 borrowingKey, uint256 collateralAmt) external {
+    function increaseCollateralBalance(
+        bytes32 borrowingKey,
+        uint256 collateralAmt,
+        uint256 deadline
+    ) external checkDeadline(deadline) {
         BorrowingInfo storage borrowing = borrowingsInfo[borrowingKey];
         // Ensure that the borrowed position exists and the borrower is the message sender
         (borrowing.borrowedAmount == 0 || borrowing.borrower != address(msg.sender)).revertError(
@@ -913,6 +918,8 @@ contract LiquidityBorrowingManager is
                 params.holdToken,
                 params.loans
             );
+            // the empty loans[] disallowed
+            (cache.borrowedAmount == 0).revertError(ErrLib.ErrorCode.LOANS_IS_EMPTY);
             // Increment the total borrowed amount for the hold token information
             holdTokenRateInfo.totalBorrowed += cache.borrowedAmount;
         }
