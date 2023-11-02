@@ -2,7 +2,7 @@
 pragma solidity 0.8.21;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { TransferHelper } from "../libraries/TransferHelper.sol";
 import { IUniswapV3Pool } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import { SafeCast } from "@uniswap/v3-core/contracts/libraries/SafeCast.sol";
 import "../libraries/ExternalCall.sol";
@@ -10,7 +10,7 @@ import "../libraries/ErrLib.sol";
 
 abstract contract ApproveSwapAndPay {
     using SafeCast for uint256;
-    using SafeERC20 for IERC20;
+    using TransferHelper for address;
     using { ExternalCall._patchAmountAndCall } for address;
     using { ExternalCall._readFirstBytes4 } for bytes;
     using { ErrLib.revertError } for bool;
@@ -109,10 +109,7 @@ abstract contract ApproveSwapAndPay {
      * @return balance The balance of the contract for the specified token.
      */
     function _getBalance(address token) internal view returns (uint256 balance) {
-        bytes memory callData = abi.encodeWithSelector(IERC20.balanceOf.selector, address(this));
-        (bool success, bytes memory data) = token.staticcall(callData);
-        require(success && data.length >= 32);
-        balance = abi.decode(data, (uint256));
+        balance = token.getBalance();
     }
 
     /**
@@ -126,8 +123,8 @@ abstract contract ApproveSwapAndPay {
         address tokenA,
         address tokenB
     ) internal view returns (uint256 balanceA, uint256 balanceB) {
-        balanceA = _getBalance(tokenA);
-        balanceB = _getBalance(tokenB);
+        balanceA = tokenA.getBalance();
+        balanceB = tokenB.getBalance();
     }
 
     /**
@@ -186,9 +183,9 @@ abstract contract ApproveSwapAndPay {
     function _pay(address token, address payer, address recipient, uint256 value) internal {
         if (value > 0) {
             if (payer == address(this)) {
-                IERC20(token).safeTransfer(recipient, value);
+                token.safeTransfer(recipient, value);
             } else {
-                IERC20(token).safeTransferFrom(payer, recipient, value);
+                token.safeTransferFrom(payer, recipient, value);
             }
         }
     }
