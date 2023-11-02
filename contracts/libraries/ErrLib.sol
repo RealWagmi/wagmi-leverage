@@ -18,7 +18,8 @@ library ErrLib {
         INVALID_CALLER, //12
         UNEXPECTED_CHANGES, //13
         TOO_BIG_DAILY_RATE, //14
-        UNACCEPTABLE_SQRT_PRICE //15
+        UNACCEPTABLE_SQRT_PRICE, //15
+        LOANS_IS_EMPTY //16
     }
 
     error RevertErrorCode(ErrorCode code);

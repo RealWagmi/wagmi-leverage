@@ -913,6 +913,8 @@ contract LiquidityBorrowingManager is
                 params.holdToken,
                 params.loans
             );
+            // the empty loans[] disallowed
+            (cache.borrowedAmount == 0).revertError(ErrLib.ErrorCode.LOANS_IS_EMPTY);
             // Increment the total borrowed amount for the hold token information
             holdTokenRateInfo.totalBorrowed += cache.borrowedAmount;
         }
