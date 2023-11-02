@@ -1414,8 +1414,9 @@ describe("WagmiLeverageTests", () => {
         } else {
             debtOncollateral = BigNumber.from(0);
         }
+        let deadline = (await time.latest()) + 60;
 
-        await borrowingManager.connect(bob).increaseCollateralBalance(key, collateralAmt.add(debtOncollateral)); // +1 seconds
+        await borrowingManager.connect(bob).increaseCollateralBalance(key, collateralAmt.add(debtOncollateral), deadline); // +1 seconds
         let debtAfter = (await borrowingManager.getBorrowerDebtsInfo(bob.address))[1];
 
         expect(debtAfter.estimatedLifeTime).to.be.within(
