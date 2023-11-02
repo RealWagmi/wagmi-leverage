@@ -288,6 +288,28 @@ Retrieves the debts information for a specific borrower.
 |---|---|---|
 | extinfo | LiquidityBorrowingManager.BorrowingInfoExt[] | An array of BorrowingInfoExt structs representing the borrowing information. |
 
+### getBorrowingKeysForBorrower
+
+```solidity
+function getBorrowingKeysForBorrower(address borrower) external view returns (bytes32[] borrowingKeys)
+```
+
+
+
+*Retrieves the borrowing keys for a specific borrower.*
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| borrower | address | The address of the borrower. |
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| borrowingKeys | bytes32[] | An array of borrowing keys. |
+
 ### getBorrowingKeysForTokenId
 
 ```solidity
@@ -738,29 +760,6 @@ This external function is used to update the settings for a particular item. The
 |---|---|---|
 | _item | enum OwnerSettings.ITEM | The item to update the settings for. |
 | values | uint256[] | An array of values containing the new settings. |
-
-### userBorrowingKeys
-
-```solidity
-function userBorrowingKeys(address, uint256) external view returns (bytes32)
-```
-
-borrower =&gt; BorrowingKeys[]
-
-
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | address | undefined |
-| _1 | uint256 | undefined |
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | bytes32 | undefined |
 
 ### whitelistedCall
 
