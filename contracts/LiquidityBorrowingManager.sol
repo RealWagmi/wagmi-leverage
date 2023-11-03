@@ -19,7 +19,6 @@ contract LiquidityBorrowingManager is
     DailyRateAndCollateral,
     ReentrancyGuard
 {
-    using { Keys.removeKey, Keys.addKeyIfNotExists } for bytes32[];
     using { ErrLib.revertError } for bool;
     using EnumerableSet for EnumerableSet.Bytes32Set;
 
@@ -101,10 +100,10 @@ contract LiquidityBorrowingManager is
     mapping(bytes32 => LoanInfo[]) public loansInfo;
     /// borrowingKey=>BorrowingInfo
     mapping(bytes32 => BorrowingInfo) public borrowingsInfo;
-    /// borrower => BorrowingKeys[]
-    mapping(address => bytes32[]) public userBorrowingKeys;
     /// NonfungiblePositionManager tokenId => EnumerableSet.Bytes32Set
     mapping(uint256 => EnumerableSet.Bytes32Set) private tokenIdToBorrowingKeys;
+    /// borrower => EnumerableSet.Bytes32Set
+    mapping(address => EnumerableSet.Bytes32Set) private userBorrowingKeys;
 
     ///  token => FeesAmt
     mapping(address => uint256) private platformsFeesInfo;
@@ -137,6 +136,8 @@ contract LiquidityBorrowingManager is
         bytes32 oldBorrowingKey,
         bytes32 newBorrowingKey
     );
+
+    event Harvest(bytes32 borrowingKey, uint256 harvestedAmt);
 
     error TooLittleReceivedError(uint256 minOut, uint256 out);
 
@@ -280,6 +281,17 @@ contract LiquidityBorrowingManager is
     }
 
     /**
+     * @dev Retrieves the borrowing keys for a specific borrower.
+     * @param borrower The address of the borrower.
+     * @return borrowingKeys An array of borrowing keys.
+     */
+    function getBorrowingKeysForBorrower(
+        address borrower
+    ) public view returns (bytes32[] memory borrowingKeys) {
+        borrowingKeys = userBorrowingKeys[borrower].values();
+    }
+
+    /**
      * @notice Retrieves the debts information for a specific borrower.
      * @param borrower The address of the borrower.
      * @return extinfo An array of BorrowingInfoExt structs representing the borrowing information.
@@ -287,7 +299,7 @@ contract LiquidityBorrowingManager is
     function getBorrowerDebtsInfo(
         address borrower
     ) external view returns (BorrowingInfoExt[] memory extinfo) {
-        bytes32[] memory borrowingKeys = userBorrowingKeys[borrower];
+        bytes32[] memory borrowingKeys = userBorrowingKeys[borrower].values();
         extinfo = _getDebtsInfo(borrowingKeys);
     }
 
@@ -307,7 +319,7 @@ contract LiquidityBorrowingManager is
      * @return count The total number of borrowings for the borrower.
      */
     function getBorrowerDebtsCount(address borrower) external view returns (uint256 count) {
-        bytes32[] memory borrowingKeys = userBorrowingKeys[borrower];
+        bytes32[] memory borrowingKeys = userBorrowingKeys[borrower].values();
         count = borrowingKeys.length;
     }
 
@@ -431,7 +443,7 @@ contract LiquidityBorrowingManager is
     ) external nonReentrant checkDeadline(deadline) {
         BorrowingInfo memory oldBorrowing = borrowingsInfo[borrowingKey];
         // Ensure that the borrowed position exists
-        (oldBorrowing.borrowedAmount == 0).revertError(ErrLib.ErrorCode.INVALID_BORROWING_KEY);
+        _existenceCheck(oldBorrowing.borrowedAmount);
         // Ensure that the borrowedAmount hasn't changed
         (oldBorrowing.borrowedAmount < minBorrowedAmount).revertError(
             ErrLib.ErrorCode.UNEXPECTED_CHANGES
@@ -478,7 +490,7 @@ contract LiquidityBorrowingManager is
                 accLoanRatePerSeconds
             );
         // Add the new borrowing key and old loans to the newBorrowing
-        _addKeysAndLoansInfo(newBorrowing.borrowedAmount > 0, newBorrowingKey, oldLoans);
+        _addKeysAndLoansInfo(newBorrowingKey, oldLoans);
         // Increase the borrowed amount, liquidation bonus, and fees owed of the newBorrowing based on the oldBorrowing
         newBorrowing.borrowedAmount += oldBorrowing.borrowedAmount;
         newBorrowing.liquidationBonus += oldBorrowing.liquidationBonus;
@@ -514,7 +526,7 @@ contract LiquidityBorrowingManager is
             BorrowingInfo storage borrowing
         ) = _initOrUpdateBorrowing(params.saleToken, params.holdToken, cache.accLoanRatePerSeconds);
         // Adding borrowing key and loans information to storage
-        _addKeysAndLoansInfo(borrowing.borrowedAmount > 0, borrowingKey, params.loans);
+        _addKeysAndLoansInfo(borrowingKey, params.loans);
         // Calculating liquidation bonus based on hold token, borrowed amount, and number of used loans
         uint256 liquidationBonus = getLiquidationBonus(
             params.holdToken,
@@ -555,6 +567,69 @@ contract LiquidityBorrowingManager is
         );
     }
 
+    function harvest(bytes32 borrowingKey) external nonReentrant {
+        BorrowingInfo storage borrowing = borrowingsInfo[borrowingKey];
+        // Check if the borrowing key is valid
+        _existenceCheck(borrowing.borrowedAmount);
+
+        // Update token rate information and get holdTokenRateInfo storage reference
+        (, TokenInfo storage holdTokenRateInfo) = _updateTokenRateInfo(
+            borrowing.saleToken,
+            borrowing.holdToken
+        );
+
+        // Calculate collateral balance and validate caller
+        (int256 collateralBalance, uint256 currentFees) = _calculateCollateralBalance(
+            borrowing.borrowedAmount,
+            borrowing.accLoanRatePerSeconds,
+            borrowing.dailyRateCollateralBalance,
+            holdTokenRateInfo.accLoanRatePerSeconds
+        );
+
+        (collateralBalance < 0 ||
+            currentFees < Constants.MINIMUM_AMOUNT * Constants.COLLATERAL_BALANCE_PRECISION)
+            .revertError(ErrLib.ErrorCode.FORBIDDEN);
+
+        // Calculate platform fees and adjust fees owed
+        borrowing.dailyRateCollateralBalance -= currentFees;
+        borrowing.feesOwed += _pickUpPlatformFees(borrowing.holdToken, currentFees);
+        // Set the accumulated loan rate per second for the borrowing position
+        borrowing.accLoanRatePerSeconds = holdTokenRateInfo.accLoanRatePerSeconds;
+
+        uint256 feesOwed = borrowing.feesOwed;
+        uint256 borrowedAmount = borrowing.borrowedAmount;
+
+        bool zeroForSaleToken = borrowing.saleToken < borrowing.holdToken;
+        uint256 harvestedAmt;
+
+        // Create a memory struct to store liquidity cache information.
+        RestoreLiquidityCache memory cache;
+        // Get the array of LoanInfo structs associated with the given borrowing key.
+        LoanInfo[] memory loans = loansInfo[borrowingKey];
+        // Iterate through each loan in the loans array.
+        for (uint256 i; i < loans.length; ) {
+            LoanInfo memory loan = loans[i];
+            // Get the owner address of the loan's token ID using the underlyingPositionManager contract.
+            address creditor = _getOwnerOf(loan.tokenId);
+            // Check if the owner of the loan's token ID is equal to the `msg.sender`.
+            if (creditor != address(0)) {
+                // Update the liquidity cache based on the loan information.
+                _upRestoreLiquidityCache(zeroForSaleToken, loan, cache);
+                uint256 feesAmt = FullMath.mulDiv(feesOwed, cache.holdTokenDebt, borrowedAmount);
+                // Calculate the fees amount based on the total fees owed and holdTokenDebt.
+                loansFeesInfo[creditor][cache.holdToken] += feesAmt;
+                harvestedAmt += feesAmt;
+            }
+            unchecked {
+                ++i;
+            }
+        }
+
+        borrowing.feesOwed -= harvestedAmt;
+
+        emit Harvest(borrowingKey, harvestedAmt);
+    }
+
     /**
      * @notice This function is used to repay a loan.
      * The position is closed either by the trader or by the liquidator if the trader has not paid for holding the position
@@ -576,7 +651,7 @@ contract LiquidityBorrowingManager is
     ) external nonReentrant checkDeadline(deadline) {
         BorrowingInfo memory borrowing = borrowingsInfo[params.borrowingKey];
         // Check if the borrowing key is valid
-        (borrowing.borrowedAmount == 0).revertError(ErrLib.ErrorCode.INVALID_BORROWING_KEY);
+        _existenceCheck(borrowing.borrowedAmount);
 
         bool zeroForSaleToken = borrowing.saleToken < borrowing.holdToken;
         uint256 liquidationBonus = borrowing.liquidationBonus;
@@ -840,7 +915,7 @@ contract LiquidityBorrowingManager is
             }
         }
         // Remove the borrowing key from the userBorrowingKeys mapping for the borrower.
-        userBorrowingKeys[borrower].removeKey(borrowingKey);
+        userBorrowingKeys[borrower].remove(borrowingKey);
         // Delete the borrowing information and loans associated with the borrowing key from the borrowingsInfo
         // and loansInfo mappings.
         delete borrowingsInfo[borrowingKey];
@@ -849,15 +924,10 @@ contract LiquidityBorrowingManager is
 
     /**
      * @dev This internal function is used to add borrowing keys and loan information for a specific borrowing key.
-     * @param update A boolean indicating whether the borrowing key is being updated or added as a new position.
      * @param borrowingKey The borrowing key to be added or updated.
      * @param sourceLoans An array of LoanInfo structs representing the loans to be associated with the borrowing key.
      */
-    function _addKeysAndLoansInfo(
-        bool update,
-        bytes32 borrowingKey,
-        LoanInfo[] memory sourceLoans
-    ) private {
+    function _addKeysAndLoansInfo(bytes32 borrowingKey, LoanInfo[] memory sourceLoans) private {
         // Get the storage reference to the loans array for the borrowing key
         LoanInfo[] storage loans = loansInfo[borrowingKey];
         // Iterate through the sourceLoans array
@@ -876,15 +946,8 @@ contract LiquidityBorrowingManager is
         (loans.length > Constants.MAX_NUM_LOANS_PER_POSITION).revertError(
             ErrLib.ErrorCode.TOO_MANY_LOANS_PER_POSITION
         );
-        if (!update) {
-            // If it's a new position, ensure that the user does not have too many positions
-            bytes32[] storage allUserBorrowingKeys = userBorrowingKeys[msg.sender];
-            // Add the borrowingKey to the user's borrowing keys
-            allUserBorrowingKeys.push(borrowingKey);
-            (allUserBorrowingKeys.length > Constants.MAX_NUM_USER_POSOTION).revertError(
-                ErrLib.ErrorCode.TOO_MANY_USER_POSITIONS
-            );
-        }
+        // Add the borrowing key to the userBorrowingKeys mapping for the borrower if it does not exist
+        userBorrowingKeys[msg.sender].add(borrowingKey);
     }
 
     /**
@@ -1112,6 +1175,10 @@ contract LiquidityBorrowingManager is
                 ++i;
             }
         }
+    }
+
+    function _existenceCheck(uint256 borrowedAmount) private pure {
+        (borrowedAmount == 0).revertError(ErrLib.ErrorCode.INVALID_BORROWING_KEY);
     }
 
     function _collect(

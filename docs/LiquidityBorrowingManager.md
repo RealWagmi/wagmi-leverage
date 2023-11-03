@@ -288,6 +288,28 @@ Retrieves the debts information for a specific borrower.
 |---|---|---|
 | extinfo | LiquidityBorrowingManager.BorrowingInfoExt[] | An array of BorrowingInfoExt structs representing the borrowing information. |
 
+### getBorrowingKeysForBorrower
+
+```solidity
+function getBorrowingKeysForBorrower(address borrower) external view returns (bytes32[] borrowingKeys)
+```
+
+
+
+*Retrieves the borrowing keys for a specific borrower.*
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| borrower | address | The address of the borrower. |
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| borrowingKeys | bytes32[] | An array of borrowing keys. |
+
 ### getBorrowingKeysForTokenId
 
 ```solidity
@@ -446,6 +468,22 @@ Get information about loans associated with a borrowing key
 | Name | Type | Description |
 |---|---|---|
 | loans | LiquidityManager.LoanInfo[] | An array containing LoanInfo structs representing the loans associated with the borrowing key |
+
+### harvest
+
+```solidity
+function harvest(bytes32 borrowingKey) external nonpayable
+```
+
+
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| borrowingKey | bytes32 | undefined |
 
 ### holdTokenInfo
 
@@ -739,29 +777,6 @@ This external function is used to update the settings for a particular item. The
 | _item | enum OwnerSettings.ITEM | The item to update the settings for. |
 | values | uint256[] | An array of values containing the new settings. |
 
-### userBorrowingKeys
-
-```solidity
-function userBorrowingKeys(address, uint256) external view returns (bytes32)
-```
-
-borrower =&gt; BorrowingKeys[]
-
-
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | address | undefined |
-| _1 | uint256 | undefined |
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | bytes32 | undefined |
-
 ### whitelistedCall
 
 ```solidity
@@ -863,6 +878,23 @@ Indicates that a loan has been closed due to an emergency situation
 | borrower  | address | undefined |
 | lender  | address | undefined |
 | borrowingKey  | bytes32 | undefined |
+
+### Harvest
+
+```solidity
+event Harvest(bytes32 borrowingKey, uint256 harvestedAmt)
+```
+
+
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| borrowingKey  | bytes32 | undefined |
+| harvestedAmt  | uint256 | undefined |
 
 ### IncreaseCollateralBalance
 
