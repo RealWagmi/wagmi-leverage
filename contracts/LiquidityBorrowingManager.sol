@@ -710,7 +710,6 @@ contract LiquidityBorrowingManager is
                     borrowing.borrowedAmount
                 );
             (removedAmt == 0).revertError(ErrLib.ErrorCode.LIQUIDITY_IS_ZERO);
-            // prevent overspent
             // Subtract the removed amount and fees from borrowedAmount and feesOwed
             borrowing.borrowedAmount -= removedAmt;
             borrowing.feesOwed -= feesAmt;
@@ -723,18 +722,11 @@ contract LiquidityBorrowingManager is
                 _removeKeysAndClearStorage(borrowing.borrower, params.borrowingKey, empty);
                 feesAmt += liquidationBonus;
             } else {
+                // make changes to the storage
                 BorrowingInfo storage borrowingStorage = borrowingsInfo[params.borrowingKey];
                 borrowingStorage.dailyRateCollateralBalance = 0;
                 borrowingStorage.feesOwed = borrowing.feesOwed;
                 borrowingStorage.borrowedAmount = borrowing.borrowedAmount;
-                // Calculate the updated accLoanRatePerSeconds
-                borrowingStorage.accLoanRatePerSeconds =
-                    holdTokenRateInfo.accLoanRatePerSeconds -
-                    FullMath.mulDiv(
-                        uint256(-collateralBalance),
-                        Constants.BP,
-                        borrowing.borrowedAmount // new amount
-                    );
             }
             // Transfer removedAmt + feesAmt to msg.sender and emit EmergencyLoanClosure event
             Vault(VAULT_ADDRESS).transferToken(
