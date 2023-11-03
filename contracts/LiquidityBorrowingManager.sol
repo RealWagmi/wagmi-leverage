@@ -137,6 +137,8 @@ contract LiquidityBorrowingManager is
         bytes32 newBorrowingKey
     );
 
+    event Harvest(bytes32 borrowingKey, uint256 harvestedAmt);
+
     error TooLittleReceivedError(uint256 minOut, uint256 out);
 
     /// @dev Modifier to check if the current block timestamp is before or equal to the deadline.
@@ -441,7 +443,7 @@ contract LiquidityBorrowingManager is
     ) external nonReentrant checkDeadline(deadline) {
         BorrowingInfo memory oldBorrowing = borrowingsInfo[borrowingKey];
         // Ensure that the borrowed position exists
-        (oldBorrowing.borrowedAmount == 0).revertError(ErrLib.ErrorCode.INVALID_BORROWING_KEY);
+        _existenceCheck(oldBorrowing.borrowedAmount);
         // Ensure that the borrowedAmount hasn't changed
         (oldBorrowing.borrowedAmount < minBorrowedAmount).revertError(
             ErrLib.ErrorCode.UNEXPECTED_CHANGES
@@ -565,6 +567,69 @@ contract LiquidityBorrowingManager is
         );
     }
 
+    function harvest(bytes32 borrowingKey) external nonReentrant {
+        BorrowingInfo storage borrowing = borrowingsInfo[borrowingKey];
+        // Check if the borrowing key is valid
+        _existenceCheck(borrowing.borrowedAmount);
+
+        // Update token rate information and get holdTokenRateInfo storage reference
+        (, TokenInfo storage holdTokenRateInfo) = _updateTokenRateInfo(
+            borrowing.saleToken,
+            borrowing.holdToken
+        );
+
+        // Calculate collateral balance and validate caller
+        (int256 collateralBalance, uint256 currentFees) = _calculateCollateralBalance(
+            borrowing.borrowedAmount,
+            borrowing.accLoanRatePerSeconds,
+            borrowing.dailyRateCollateralBalance,
+            holdTokenRateInfo.accLoanRatePerSeconds
+        );
+
+        (collateralBalance < 0 ||
+            currentFees < Constants.MINIMUM_AMOUNT * Constants.COLLATERAL_BALANCE_PRECISION)
+            .revertError(ErrLib.ErrorCode.FORBIDDEN);
+
+        // Calculate platform fees and adjust fees owed
+        borrowing.dailyRateCollateralBalance -= currentFees;
+        borrowing.feesOwed += _pickUpPlatformFees(borrowing.holdToken, currentFees);
+        // Set the accumulated loan rate per second for the borrowing position
+        borrowing.accLoanRatePerSeconds = holdTokenRateInfo.accLoanRatePerSeconds;
+
+        uint256 feesOwed = borrowing.feesOwed;
+        uint256 borrowedAmount = borrowing.borrowedAmount;
+
+        bool zeroForSaleToken = borrowing.saleToken < borrowing.holdToken;
+        uint256 harvestedAmt;
+
+        // Create a memory struct to store liquidity cache information.
+        RestoreLiquidityCache memory cache;
+        // Get the array of LoanInfo structs associated with the given borrowing key.
+        LoanInfo[] memory loans = loansInfo[borrowingKey];
+        // Iterate through each loan in the loans array.
+        for (uint256 i; i < loans.length; ) {
+            LoanInfo memory loan = loans[i];
+            // Get the owner address of the loan's token ID using the underlyingPositionManager contract.
+            address creditor = _getOwnerOf(loan.tokenId);
+            // Check if the owner of the loan's token ID is equal to the `msg.sender`.
+            if (creditor != address(0)) {
+                // Update the liquidity cache based on the loan information.
+                _upRestoreLiquidityCache(zeroForSaleToken, loan, cache);
+                uint256 feesAmt = FullMath.mulDiv(feesOwed, cache.holdTokenDebt, borrowedAmount);
+                // Calculate the fees amount based on the total fees owed and holdTokenDebt.
+                loansFeesInfo[creditor][cache.holdToken] += feesAmt;
+                harvestedAmt += feesAmt;
+            }
+            unchecked {
+                ++i;
+            }
+        }
+
+        borrowing.feesOwed -= harvestedAmt;
+
+        emit Harvest(borrowingKey, harvestedAmt);
+    }
+
     /**
      * @notice This function is used to repay a loan.
      * The position is closed either by the trader or by the liquidator if the trader has not paid for holding the position
@@ -586,7 +651,7 @@ contract LiquidityBorrowingManager is
     ) external nonReentrant checkDeadline(deadline) {
         BorrowingInfo memory borrowing = borrowingsInfo[params.borrowingKey];
         // Check if the borrowing key is valid
-        (borrowing.borrowedAmount == 0).revertError(ErrLib.ErrorCode.INVALID_BORROWING_KEY);
+        _existenceCheck(borrowing.borrowedAmount);
 
         bool zeroForSaleToken = borrowing.saleToken < borrowing.holdToken;
         uint256 liquidationBonus = borrowing.liquidationBonus;
@@ -1110,6 +1175,10 @@ contract LiquidityBorrowingManager is
                 ++i;
             }
         }
+    }
+
+    function _existenceCheck(uint256 borrowedAmount) private pure {
+        (borrowedAmount == 0).revertError(ErrLib.ErrorCode.INVALID_BORROWING_KEY);
     }
 
     function _collect(

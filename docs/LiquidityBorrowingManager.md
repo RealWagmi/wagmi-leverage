@@ -469,6 +469,22 @@ Get information about loans associated with a borrowing key
 |---|---|---|
 | loans | LiquidityManager.LoanInfo[] | An array containing LoanInfo structs representing the loans associated with the borrowing key |
 
+### harvest
+
+```solidity
+function harvest(bytes32 borrowingKey) external nonpayable
+```
+
+
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| borrowingKey | bytes32 | undefined |
+
 ### holdTokenInfo
 
 ```solidity
@@ -862,6 +878,23 @@ Indicates that a loan has been closed due to an emergency situation
 | borrower  | address | undefined |
 | lender  | address | undefined |
 | borrowingKey  | bytes32 | undefined |
+
+### Harvest
+
+```solidity
+event Harvest(bytes32 borrowingKey, uint256 harvestedAmt)
+```
+
+
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| borrowingKey  | bytes32 | undefined |
+| harvestedAmt  | uint256 | undefined |
 
 ### IncreaseCollateralBalance
 

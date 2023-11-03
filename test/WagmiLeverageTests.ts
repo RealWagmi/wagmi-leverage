@@ -1425,6 +1425,20 @@ describe("WagmiLeverageTests", () => {
         );
     });
 
+    it("harvest should work correctly", async () => {
+        let debt = (await borrowingManager.getBorrowerDebtsInfo(bob.address))[1];
+        expect(debt.collateralBalance).to.be.gt(0);
+        let dailyRateCollateralBalanceBefore = debt.info.dailyRateCollateralBalance;
+        let pendingfees = dailyRateCollateralBalanceBefore.sub(debt.collateralBalance);
+        expect(pendingfees).to.be.gt(0);
+
+        await borrowingManager.connect(alice).harvest(debt.key);
+
+        debt = (await borrowingManager.getBorrowerDebtsInfo(bob.address))[1];
+        expect(debt.info.feesOwed).to.be.lt(BigNumber.from(5));//dust
+        expect(debt.info.dailyRateCollateralBalance).to.be.equal(debt.collateralBalance);
+    });
+
     it("get-functions should be call successful", async () => {
         const borrowingKey = (await borrowingManager.getBorrowingKeysForBorrower(bob.address))[1];
         const { balance, estimatedLifeTime } = await borrowingManager.checkDailyRateCollateral(borrowingKey);
