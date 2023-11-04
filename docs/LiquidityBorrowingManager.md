@@ -1044,6 +1044,17 @@ error InvalidSettingsValue(uint256 value)
 |---|---|---|
 | value | uint256 | undefined |
 
+### InvalidTick
+
+```solidity
+error InvalidTick()
+```
+
+Thrown when the tick passed to #getSqrtRatioAtTick is not between MIN_TICK and MAX_TICK
+
+
+
+
 ### InvalidTokens
 
 ```solidity
