@@ -101,8 +101,12 @@ abstract contract LiquidityManager is ApproveSwapAndPay {
         VAULT_ADDRESS = address(new Vault{ salt: salt }());
     }
 
-    error InvalidBorrowedLiquidity(uint256 tokenId);
-    error TooLittleBorrowedLiquidity(uint128 liquidity);
+    error InvalidBorrowedLiquidityAmount(
+        uint256 tokenId,
+        uint128 posLiquidity,
+        uint128 minLiquidityAmt,
+        uint128 liquidity
+    );
     error InvalidTokens(uint256 tokenId);
     error NotApproved(uint256 tokenId);
     error InvalidRestoredLiquidity(
@@ -131,22 +135,40 @@ abstract contract LiquidityManager is ApproveSwapAndPay {
     ) private pure returns (uint256 borrowedAmount) {
         borrowedAmount = (
             zeroForSaleToken
-                ? LiquidityAmounts.getAmount1ForLiquidity(
+                ? LiquidityAmounts.getAmount1RoundingUpForLiquidity(
                     TickMath.getSqrtRatioAtTick(tickLower),
                     TickMath.getSqrtRatioAtTick(tickUpper),
                     liquidity
                 )
-                : LiquidityAmounts.getAmount0ForLiquidity(
+                : LiquidityAmounts.getAmount0RoundingUpForLiquidity(
                     TickMath.getSqrtRatioAtTick(tickLower),
                     TickMath.getSqrtRatioAtTick(tickUpper),
                     liquidity
                 )
         );
-        if (borrowedAmount > Constants.MINIMUM_BORROWED_AMOUNT) {
-            ++borrowedAmount;
-        } else {
-            revert TooLittleBorrowedLiquidity(liquidity);
-        }
+    }
+
+    /**
+     * @dev Calculates the minimum liquidity amount for a given tick range.
+     * @param tickLower The lower tick of the range.
+     * @param tickUpper The upper tick of the range.
+     * @return minLiquidity The minimum liquidity amount.
+     */
+    function _getMinLiquidityAmt(
+        int24 tickLower,
+        int24 tickUpper
+    ) internal pure returns (uint128 minLiquidity) {
+        uint128 liquidity0 = LiquidityAmounts.getLiquidityForAmount0(
+            TickMath.getSqrtRatioAtTick(tickUpper - 1),
+            TickMath.getSqrtRatioAtTick(tickUpper),
+            Constants.MINIMUM_EXTRACTED_AMOUNT
+        );
+        uint128 liquidity1 = LiquidityAmounts.getLiquidityForAmount1(
+            TickMath.getSqrtRatioAtTick(tickLower),
+            TickMath.getSqrtRatioAtTick(tickLower + 1),
+            Constants.MINIMUM_EXTRACTED_AMOUNT
+        );
+        minLiquidity = liquidity0 > liquidity1 ? liquidity0 : liquidity1;
     }
 
     /**
@@ -203,10 +225,18 @@ abstract contract LiquidityManager is ApproveSwapAndPay {
                         revert InvalidTokens(tokenId);
                     }
                 }
+
                 // Check borrowed liquidity validity
-                if (!(liquidity > 0 && liquidity <= posLiquidity)) {
-                    revert InvalidBorrowedLiquidity(tokenId);
+                uint128 minLiquidityAmt = _getMinLiquidityAmt(tickLower, tickUpper);
+                if (liquidity > posLiquidity || liquidity < minLiquidityAmt) {
+                    revert InvalidBorrowedLiquidityAmount(
+                        tokenId,
+                        posLiquidity,
+                        minLiquidityAmt,
+                        liquidity
+                    );
                 }
+
                 // Calculate borrowed amount
                 borrowedAmount += _getSingleSideRoundUpBorrowedAmount(
                     zeroForSaleToken,
@@ -383,7 +413,7 @@ abstract contract LiquidityManager is ApproveSwapAndPay {
                         );
                         // Calculate the amounts of token0 and token1 for a given liquidity
                         (amounts.amount0, amounts.amount1) = LiquidityAmounts
-                            .getAmountsForLiquidity(
+                            .getAmountsRoundingUpForLiquidity(
                                 cache.sqrtPriceX96,
                                 TickMath.getSqrtRatioAtTick(cache.tickLower),
                                 TickMath.getSqrtRatioAtTick(cache.tickUpper),
@@ -471,11 +501,6 @@ abstract contract LiquidityManager is ApproveSwapAndPay {
                 deadline: block.timestamp
             })
         );
-        // Check if both amount0 and amount1 are zero after decreasing liquidity
-        // If true, revert with InvalidBorrowedLiquidity exception
-        if (amount0 == 0 && amount1 == 0) {
-            revert InvalidBorrowedLiquidity(tokenId);
-        }
         // Call the collect function of underlyingPositionManager contract
         // with CollectParams struct as argument
         (amount0, amount1) = underlyingPositionManager.collect(
@@ -503,9 +528,6 @@ abstract contract LiquidityManager is ApproveSwapAndPay {
         uint256 amount0,
         uint256 amount1
     ) private {
-        // increase if not equal to zero to avoid rounding down the amount of restored liquidity.
-        if (amount0 > 0) ++amount0;
-        if (amount1 > 0) ++amount1;
         // Call the increaseLiquidity function of underlyingPositionManager contract
         // with IncreaseLiquidityParams struct as argument
         (uint128 restoredLiquidity, , ) = underlyingPositionManager.increaseLiquidity(
@@ -560,22 +582,16 @@ abstract contract LiquidityManager is ApproveSwapAndPay {
     ) private pure returns (uint256 holdTokenAmountIn, Amounts memory amounts) {
         // Call getAmountsForLiquidity function from LiquidityAmounts library
         // to get the amounts of token0 and token1 for a given liquidity position
-        (amounts.amount0, amounts.amount1) = LiquidityAmounts.getAmountsForLiquidity(
+        (amounts.amount0, amounts.amount1) = LiquidityAmounts.getAmountsRoundingUpForLiquidity(
             sqrtPriceX96,
             TickMath.getSqrtRatioAtTick(tickLower),
             TickMath.getSqrtRatioAtTick(tickUpper),
             liquidity
         );
         // Calculate the holdTokenAmountIn based on the zeroForSaleToken flag
-        if (zeroForSaleToken) {
-            // If zeroForSaleToken is true, check if amount0 is zero
-            // If true, holdTokenAmountIn will be zero. Otherwise, it will be holdTokenDebt - amount1
-            holdTokenAmountIn = amounts.amount0 == 0 ? 0 : holdTokenDebt - amounts.amount1;
-        } else {
-            // If zeroForSaleToken is false, check if amount1 is zero
-            // If true, holdTokenAmountIn will be zero. Otherwise, it will be holdTokenDebt - amount0
-            holdTokenAmountIn = amounts.amount1 == 0 ? 0 : holdTokenDebt - amounts.amount0;
-        }
+        holdTokenAmountIn = zeroForSaleToken
+            ? holdTokenDebt - amounts.amount1
+            : holdTokenDebt - amounts.amount0;
     }
 
     /**

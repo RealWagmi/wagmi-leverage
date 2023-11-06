@@ -13,5 +13,5 @@ library Constants {
     uint256 public constant MAX_NUM_LOANS_PER_POSITION = 7;
     uint256 public constant COLLATERAL_BALANCE_PRECISION = 1e18;
     uint256 public constant MINIMUM_AMOUNT = 1000;
-    uint256 public constant MINIMUM_BORROWED_AMOUNT = 100000;
+    uint256 public constant MINIMUM_EXTRACTED_AMOUNT = 10;
 }

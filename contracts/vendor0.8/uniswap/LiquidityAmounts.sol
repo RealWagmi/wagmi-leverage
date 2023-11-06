@@ -2,6 +2,7 @@
 pragma solidity >=0.5.0;
 
 import { FullMath } from "./FullMath.sol";
+import { UnsafeMath } from "./UnsafeMath.sol";
 import "@uniswap/v3-core/contracts/libraries/FixedPoint96.sol";
 
 /// @title Liquidity amount functions
@@ -89,7 +90,7 @@ library LiquidityAmounts {
     /// @param sqrtRatioBX96 A sqrt price representing the second tick boundary
     /// @param liquidity The liquidity being valued
     /// @return amount0 The amount of token0
-    function getAmount0ForLiquidity(
+    function getAmount0RoundingUpForLiquidity(
         uint160 sqrtRatioAX96,
         uint160 sqrtRatioBX96,
         uint128 liquidity
@@ -99,11 +100,14 @@ library LiquidityAmounts {
                 (sqrtRatioAX96, sqrtRatioBX96) = (sqrtRatioBX96, sqrtRatioAX96);
 
             return
-                FullMath.mulDiv(
-                    uint256(liquidity) << FixedPoint96.RESOLUTION,
-                    sqrtRatioBX96 - sqrtRatioAX96,
-                    sqrtRatioBX96
-                ) / sqrtRatioAX96;
+                UnsafeMath.divRoundingUp(
+                    FullMath.mulDivRoundingUp(
+                        uint256(liquidity) << FixedPoint96.RESOLUTION,
+                        sqrtRatioBX96 - sqrtRatioAX96,
+                        sqrtRatioBX96
+                    ),
+                    sqrtRatioAX96
+                );
         }
     }
 
@@ -112,7 +116,7 @@ library LiquidityAmounts {
     /// @param sqrtRatioBX96 A sqrt price representing the second tick boundary
     /// @param liquidity The liquidity being valued
     /// @return amount1 The amount of token1
-    function getAmount1ForLiquidity(
+    function getAmount1RoundingUpForLiquidity(
         uint160 sqrtRatioAX96,
         uint160 sqrtRatioBX96,
         uint128 liquidity
@@ -121,7 +125,12 @@ library LiquidityAmounts {
             (sqrtRatioAX96, sqrtRatioBX96) = (sqrtRatioBX96, sqrtRatioAX96);
 
         unchecked {
-            return FullMath.mulDiv(liquidity, sqrtRatioBX96 - sqrtRatioAX96, FixedPoint96.Q96);
+            return
+                FullMath.mulDivRoundingUp(
+                    liquidity,
+                    sqrtRatioBX96 - sqrtRatioAX96,
+                    FixedPoint96.Q96
+                );
         }
     }
 
@@ -133,7 +142,7 @@ library LiquidityAmounts {
     /// @param liquidity The liquidity being valued
     /// @return amount0 The amount of token0
     /// @return amount1 The amount of token1
-    function getAmountsForLiquidity(
+    function getAmountsRoundingUpForLiquidity(
         uint160 sqrtRatioX96,
         uint160 sqrtRatioAX96,
         uint160 sqrtRatioBX96,
@@ -143,12 +152,12 @@ library LiquidityAmounts {
             (sqrtRatioAX96, sqrtRatioBX96) = (sqrtRatioBX96, sqrtRatioAX96);
 
         if (sqrtRatioX96 <= sqrtRatioAX96) {
-            amount0 = getAmount0ForLiquidity(sqrtRatioAX96, sqrtRatioBX96, liquidity);
+            amount0 = getAmount0RoundingUpForLiquidity(sqrtRatioAX96, sqrtRatioBX96, liquidity);
         } else if (sqrtRatioX96 < sqrtRatioBX96) {
-            amount0 = getAmount0ForLiquidity(sqrtRatioX96, sqrtRatioBX96, liquidity);
-            amount1 = getAmount1ForLiquidity(sqrtRatioAX96, sqrtRatioX96, liquidity);
+            amount0 = getAmount0RoundingUpForLiquidity(sqrtRatioX96, sqrtRatioBX96, liquidity);
+            amount1 = getAmount1RoundingUpForLiquidity(sqrtRatioAX96, sqrtRatioX96, liquidity);
         } else {
-            amount1 = getAmount1ForLiquidity(sqrtRatioAX96, sqrtRatioBX96, liquidity);
+            amount1 = getAmount1RoundingUpForLiquidity(sqrtRatioAX96, sqrtRatioBX96, liquidity);
         }
     }
 }

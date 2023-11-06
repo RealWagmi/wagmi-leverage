@@ -166,7 +166,7 @@ abstract contract ApproveSwapAndPay {
         // Calculating the actual amount of output tokens received
         amountOut = _getBalance(tokenOut) - balanceOutBefore;
         // Checking if the received amount satisfies the minimum requirement
-        if (amountOut == 0 || amountOut < amountOutMin) {
+        if (amountOut < amountOutMin) {
             revert SwapSlippageCheckError(amountOutMin, amountOut);
         }
     }

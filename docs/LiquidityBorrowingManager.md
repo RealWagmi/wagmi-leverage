@@ -990,10 +990,10 @@ Indicates that the daily interest rate for holding token(for specific pair) has 
 
 ## Errors
 
-### InvalidBorrowedLiquidity
+### InvalidBorrowedLiquidityAmount
 
 ```solidity
-error InvalidBorrowedLiquidity(uint256 tokenId)
+error InvalidBorrowedLiquidityAmount(uint256 tokenId, uint128 posLiquidity, uint128 minLiquidityAmt, uint128 liquidity)
 ```
 
 
@@ -1005,6 +1005,9 @@ error InvalidBorrowedLiquidity(uint256 tokenId)
 | Name | Type | Description |
 |---|---|---|
 | tokenId | uint256 | undefined |
+| posLiquidity | uint128 | undefined |
+| minLiquidityAmt | uint128 | undefined |
+| liquidity | uint128 | undefined |
 
 ### InvalidRestoredLiquidity
 
@@ -1119,22 +1122,6 @@ error SwapSlippageCheckError(uint256 expectedOut, uint256 receivedOut)
 |---|---|---|
 | expectedOut | uint256 | undefined |
 | receivedOut | uint256 | undefined |
-
-### TooLittleBorrowedLiquidity
-
-```solidity
-error TooLittleBorrowedLiquidity(uint128 liquidity)
-```
-
-
-
-
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| liquidity | uint128 | undefined |
 
 ### TooLittleReceivedError
 
