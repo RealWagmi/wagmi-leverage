@@ -153,6 +153,22 @@ This function is used to check the daily rate collateral for a specific borrowin
 | balance | int256 | The balance of the daily rate collateral. |
 | estimatedLifeTime | uint256 | The estimated lifetime of the collateral in seconds. |
 
+### collectLoansFees
+
+```solidity
+function collectLoansFees(address[] tokens) external nonpayable
+```
+
+This function allows the caller to collect their own loan fees for multiple tokens and transfer them to themselves.
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| tokens | address[] | An array of addresses representing the tokens for which fees will be collected. |
+
 ### collectProtocol
 
 ```solidity
@@ -272,6 +288,73 @@ Retrieves the debts information for a specific borrower.
 |---|---|---|
 | extinfo | LiquidityBorrowingManager.BorrowingInfoExt[] | An array of BorrowingInfoExt structs representing the borrowing information. |
 
+### getBorrowingKeysForBorrower
+
+```solidity
+function getBorrowingKeysForBorrower(address borrower) external view returns (bytes32[] borrowingKeys)
+```
+
+
+
+*Retrieves the borrowing keys for a specific borrower.*
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| borrower | address | The address of the borrower. |
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| borrowingKeys | bytes32[] | An array of borrowing keys. |
+
+### getBorrowingKeysForTokenId
+
+```solidity
+function getBorrowingKeysForTokenId(uint256 tokenId) external view returns (bytes32[] borrowingKeys)
+```
+
+
+
+*Retrieves the borrowing keys associated with a token ID.*
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| tokenId | uint256 | The identifier of the token. |
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| borrowingKeys | bytes32[] | An array of borrowing keys. |
+
+### getFeesInfo
+
+```solidity
+function getFeesInfo(address feesOwner, address[] tokens) external view returns (uint256[] fees)
+```
+
+
+
+*Returns the fees information for multiple tokens in an array.*
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| feesOwner | address | The address of the owner of the fees OR address(0) for returns platformsFeesInfo. |
+| tokens | address[] | An array of token addresses for which the fees are to be retrieved. |
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| fees | uint256[] | An array containing the fees for each token. |
+
 ### getHoldTokenDailyRateInfo
 
 ```solidity
@@ -386,27 +469,21 @@ Get information about loans associated with a borrowing key
 |---|---|---|
 | loans | LiquidityManager.LoanInfo[] | An array containing LoanInfo structs representing the loans associated with the borrowing key |
 
-### getPlatformsFeesInfo
+### harvest
 
 ```solidity
-function getPlatformsFeesInfo(address[] tokens) external view returns (uint256[] fees)
+function harvest(bytes32 borrowingKey) external nonpayable
 ```
 
 
 
-*Returns the fees information for multiple tokens in an array.*
+
 
 #### Parameters
 
 | Name | Type | Description |
 |---|---|---|
-| tokens | address[] | An array of token addresses for which the fees are to be retrieved. |
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| fees | uint256[] | An array containing the fees for each token. |
+| borrowingKey | bytes32 | undefined |
 
 ### holdTokenInfo
 
@@ -436,7 +513,7 @@ pairKey =&gt; TokenInfo
 ### increaseCollateralBalance
 
 ```solidity
-function increaseCollateralBalance(bytes32 borrowingKey, uint256 collateralAmt) external nonpayable
+function increaseCollateralBalance(bytes32 borrowingKey, uint256 collateralAmt, uint256 deadline) external nonpayable
 ```
 
 This function is used to increase the daily rate collateral for a specific borrowing.
@@ -449,6 +526,7 @@ This function is used to increase the daily rate collateral for a specific borro
 |---|---|---|
 | borrowingKey | bytes32 | The unique identifier of the borrowing. |
 | collateralAmt | uint256 | The amount of collateral to be added. |
+| deadline | uint256 | The deadline timestamp after which the transaction is considered invalid. |
 
 ### liquidationBonusForToken
 
@@ -580,7 +658,7 @@ function setSwapCallToWhitelist(address swapTarget, bytes4 funcSelector, bool is
 ### takeOverDebt
 
 ```solidity
-function takeOverDebt(bytes32 borrowingKey, uint256 collateralAmt) external nonpayable
+function takeOverDebt(bytes32 borrowingKey, uint256 collateralAmt, uint256 minBorrowedAmount, uint256 deadline) external nonpayable
 ```
 
 Take over debt by transferring ownership of a borrowing to the current caller
@@ -593,29 +671,8 @@ Take over debt by transferring ownership of a borrowing to the current caller
 |---|---|---|
 | borrowingKey | bytes32 | The unique key associated with the borrowing to be taken over |
 | collateralAmt | uint256 | The amount of collateral to be provided by the new borrower |
-
-### tokenIdToBorrowingKeys
-
-```solidity
-function tokenIdToBorrowingKeys(uint256, uint256) external view returns (bytes32)
-```
-
-NonfungiblePositionManager tokenId =&gt; BorrowingKeys[]
-
-
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | uint256 | undefined |
-| _1 | uint256 | undefined |
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | bytes32 | undefined |
+| minBorrowedAmount | uint256 | The minimum borrowed amount required to take over the debt. |
+| deadline | uint256 | The deadline timestamp after which the transaction is considered invalid. |
 
 ### transferOwnership
 
@@ -720,29 +777,6 @@ This external function is used to update the settings for a particular item. The
 | _item | enum OwnerSettings.ITEM | The item to update the settings for. |
 | values | uint256[] | An array of values containing the new settings. |
 
-### userBorrowingKeys
-
-```solidity
-function userBorrowingKeys(address, uint256) external view returns (bytes32)
-```
-
-borrower =&gt; BorrowingKeys[]
-
-
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | address | undefined |
-| _1 | uint256 | undefined |
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | bytes32 | undefined |
-
 ### whitelistedCall
 
 ```solidity
@@ -791,6 +825,24 @@ Indicates that a borrower has made a new loan
 | liquidationBonus  | uint256 | undefined |
 | dailyRatePrepayment  | uint256 | undefined |
 
+### CollectLoansFees
+
+```solidity
+event CollectLoansFees(address recipient, address[] tokens, uint256[] amounts)
+```
+
+Indicates that the lender has collected fee tokens
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| recipient  | address | undefined |
+| tokens  | address[] | undefined |
+| amounts  | uint256[] | undefined |
+
 ### CollectProtocol
 
 ```solidity
@@ -826,6 +878,23 @@ Indicates that a loan has been closed due to an emergency situation
 | borrower  | address | undefined |
 | lender  | address | undefined |
 | borrowingKey  | bytes32 | undefined |
+
+### Harvest
+
+```solidity
+event Harvest(bytes32 borrowingKey, uint256 harvestedAmt)
+```
+
+
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| borrowingKey  | bytes32 | undefined |
+| harvestedAmt  | uint256 | undefined |
 
 ### IncreaseCollateralBalance
 
@@ -921,10 +990,10 @@ Indicates that the daily interest rate for holding token(for specific pair) has 
 
 ## Errors
 
-### InvalidBorrowedLiquidity
+### InvalidBorrowedLiquidityAmount
 
 ```solidity
-error InvalidBorrowedLiquidity(uint256 tokenId)
+error InvalidBorrowedLiquidityAmount(uint256 tokenId, uint128 posLiquidity, uint128 minLiquidityAmt, uint128 liquidity)
 ```
 
 
@@ -936,6 +1005,9 @@ error InvalidBorrowedLiquidity(uint256 tokenId)
 | Name | Type | Description |
 |---|---|---|
 | tokenId | uint256 | undefined |
+| posLiquidity | uint128 | undefined |
+| minLiquidityAmt | uint128 | undefined |
+| liquidity | uint128 | undefined |
 
 ### InvalidRestoredLiquidity
 
@@ -974,6 +1046,17 @@ error InvalidSettingsValue(uint256 value)
 | Name | Type | Description |
 |---|---|---|
 | value | uint256 | undefined |
+
+### InvalidTick
+
+```solidity
+error InvalidTick()
+```
+
+Thrown when the tick passed to #getSqrtRatioAtTick is not between MIN_TICK and MAX_TICK
+
+
+
 
 ### InvalidTokens
 
@@ -1039,22 +1122,6 @@ error SwapSlippageCheckError(uint256 expectedOut, uint256 receivedOut)
 |---|---|---|
 | expectedOut | uint256 | undefined |
 | receivedOut | uint256 | undefined |
-
-### TooLittleBorrowedLiquidity
-
-```solidity
-error TooLittleBorrowedLiquidity(uint128 liquidity)
-```
-
-
-
-
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| liquidity | uint128 | undefined |
 
 ### TooLittleReceivedError
 

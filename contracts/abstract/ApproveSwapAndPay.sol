@@ -2,7 +2,7 @@
 pragma solidity 0.8.21;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { TransferHelper } from "../libraries/TransferHelper.sol";
 import { IUniswapV3Pool } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import { SafeCast } from "@uniswap/v3-core/contracts/libraries/SafeCast.sol";
 import "../libraries/ExternalCall.sol";
@@ -10,7 +10,7 @@ import "../libraries/ErrLib.sol";
 
 abstract contract ApproveSwapAndPay {
     using SafeCast for uint256;
-    using SafeERC20 for IERC20;
+    using TransferHelper for address;
     using { ExternalCall._patchAmountAndCall } for address;
     using { ExternalCall._readFirstBytes4 } for bytes;
     using { ErrLib.revertError } for bool;
@@ -25,8 +25,6 @@ abstract contract ApproveSwapAndPay {
         address tokenOut;
         /// @dev The amount of `tokenIn` to be swapped.
         uint256 amountIn;
-        /// @dev The minimum amount of `tokenOut` expected to receive from the swap.
-        uint256 amountOutMinimum;
     }
 
     /// @notice Struct to hold parameters for swapping tokens
@@ -111,10 +109,7 @@ abstract contract ApproveSwapAndPay {
      * @return balance The balance of the contract for the specified token.
      */
     function _getBalance(address token) internal view returns (uint256 balance) {
-        bytes memory callData = abi.encodeWithSelector(IERC20.balanceOf.selector, address(this));
-        (bool success, bytes memory data) = token.staticcall(callData);
-        require(success && data.length >= 32);
-        balance = abi.decode(data, (uint256));
+        balance = token.getBalance();
     }
 
     /**
@@ -128,8 +123,8 @@ abstract contract ApproveSwapAndPay {
         address tokenA,
         address tokenB
     ) internal view returns (uint256 balanceA, uint256 balanceB) {
-        balanceA = _getBalance(tokenA);
-        balanceB = _getBalance(tokenB);
+        balanceA = tokenA.getBalance();
+        balanceB = tokenB.getBalance();
     }
 
     /**
@@ -158,6 +153,9 @@ abstract contract ApproveSwapAndPay {
         // Maximizing approval if necessary
         _maxApproveIfNecessary(tokenIn, externalSwap.swapTarget, amountIn);
         uint256 balanceOutBefore = _getBalance(tokenOut);
+        (externalSwap.swapAmountInDataIndex > externalSwap.swapData.length / 0x20).revertError(
+            ErrLib.ErrorCode.INVALID_SWAP
+        );
         // Patching the amount and calling the external swap
         externalSwap.swapTarget._patchAmountAndCall(
             externalSwap.swapData,
@@ -168,7 +166,7 @@ abstract contract ApproveSwapAndPay {
         // Calculating the actual amount of output tokens received
         amountOut = _getBalance(tokenOut) - balanceOutBefore;
         // Checking if the received amount satisfies the minimum requirement
-        if (amountOut == 0 || amountOut < amountOutMin) {
+        if (amountOut < amountOutMin) {
             revert SwapSlippageCheckError(amountOutMin, amountOut);
         }
     }
@@ -185,9 +183,9 @@ abstract contract ApproveSwapAndPay {
     function _pay(address token, address payer, address recipient, uint256 value) internal {
         if (value > 0) {
             if (payer == address(this)) {
-                IERC20(token).safeTransfer(recipient, value);
+                token.safeTransfer(recipient, value);
             } else {
-                IERC20(token).safeTransferFrom(payer, recipient, value);
+                token.safeTransferFrom(payer, recipient, value);
             }
         }
     }
@@ -198,8 +196,6 @@ abstract contract ApproveSwapAndPay {
      * @return amountOut The amount of tokens received as output from the swap.
      * @notice This internal function swaps the exact amount of `params.amountIn` tokens from `params.tokenIn` to `params.tokenOut`.
      * The swapped amount is calculated based on the current pool ratio between `params.tokenIn` and `params.tokenOut`.
-     * If the resulting `amountOut` is less than `params.amountOutMinimum`, the function will revert with a `SwapSlippageCheckError`
-     * indicating the minimum expected amount was not met.
      */
     function _v3SwapExactInput(
         v3SwapExactInputParams memory params
@@ -214,15 +210,11 @@ abstract contract ApproveSwapAndPay {
                 address(this), //recipient
                 zeroForTokenIn,
                 params.amountIn.toInt256(),
-                (zeroForTokenIn ? MIN_SQRT_RATIO + 1 : MAX_SQRT_RATIO - 1),
+                zeroForTokenIn ? MIN_SQRT_RATIO + 1 : MAX_SQRT_RATIO - 1,
                 abi.encode(params.fee, params.tokenIn, params.tokenOut)
             );
         // Calculate the actual amount of output tokens received
         amountOut = uint256(-(zeroForTokenIn ? amount1Delta : amount0Delta));
-        // Check if the received amount satisfies the minimum requirement
-        if (amountOut < params.amountOutMinimum) {
-            revert SwapSlippageCheckError(params.amountOutMinimum, amountOut);
-        }
     }
 
     /**

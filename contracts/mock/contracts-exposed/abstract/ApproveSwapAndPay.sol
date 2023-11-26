@@ -4,12 +4,13 @@ pragma solidity >=0.6.0;
 
 import "../../../../contracts/abstract/ApproveSwapAndPay.sol";
 import "../../../../contracts/libraries/Keys.sol";
+import { EnumerableSet } from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
 contract $ApproveSwapAndPay is ApproveSwapAndPay {
-    using { Keys.removeKey, Keys.addKeyIfNotExists } for bytes32[];
+    using EnumerableSet for EnumerableSet.Bytes32Set;
 
     bytes32 public constant __hh_exposed_bytecode_marker = "hardhat-exposed";
-    bytes32[] self;
+    EnumerableSet.Bytes32Set self;
 
     event return$_patchAmountsAndCallSwap(uint256 amountOut);
 
@@ -32,15 +33,15 @@ contract $ApproveSwapAndPay is ApproveSwapAndPay {
     }
 
     function $_removeKey(bytes32 key) external {
-        self.removeKey(key);
+        self.remove(key);
     }
 
     function $_addKeyIfNotExists(bytes32 key) external {
-        self.addKeyIfNotExists(key);
+        self.add(key);
     }
 
     function $getSelf() external view returns (bytes32[] memory) {
-        return self;
+        return self.values();
     }
 
     function $_computePairKey(
