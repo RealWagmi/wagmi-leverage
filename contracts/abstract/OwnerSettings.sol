@@ -48,6 +48,8 @@ abstract contract OwnerSettings is Ownable {
      */
     mapping(address => Liquidation) public liquidationBonusForToken;
 
+    event UpdateSettingsByOwner(ITEM _item, uint256[] values);
+
     error InvalidSettingsValue(uint256 value);
 
     constructor() {
@@ -93,5 +95,6 @@ abstract contract OwnerSettings is Ownable {
                 dafaultLiquidationBonusBP = values[0];
             }
         }
+        emit UpdateSettingsByOwner(_item, values);
     }
 }

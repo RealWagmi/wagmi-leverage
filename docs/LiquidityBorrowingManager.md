@@ -986,6 +986,23 @@ Indicates that the daily interest rate for holding token(for specific pair) has 
 | holdToken  | address | undefined |
 | value  | uint256 | undefined |
 
+### UpdateSettingsByOwner
+
+```solidity
+event UpdateSettingsByOwner(enum OwnerSettings.ITEM _item, uint256[] values)
+```
+
+
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| _item  | enum OwnerSettings.ITEM | undefined |
+| values  | uint256[] | undefined |
+
 
 
 ## Errors
