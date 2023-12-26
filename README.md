@@ -23,3 +23,5 @@ This function is used to repay a loan.The position is closed either by the trade
 |------| ------- | -----| -----|
 | Arbitrum | 42161 | LiquidityBorrowingManager | [0xbC5e0bB66C9C4036f1172f2132ef8b9030Dfe99E](https://arbiscan.io/address/0xbC5e0bB66C9C4036f1172f2132ef8b9030Dfe99E) |
 | Arbitrum | 42161 | Vault| [0x7EDcBF19EA78331607Df7bf002a4bdB516e12389](https://arbiscan.io/address/0x7EDcBF19EA78331607Df7bf002a4bdB516e12389) |
+
+![](1.png "Title")
