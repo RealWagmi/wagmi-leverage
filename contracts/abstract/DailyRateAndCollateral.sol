@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: SAL-1.0
 pragma solidity 0.8.21;
 import "../vendor0.8/uniswap/FullMath.sol";
 import "../libraries/Keys.sol";

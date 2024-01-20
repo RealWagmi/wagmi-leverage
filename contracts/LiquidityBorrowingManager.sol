@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: SAL-1.0
 pragma solidity 0.8.21;
 
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";

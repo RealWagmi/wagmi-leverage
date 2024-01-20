@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: SAL-1.0
 pragma solidity 0.8.21;
 import "@openzeppelin/contracts/access/Ownable.sol";
 import { Constants } from "../libraries/Constants.sol";

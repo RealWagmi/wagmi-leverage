@@ -25,3 +25,7 @@ This function is used to repay a loan.The position is closed either by the trade
 | Arbitrum | 42161 | Vault| [0x7EDcBF19EA78331607Df7bf002a4bdB516e12389](https://arbiscan.io/address/0x7EDcBF19EA78331607Df7bf002a4bdB516e12389) |
 
 ![](1.png "Title")
+
+## Licensing
+
+The primary license for Wagmi Concentrator(Multipool) is the [WAGMI] Source Available License 1.0 (`SAL-1.0`), see [`LICENSE`](./LICENSE.md). However, some files are licensed under `GPL-2.0-or-later` or `MIT`.

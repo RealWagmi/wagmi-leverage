@@ -1,5 +1,4 @@
-// SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.21;
+// SPDX-License-Identifier: SAL-1.0
 import "../vendor0.8/uniswap/LiquidityAmounts.sol";
 import "../vendor0.8/uniswap/TickMath.sol";
 import "../interfaces/INonfungiblePositionManager.sol";
