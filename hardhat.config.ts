@@ -48,7 +48,7 @@ const config: HardhatUserConfig = {
         version: '0.8.21',
         settings: {
           viaIR: true,
-          // evmVersion: "paris",
+          evmVersion: "paris",
           optimizer: {
             enabled: true,
             runs: 999
@@ -135,12 +135,21 @@ const config: HardhatUserConfig = {
       loggingEnabled: true,
     },
     arbitrum: {
-      url: "https://stylish-greatest-hill.arbitrum-mainnet.quiknode.pro/fc4ecfdfc0df100362fb72632b04abb7b67ecc84/",
+      url: "https://arb1.arbitrum.io/rpc",
       accounts: [`${process.env.PRIVATE_KEY}`],
       chainId: 42161,
       gas: 'auto',
       gasMultiplier: 1.2,
       gasPrice: 'auto',
+      loggingEnabled: true,
+    },
+    kava: {
+      url: "https://evm.kava.io", // public infura endpoint
+      chainId: 2222,
+      gas: 'auto',
+      gasMultiplier: 1.2,
+      gasPrice: 'auto',
+      accounts: [`${process.env.PRIVATE_KEY}`],
       loggingEnabled: true,
     },
   },

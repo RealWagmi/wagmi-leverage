@@ -19,10 +19,14 @@ This function is used to repay a loan.The position is closed either by the trade
 
 ### Addresses
 
-| Network | ChainId | Contract | Address |
-|------| ------- | -----| -----|
-| Arbitrum | 42161 | LiquidityBorrowingManager | [0xbC5e0bB66C9C4036f1172f2132ef8b9030Dfe99E](https://arbiscan.io/address/0xbC5e0bB66C9C4036f1172f2132ef8b9030Dfe99E) |
-| Arbitrum | 42161 | Vault| [0x7EDcBF19EA78331607Df7bf002a4bdB516e12389](https://arbiscan.io/address/0x7EDcBF19EA78331607Df7bf002a4bdB516e12389) |
+| V3 | Network | ChainId | Contract | Address |
+|------|------| ------- | -----| -----|
+| Uniswap | Arbitrum | 42161 | LiquidityBorrowingManager | [0x8BF365c75e959d193276715fa65D098C5F2B2d38](https://arbiscan.io/address/0x8BF365c75e959d193276715fa65D098C5F2B2d38) |
+| Uniswap | Arbitrum | 42161 | Vault| [0x2Ef1c6a839ebd7F5c8E497b23ecb9B2BC20edFC0](https://arbiscan.io/address/0x2Ef1c6a839ebd7F5c8E497b23ecb9B2BC20edFC0) |
+| Sushiswap | Arbitrum | 42161 | LiquidityBorrowingManager | [0xD26Fbd7827f29e3959e34C25E672d0A38227f150](https://arbiscan.io/address/0xD26Fbd7827f29e3959e34C25E672d0A38227f150) |
+| Sushiswap | Arbitrum | 42161 | Vault| [0xfe81C3f1bb2f7a652e0c89eee38921e030B3F326](https://arbiscan.io/address/0xfe81C3f1bb2f7a652e0c89eee38921e030B3F326) |
+| Wagmi | Kava | 2222 | LiquidityBorrowingManager | [0xB3D421456A08d5f743eC3e184D1a3Ee18fe29494](https://kavascan.com/address/0xB3D421456A08d5f743eC3e184D1a3Ee18fe29494) |
+| Wagmi | Kava | 2222 | Vault| [0x0a521944d80c8E48532a705A846514A3cf18726a](https://kavascan.com/address/0x0a521944d80c8E48532a705A846514A3cf18726a) |
 
 ![](1.png "Title")
 
