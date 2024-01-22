@@ -10,6 +10,13 @@ async function main() {
 
     console.log(`[${network}] deployer address: ${deployer.address}`);
 
+    // Kinetix.finance kava
+    // https://github.com/kinetixfi/v3-deploy-scripts/blob/main/state.json
+    // const NONFUNGIBLE_POSITION_MANAGER_ADDRESS = "0x8dB08eD2b460643974C64BE42087903470Df6a54";
+    // const UNISWAP_V3_POOL_INIT_CODE_HASH = "0xe34f199b19b2b4f47f68442619d555527d244f78a3297ea89325f843f87b8b54";
+    // const UNISWAP_V3_FACTORY = "0x2dBB6254231C5569B6A4313c6C1F5Fe1340b35C2";
+    // const UNISWAP_V3_QUOTER_V2 = "0xfa737a10f74831aA3cC1D4e3BdcC6aF997f16CCD";
+
     // wagmi kava
     // https://github.com/RealWagmi/v3_core
     // const NONFUNGIBLE_POSITION_MANAGER_ADDRESS = "0xa9aF508A15fc3B75763A9e536505FFE1F884D12C";

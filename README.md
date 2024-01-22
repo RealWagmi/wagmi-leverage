@@ -27,6 +27,8 @@ This function is used to repay a loan.The position is closed either by the trade
 | Sushiswap | Arbitrum | 42161 | Vault| [0xfe81C3f1bb2f7a652e0c89eee38921e030B3F326](https://arbiscan.io/address/0xfe81C3f1bb2f7a652e0c89eee38921e030B3F326) |
 | Wagmi | Kava | 2222 | LiquidityBorrowingManager | [0xB3D421456A08d5f743eC3e184D1a3Ee18fe29494](https://kavascan.com/address/0xB3D421456A08d5f743eC3e184D1a3Ee18fe29494) |
 | Wagmi | Kava | 2222 | Vault| [0x0a521944d80c8E48532a705A846514A3cf18726a](https://kavascan.com/address/0x0a521944d80c8E48532a705A846514A3cf18726a) |
+| Kinetix | Kava | 2222 | LiquidityBorrowingManager | [0x961439726bA4F4054cC3e027c19390cF4C35D8A3](https://kavascan.com/address/0x961439726bA4F4054cC3e027c19390cF4C35D8A3) |
+| Kinetix | Kava | 2222 | Vault| [0xE9542f2af591814090ac01977167A7b1e65925c8](https://kavascan.com/address/0xE9542f2af591814090ac01977167A7b1e65925c8) |
 
 ![](1.png "Title")
 
