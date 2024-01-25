@@ -3,7 +3,7 @@ pragma solidity 0.8.21;
 import "../vendor0.8/uniswap/LiquidityAmounts.sol";
 import "../vendor0.8/uniswap/TickMath.sol";
 import "../interfaces/INonfungiblePositionManager.sol";
-import "../interfaces/IQuoterV2.sol";
+import "../interfaces/ILightQuoterV3.sol";
 import "./ApproveSwapAndPay.sol";
 import "../Vault.sol";
 import { Constants } from "../libraries/Constants.sol";
@@ -71,9 +71,9 @@ abstract contract LiquidityManager is ApproveSwapAndPay {
      */
     INonfungiblePositionManager public immutable underlyingPositionManager;
     /**
-     * @notice The QuoterV2 contract.
+     * @notice The Quoter contract.
      */
-    IQuoterV2 public immutable underlyingQuoterV2;
+    ILightQuoterV3 public immutable lightQuoterV3;
 
     ///  msg.sender => token => FeesAmt
     mapping(address => mapping(address => uint256)) internal loansFeesInfo;
@@ -81,20 +81,20 @@ abstract contract LiquidityManager is ApproveSwapAndPay {
     /**
      * @dev Contract constructor.
      * @param _underlyingPositionManagerAddress Address of the underlying position manager contract.
-     * @param _underlyingQuoterV2 Address of the underlying quoterV2 contract.
+     * @param _lightQuoterV3 Address of the LightQuoterV3 contract.
      * @param _underlyingV3Factory Address of the underlying V3 factory contract.
      * @param _underlyingV3PoolInitCodeHash The init code hash of the underlying V3 pool.
      */
     constructor(
         address _underlyingPositionManagerAddress,
-        address _underlyingQuoterV2,
+        address _lightQuoterV3,
         address _underlyingV3Factory,
         bytes32 _underlyingV3PoolInitCodeHash
     ) ApproveSwapAndPay(_underlyingV3Factory, _underlyingV3PoolInitCodeHash) {
         // Assign the underlying position manager contract address
         underlyingPositionManager = INonfungiblePositionManager(_underlyingPositionManagerAddress);
-        // Assign the underlying quoterV2 contract address
-        underlyingQuoterV2 = IQuoterV2(_underlyingQuoterV2);
+        // Assign the quoter contract address
+        lightQuoterV3 = ILightQuoterV3(_lightQuoterV3);
         // Generate a unique salt for the new Vault contract
         bytes32 salt = keccak256(abi.encode(block.timestamp, address(this)));
         // Deploy a new Vault contract using the generated salt and assign its address to VAULT_ADDRESS
@@ -257,7 +257,7 @@ abstract contract LiquidityManager is ApproveSwapAndPay {
     /**
      * @dev This function is used to simulate a swap operation.
      *
-     * It quotes the exact input single for the swap using the `underlyingQuoterV2` contract.
+     * It quotes the exact input single for the swap using the `lightQuoterV3` contract.
      *
      * @param fee The pool's fee in hundredths of a bip, i.e. 1e-6
      * @param tokenIn The address of the token being used as input for the swap.
@@ -268,20 +268,19 @@ abstract contract LiquidityManager is ApproveSwapAndPay {
      * @return amountOut The amount of tokenOut received as output from the swap.
      */
     function _simulateSwap(
+        bool zeroForIn,
         uint24 fee,
         address tokenIn,
         address tokenOut,
         uint256 amountIn
-    ) private returns (uint160 sqrtPriceX96After, uint256 amountOut) {
+    ) private view returns (uint160 sqrtPriceX96After, uint256 amountOut) {
         // Quote exact input single for swap
-        (amountOut, sqrtPriceX96After, , ) = underlyingQuoterV2.quoteExactInputSingle(
-            IQuoterV2.QuoteExactInputSingleParams({
-                tokenIn: tokenIn,
-                tokenOut: tokenOut,
-                amountIn: amountIn,
-                fee: fee,
-                sqrtPriceLimitX96: 0
-            })
+        address pool = computePoolAddress(tokenIn, tokenOut, fee);
+        (sqrtPriceX96After, amountOut) = lightQuoterV3.quoteExactInputSingle(
+            zeroForIn,
+            pool,
+            0, //sqrtPriceLimitX96
+            amountIn
         );
     }
 
@@ -359,6 +358,7 @@ abstract contract LiquidityManager is ApproveSwapAndPay {
                         uint256 saleTokenAmountOut;
                         if (params.sqrtPriceLimitX96 != 0) {
                             (, saleTokenAmountOut) = _simulateSwap(
+                                !params.zeroForSaleToken,
                                 params.fee,
                                 cache.holdToken,
                                 cache.saleToken,
@@ -378,6 +378,7 @@ abstract contract LiquidityManager is ApproveSwapAndPay {
                         //  The internal swap in the same pool in which liquidity is restored.
                         if (params.fee == cache.fee) {
                             (cache.sqrtPriceX96, ) = _simulateSwap(
+                                !params.zeroForSaleToken,
                                 params.fee,
                                 cache.holdToken,
                                 cache.saleToken,

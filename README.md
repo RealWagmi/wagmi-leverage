@@ -19,16 +19,25 @@ This function is used to repay a loan.The position is closed either by the trade
 
 ### Addresses
 
+| Network | ChainId | Contract | Address |
+|------| ------- | -----| -----|
+| Arbitrum | 42161 | LightQuoterV3 | [0xb9235A074C68A046308aEbD7414Fb89e674adEae](https://arbiscan.io/address/0xb9235A074C68A046308aEbD7414Fb89e674adEae) |
+| Kava | 2222 | LightQuoterV3 | [0xbd352897CF946E205C80520976F6573b7FF3a734](https://kavascan.com/address/0xbd352897CF946E205C80520976F6573b7FF3a734) |
+
+##
+
 | V3 | Network | ChainId | Contract | Address |
 |------|------| ------- | -----| -----|
-| Uniswap | Arbitrum | 42161 | LiquidityBorrowingManager | [0x8BF365c75e959d193276715fa65D098C5F2B2d38](https://arbiscan.io/address/0x8BF365c75e959d193276715fa65D098C5F2B2d38) |
-| Uniswap | Arbitrum | 42161 | Vault| [0x2Ef1c6a839ebd7F5c8E497b23ecb9B2BC20edFC0](https://arbiscan.io/address/0x2Ef1c6a839ebd7F5c8E497b23ecb9B2BC20edFC0) |
-| Sushiswap | Arbitrum | 42161 | LiquidityBorrowingManager | [0xD26Fbd7827f29e3959e34C25E672d0A38227f150](https://arbiscan.io/address/0xD26Fbd7827f29e3959e34C25E672d0A38227f150) |
-| Sushiswap | Arbitrum | 42161 | Vault| [0xfe81C3f1bb2f7a652e0c89eee38921e030B3F326](https://arbiscan.io/address/0xfe81C3f1bb2f7a652e0c89eee38921e030B3F326) |
-| Wagmi | Kava | 2222 | LiquidityBorrowingManager | [0xB3D421456A08d5f743eC3e184D1a3Ee18fe29494](https://kavascan.com/address/0xB3D421456A08d5f743eC3e184D1a3Ee18fe29494) |
-| Wagmi | Kava | 2222 | Vault| [0x0a521944d80c8E48532a705A846514A3cf18726a](https://kavascan.com/address/0x0a521944d80c8E48532a705A846514A3cf18726a) |
-| Kinetix | Kava | 2222 | LiquidityBorrowingManager | [0x961439726bA4F4054cC3e027c19390cF4C35D8A3](https://kavascan.com/address/0x961439726bA4F4054cC3e027c19390cF4C35D8A3) |
-| Kinetix | Kava | 2222 | Vault| [0xE9542f2af591814090ac01977167A7b1e65925c8](https://kavascan.com/address/0xE9542f2af591814090ac01977167A7b1e65925c8) |
+| Uniswap | Arbitrum | 42161 | LiquidityBorrowingManager | [0xaC484BBFE6f2Dfc3DA8AD962194C337424439E38](https://arbiscan.io/address/0xaC484BBFE6f2Dfc3DA8AD962194C337424439E38) |
+| Uniswap | Arbitrum | 42161 | Vault| [0x685685054C97698a8EA13b56Ac57cA9f62d8B532](https://arbiscan.io/address/0x685685054C97698a8EA13b56Ac57cA9f62d8B532) |
+| Sushiswap | Arbitrum | 42161 | LiquidityBorrowingManager | [0xA46901Db277ed14a136C3146784D4eC9e0C98628](https://arbiscan.io/address/0xA46901Db277ed14a136C3146784D4eC9e0C98628) |
+| Sushiswap | Arbitrum | 42161 | Vault| [0xE3e9acdF8400F10da4b6bD8E4c75792739A397C5](https://arbiscan.io/address/0xE3e9acdF8400F10da4b6bD8E4c75792739A397C5) |
+| Wagmi | Kava | 2222 | LiquidityBorrowingManager | [0x4aC92419aaB89aF2ac1012e1E0159b26499381a3](https://kavascan.com/address/0x4aC92419aaB89aF2ac1012e1E0159b26499381a3) |
+| Wagmi | Kava | 2222 | Vault| [0x0582D344F3570F2196FF32dEf07C96581Fa504b1](https://kavascan.com/address/0x0582D344F3570F2196FF32dEf07C96581Fa504b1) |
+| Kinetix | Kava | 2222 | LiquidityBorrowingManager | [0xBA327f7d4734e8ab6BfBd1f2310c02b7dE097A75](https://kavascan.com/address/0xBA327f7d4734e8ab6BfBd1f2310c02b7dE097A75) |
+| Kinetix | Kava | 2222 | Vault| [0xf08DBe4dc16B75346C7A18E8939EFBcAb1B4C981](https://kavascan.com/address/0xf08DBe4dc16B75346C7A18E8939EFBcAb1B4C981) |
+
+##
 
 ![](1.png "Title")
 

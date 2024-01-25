@@ -3,8 +3,8 @@ pragma solidity 0.8.21;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { TransferHelper } from "../libraries/TransferHelper.sol";
-import { IUniswapV3Pool } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
-import { SafeCast } from "@uniswap/v3-core/contracts/libraries/SafeCast.sol";
+import { IUniswapV3Pool } from "../interfaces/IUniswapV3Pool.sol";
+import { SafeCast } from "../vendor0.8/uniswap/SafeCast.sol";
 import "../libraries/ExternalCall.sol";
 import "../libraries/ErrLib.sol";
 

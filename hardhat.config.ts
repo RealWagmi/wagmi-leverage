@@ -10,6 +10,19 @@ import { config as dotEnvConfig } from 'dotenv';
 
 dotEnvConfig();
 
+const COMPILER_SETTINGS_OLD = {
+  version: '0.6.12',
+  settings: {
+    //evmVersion: 'istanbul',
+    optimizer: {
+      enabled: true,
+      runs: 200,
+    },
+    metadata: {
+      bytecodeHash: 'none',
+    },
+  },
+};
 
 const config: HardhatUserConfig = {
   dodoc: {
@@ -34,7 +47,7 @@ const config: HardhatUserConfig = {
     disambiguatePaths: false,
     runOnCompile: true,
     strict: true,
-    only: ["LiquidityBorrowingManager"],
+    only: ["LiquidityBorrowingManager", "LightQuoterV3"],
   },
   paths: {
     sources: './contracts',
@@ -55,18 +68,11 @@ const config: HardhatUserConfig = {
           }
 
         }
-      },
-      {
-        version: '0.6.12',
-        settings: {
-          optimizer: {
-            enabled: true,
-            runs: 200
-          }
-
-        }
       }
-    ]
+    ],
+    overrides: {
+      'contracts/mock/ForceSend.sol': COMPILER_SETTINGS_OLD,
+    },
   },
   networks: {
     hardhat: {

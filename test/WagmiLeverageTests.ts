@@ -25,7 +25,7 @@ import {
 import {
     LiquidityBorrowingManager,
     IERC20,
-    MockERC20FailApprove,
+    LightQuoterV3,
     IUniswapV3Pool,
     INonfungiblePositionManager,
     Vault,
@@ -66,6 +66,7 @@ describe("WagmiLeverageTests", () => {
     let pool500_WBTC_WETH: IUniswapV3Pool;
     let pool3000: IUniswapV3Pool;
     let pool10000: IUniswapV3Pool;
+    let lightQuoter: LightQuoterV3;
     let USDT: IERC20;
     let WETH: IERC20;
     let WBTC: IERC20;
@@ -93,10 +94,13 @@ describe("WagmiLeverageTests", () => {
         );
         router = await ethers.getContractAt("ISwapRouter", SWAP_ROUTER_ADDRESS);
 
+        const LightQuoterV3Factory = await ethers.getContractFactory("LightQuoterV3"); // Assuming there is an ERC20Mock contract
+        lightQuoter = await LightQuoterV3Factory.deploy();
+
         const LiquidityBorrowingManager = await ethers.getContractFactory("LiquidityBorrowingManager");
         borrowingManager = await LiquidityBorrowingManager.deploy(
             NONFUNGIBLE_POSITION_MANAGER_ADDRESS,
-            UNISWAP_V3_QUOTER_V2,
+            lightQuoter.address,
             UNISWAP_V3_FACTORY,
             UNISWAP_V3_POOL_INIT_CODE_HASH
         );

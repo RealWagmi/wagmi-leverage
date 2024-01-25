@@ -3,7 +3,7 @@ pragma solidity ^0.8.10;
 
 import "forge-std/Test.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { IUniswapV3Pool } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
+import { IUniswapV3Pool } from "../interfaces/IUniswapV3Pool.sol";
 import { LiquidityBorrowingManager } from "contracts/LiquidityBorrowingManager.sol";
 import { AggregatorMock } from "contracts/mock/AggregatorMock.sol";
 import { HelperContract } from "../testsHelpers/HelperContract.sol";

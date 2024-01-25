@@ -15,14 +15,14 @@ contract $LiquidityManager is LiquidityManager {
 
     constructor(
         address _underlyingPositionManagerAddress,
-        address _underlyingQuoterV2,
+        address _lightQuoterV3,
         address _underlyingV3Factory,
         bytes32 _underlyingV3PoolInitCodeHash
     )
         payable
         LiquidityManager(
             _underlyingPositionManagerAddress,
-            _underlyingQuoterV2,
+            _lightQuoterV3,
             _underlyingV3Factory,
             _underlyingV3PoolInitCodeHash
         )

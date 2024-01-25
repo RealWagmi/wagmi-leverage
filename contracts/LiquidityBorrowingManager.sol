@@ -153,13 +153,13 @@ contract LiquidityBorrowingManager is
 
     constructor(
         address _underlyingPositionManagerAddress,
-        address _underlyingQuoterV2,
+        address _lightQuoterV3,
         address _underlyingV3Factory,
         bytes32 _underlyingV3PoolInitCodeHash
     )
         LiquidityManager(
             _underlyingPositionManagerAddress,
-            _underlyingQuoterV2,
+            _lightQuoterV3,
             _underlyingV3Factory,
             _underlyingV3PoolInitCodeHash
         )
@@ -309,8 +309,7 @@ contract LiquidityBorrowingManager is
      * @return count The total number of loans associated with the tokenId.
      */
     function getLenderCreditsCount(uint256 tokenId) external view returns (uint256 count) {
-        bytes32[] memory borrowingKeys = tokenIdToBorrowingKeys[tokenId].values();
-        count = borrowingKeys.length;
+        count = tokenIdToBorrowingKeys[tokenId].length();
     }
 
     /**
@@ -319,8 +318,7 @@ contract LiquidityBorrowingManager is
      * @return count The total number of borrowings for the borrower.
      */
     function getBorrowerDebtsCount(address borrower) external view returns (uint256 count) {
-        bytes32[] memory borrowingKeys = userBorrowingKeys[borrower].values();
-        count = borrowingKeys.length;
+        count = userBorrowingKeys[borrower].length();
     }
 
     /**
@@ -434,13 +432,15 @@ contract LiquidityBorrowingManager is
      * @param collateralAmt The amount of collateral to be provided by the new borrower
      * @param minBorrowedAmount The minimum borrowed amount required to take over the debt.
      * @param deadline The deadline timestamp after which the transaction is considered invalid.
+     *
+     *  @return payAmount The total amount paid by the new borrower, including fees.
      */
     function takeOverDebt(
         bytes32 borrowingKey,
         uint256 collateralAmt,
         uint256 minBorrowedAmount,
         uint256 deadline
-    ) external nonReentrant checkDeadline(deadline) {
+    ) external nonReentrant checkDeadline(deadline) returns (uint256 payAmount) {
         BorrowingInfo memory oldBorrowing = borrowingsInfo[borrowingKey];
         // Ensure that the borrowed position exists
         _existenceCheck(oldBorrowing.borrowedAmount);
@@ -499,7 +499,8 @@ contract LiquidityBorrowingManager is
         newBorrowing.dailyRateCollateralBalance +=
             (collateralAmt - minPayment) *
             Constants.COLLATERAL_BALANCE_PRECISION;
-        _pay(oldBorrowing.holdToken, msg.sender, VAULT_ADDRESS, collateralAmt + feesDebt);
+        payAmount = collateralAmt + feesDebt;
+        _pay(oldBorrowing.holdToken, msg.sender, VAULT_ADDRESS, payAmount);
         emit TakeOverDebt(oldBorrowing.borrower, msg.sender, borrowingKey, newBorrowingKey);
     }
 
@@ -512,11 +513,16 @@ contract LiquidityBorrowingManager is
      * @dev Emits a Borrow event upon successful borrowing.
      * @param params The BorrowParams struct containing the necessary parameters for borrowing.
      * @param deadline The deadline timestamp after which the transaction is considered invalid.
+     *
+     * @return borrowedAmount The total amount of `params.holdToken` borrowed.
+     * @return marginDeposit The required collateral deposit amount for initiating the loan.
+     * @return liquidationBonus An additional amount added to the debt as a bonus in case of liquidation.
+     * @return dailyRateCollateral The collateral deposit to hold the transaction for a day.
      */
     function borrow(
         BorrowParams calldata params,
         uint256 deadline
-    ) external nonReentrant checkDeadline(deadline) {
+    ) external nonReentrant checkDeadline(deadline) returns (uint256, uint256, uint256, uint256) {
         // Precalculating borrowing details and storing them in cache
         BorrowCache memory cache = _precalculateBorrowing(params);
         // Initializing borrowing variables and obtaining borrowing key
@@ -565,9 +571,23 @@ contract LiquidityBorrowingManager is
             liquidationBonus,
             cache.dailyRateCollateral
         );
+        return (cache.borrowedAmount, marginDeposit, liquidationBonus, cache.dailyRateCollateral);
     }
 
-    function harvest(bytes32 borrowingKey) external nonReentrant {
+    /**
+     * @notice Allows lenders to harvest the fees accumulated from their loans.
+     * @dev Retrieves and updates fee amounts for all loans associated with a borrowing position.
+     * The function iterates through each loan, calculating and updating the amount of fees due.
+     *
+     * Requirements:
+     * - The borrowingKey must correspond to an active and valid borrowing position.
+     * - The collateral balance must be above zero or the current fees must be above the minimum required amount.
+     *
+     * @param borrowingKey The unique identifier for the specific borrowing position.
+     *
+     * @return harvestedAmt The total amount of fees harvested by the borrower.
+     */
+    function harvest(bytes32 borrowingKey) external nonReentrant returns (uint256 harvestedAmt) {
         BorrowingInfo storage borrowing = borrowingsInfo[borrowingKey];
         // Check if the borrowing key is valid
         _existenceCheck(borrowing.borrowedAmount);
@@ -600,7 +620,6 @@ contract LiquidityBorrowingManager is
         uint256 borrowedAmount = borrowing.borrowedAmount;
 
         bool zeroForSaleToken = borrowing.saleToken < borrowing.holdToken;
-        uint256 harvestedAmt;
 
         // Create a memory struct to store liquidity cache information.
         RestoreLiquidityCache memory cache;
@@ -631,7 +650,7 @@ contract LiquidityBorrowingManager is
     }
 
     /**
-     * @notice This function is used to repay a loan.
+     * @notice Used for repaying loans, optionally with liquidation or emergency liquidity withdrawal.
      * The position is closed either by the trader or by the liquidator if the trader has not paid for holding the position
      * and the moment of liquidation has arrived.The positions borrowed from liquidation providers are restored from the held
      * token and the remainder is sent to the caller.In the event of liquidation, the liquidity provider
@@ -644,11 +663,19 @@ contract LiquidityBorrowingManager is
      *  borrowing key,
      *  swap slippage allowance.
      * @param deadline The deadline by which the repayment must be made.
+     *
+     * @return saleTokenBack The amount of saleToken returned back to the user after repayment.
+     * @return holdTokenBack The amount of holdToken returned back to the user after repayment or emergency withdrawal.
      */
     function repay(
         RepayParams calldata params,
         uint256 deadline
-    ) external nonReentrant checkDeadline(deadline) {
+    )
+        external
+        nonReentrant
+        checkDeadline(deadline)
+        returns (uint256 saleTokenBack, uint256 holdTokenBack)
+    {
         BorrowingInfo memory borrowing = borrowingsInfo[params.borrowingKey];
         // Check if the borrowing key is valid
         _existenceCheck(borrowing.borrowedAmount);
@@ -728,12 +755,9 @@ contract LiquidityBorrowingManager is
                 borrowingStorage.feesOwed = borrowing.feesOwed;
                 borrowingStorage.borrowedAmount = borrowing.borrowedAmount;
             }
+            holdTokenBack = removedAmt + feesAmt;
             // Transfer removedAmt + feesAmt to msg.sender and emit EmergencyLoanClosure event
-            Vault(VAULT_ADDRESS).transferToken(
-                borrowing.holdToken,
-                msg.sender,
-                removedAmt + feesAmt
-            );
+            Vault(VAULT_ADDRESS).transferToken(borrowing.holdToken, msg.sender, holdTokenBack);
             emit EmergencyLoanClosure(borrowing.borrower, msg.sender, params.borrowingKey);
         } else {
             // Deduct borrowedAmount from totalBorrowed
@@ -770,15 +794,15 @@ contract LiquidityBorrowingManager is
                 loans
             );
             // Get the remaining balance of saleToken and holdToken
-            (uint256 saleTokenBalance, uint256 holdTokenBalance) = _getPairBalance(
+            (saleTokenBack, holdTokenBack) = _getPairBalance(
                 borrowing.saleToken,
                 borrowing.holdToken
             );
             // Remove borrowing key from related data structures
             _removeKeysAndClearStorage(borrowing.borrower, params.borrowingKey, loans);
             // Pay a profit to a msg.sender
-            _pay(borrowing.holdToken, address(this), msg.sender, holdTokenBalance);
-            _pay(borrowing.saleToken, address(this), msg.sender, saleTokenBalance);
+            _pay(borrowing.holdToken, address(this), msg.sender, holdTokenBack);
+            _pay(borrowing.saleToken, address(this), msg.sender, saleTokenBack);
 
             emit Repay(borrowing.borrower, msg.sender, params.borrowingKey);
         }

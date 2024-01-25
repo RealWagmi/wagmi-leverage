@@ -64,7 +64,7 @@ The address of the vault contract.
 ### borrow
 
 ```solidity
-function borrow(LiquidityBorrowingManager.BorrowParams params, uint256 deadline) external nonpayable
+function borrow(LiquidityBorrowingManager.BorrowParams params, uint256 deadline) external nonpayable returns (uint256, uint256, uint256, uint256)
 ```
 
 
@@ -77,6 +77,15 @@ function borrow(LiquidityBorrowingManager.BorrowParams params, uint256 deadline)
 |---|---|---|
 | params | LiquidityBorrowingManager.BorrowParams | undefined |
 | deadline | uint256 | undefined |
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | uint256 | undefined |
+| _1 | uint256 | undefined |
+| _2 | uint256 | undefined |
+| _3 | uint256 | undefined |
 
 ### borrowingsInfo
 
@@ -472,18 +481,24 @@ Get information about loans associated with a borrowing key
 ### harvest
 
 ```solidity
-function harvest(bytes32 borrowingKey) external nonpayable
+function harvest(bytes32 borrowingKey) external nonpayable returns (uint256 harvestedAmt)
 ```
 
+Allows lenders to harvest the fees accumulated from their loans.
 
-
-
+*Retrieves and updates fee amounts for all loans associated with a borrowing position. The function iterates through each loan, calculating and updating the amount of fees due. Requirements: - The borrowingKey must correspond to an active and valid borrowing position. - The collateral balance must be above zero or the current fees must be above the minimum required amount.*
 
 #### Parameters
 
 | Name | Type | Description |
 |---|---|---|
-| borrowingKey | bytes32 | undefined |
+| borrowingKey | bytes32 | The unique identifier for the specific borrowing position. |
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| harvestedAmt | uint256 | The total amount of fees harvested by the borrower. |
 
 ### holdTokenInfo
 
@@ -527,6 +542,23 @@ This function is used to increase the daily rate collateral for a specific borro
 | borrowingKey | bytes32 | The unique identifier of the borrowing. |
 | collateralAmt | uint256 | The amount of collateral to be added. |
 | deadline | uint256 | The deadline timestamp after which the transaction is considered invalid. |
+
+### lightQuoterV3
+
+```solidity
+function lightQuoterV3() external view returns (contract ILightQuoterV3)
+```
+
+The Quoter contract.
+
+
+
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | contract ILightQuoterV3 | undefined |
 
 ### liquidationBonusForToken
 
@@ -623,7 +655,7 @@ function renounceOwnership() external nonpayable
 ### repay
 
 ```solidity
-function repay(LiquidityBorrowingManager.RepayParams params, uint256 deadline) external nonpayable
+function repay(LiquidityBorrowingManager.RepayParams params, uint256 deadline) external nonpayable returns (uint256 saleTokenBack, uint256 holdTokenBack)
 ```
 
 
@@ -636,6 +668,13 @@ function repay(LiquidityBorrowingManager.RepayParams params, uint256 deadline) e
 |---|---|---|
 | params | LiquidityBorrowingManager.RepayParams | undefined |
 | deadline | uint256 | undefined |
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| saleTokenBack | uint256 | undefined |
+| holdTokenBack | uint256 | undefined |
 
 ### setSwapCallToWhitelist
 
@@ -658,7 +697,7 @@ function setSwapCallToWhitelist(address swapTarget, bytes4 funcSelector, bool is
 ### takeOverDebt
 
 ```solidity
-function takeOverDebt(bytes32 borrowingKey, uint256 collateralAmt, uint256 minBorrowedAmount, uint256 deadline) external nonpayable
+function takeOverDebt(bytes32 borrowingKey, uint256 collateralAmt, uint256 minBorrowedAmount, uint256 deadline) external nonpayable returns (uint256 payAmount)
 ```
 
 Take over debt by transferring ownership of a borrowing to the current caller
@@ -673,6 +712,12 @@ Take over debt by transferring ownership of a borrowing to the current caller
 | collateralAmt | uint256 | The amount of collateral to be provided by the new borrower |
 | minBorrowedAmount | uint256 | The minimum borrowed amount required to take over the debt. |
 | deadline | uint256 | The deadline timestamp after which the transaction is considered invalid. |
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| payAmount | uint256 | The total amount paid by the new borrower, including fees. |
 
 ### transferOwnership
 
@@ -706,23 +751,6 @@ The Nonfungible Position Manager contract.
 | Name | Type | Description |
 |---|---|---|
 | _0 | contract INonfungiblePositionManager | undefined |
-
-### underlyingQuoterV2
-
-```solidity
-function underlyingQuoterV2() external view returns (contract IQuoterV2)
-```
-
-The QuoterV2 contract.
-
-
-
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | contract IQuoterV2 | undefined |
 
 ### uniswapV3SwapCallback
 
