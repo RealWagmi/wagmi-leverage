@@ -63,13 +63,9 @@ async function main() {
     //         NONFUNGIBLE_POSITION_MANAGER_ADDRESS,
     //         LIGHT_QUOTER_V3,
     //         UNISWAP_V3_FACTORY,
-    //         UNISWAP_V3_POOL_INIT_CODE_HASH],
+    //         UNISWAP_V3_POOL_INIT_CODE_HASH]
     // });
-
-    // await hardhat.run("verify:verify", {
-    //     address: vaultAddress,
-    //     constructorArguments: [],
-    // });
+    // curl -X GET "https://kavascan.com/api?module=contract&action=verify_via_sourcify&addressHash=${borrowingManager.address}" -H "accept: application/json"
 
     console.log("done!");
     process.exit(0);

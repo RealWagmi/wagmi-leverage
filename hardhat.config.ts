@@ -40,7 +40,7 @@ const config: HardhatUserConfig = {
     coinmarketcap: process.env.COINMARKETCAP_API_KEY,
     showTimeSpent: true,
     enabled: true,
-    excludeContracts: ["ERC20", "ForceSend", "MockERC20"]
+    excludeContracts: ["ERC20", "ForceSend", "MockERC20", "$ApproveSwapAndPay", "$LiquidityManager"]
   },
   contractSizer: {
     alphaSort: true,

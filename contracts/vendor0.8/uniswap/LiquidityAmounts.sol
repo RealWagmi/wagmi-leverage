@@ -99,15 +99,20 @@ library LiquidityAmounts {
             if (sqrtRatioAX96 > sqrtRatioBX96)
                 (sqrtRatioAX96, sqrtRatioBX96) = (sqrtRatioBX96, sqrtRatioAX96);
 
+            uint256 intermediate = FullMath.mulDiv(sqrtRatioAX96, sqrtRatioBX96, FixedPoint96.Q96);
+
             return
-                UnsafeMath.divRoundingUp(
-                    FullMath.mulDivRoundingUp(
-                        uint256(liquidity) << FixedPoint96.RESOLUTION,
-                        sqrtRatioBX96 - sqrtRatioAX96,
-                        sqrtRatioBX96
-                    ),
-                    sqrtRatioAX96
-                );
+                FullMath.mulDivRoundingUp(liquidity, sqrtRatioBX96 - sqrtRatioAX96, intermediate);
+
+            // return
+            //     UnsafeMath.divRoundingUp(
+            //         FullMath.mulDivRoundingUp(
+            //             uint256(liquidity) << FixedPoint96.RESOLUTION,
+            //             sqrtRatioBX96 - sqrtRatioAX96,
+            //             sqrtRatioBX96
+            //         ),
+            //         sqrtRatioAX96
+            //     );
         }
     }
 
