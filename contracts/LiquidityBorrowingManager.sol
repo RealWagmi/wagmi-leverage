@@ -336,7 +336,7 @@ contract LiquidityBorrowingManager is
 
     /**
      * @dev Returns the fees information for multiple tokens in an array.
-     * @param feesOwner The address of the owner of the fees OR address(0) for returns platformsFeesInfo.
+     * @param feesOwner The address of the owner of the fees.
      * @param tokens An array of token addresses for which the fees are to be retrieved.
      * @return fees An array containing the fees for each token.
      */
@@ -344,18 +344,24 @@ contract LiquidityBorrowingManager is
         address feesOwner,
         address[] calldata tokens
     ) external view returns (uint256[] memory fees) {
-        fees = new uint256[](tokens.length);
-        mapping(address => uint256) storage collection = feesOwner == address(0)
-            ? platformsFeesInfo
-            : loansFeesInfo[msg.sender];
-        for (uint256 i; i < tokens.length; ) {
-            address token = tokens[i];
-            uint256 amount = collection[token] / Constants.COLLATERAL_BALANCE_PRECISION;
-            fees[i] = amount;
-            unchecked {
-                ++i;
-            }
-        }
+        mapping(address => uint256) storage collection = loansFeesInfo[feesOwner];
+        fees = _getFees(collection, tokens);
+    }
+
+    /**
+     * @dev Get the platform fees information for a list of tokens.
+     *
+     * This function returns an array of fees corresponding to the list of input tokens provided.
+     * Each fee is retrieved from the `platformsFeesInfo` mapping which stores the fee for each token address.
+     *
+     * @param tokens An array of token addresses for which to retrieve the fees information.
+     * @return fees Returns an array of fees, one per each token given as input in the same order.
+     */
+    function getPlatformFeesInfo(
+        address[] calldata tokens
+    ) external view returns (uint256[] memory fees) {
+        mapping(address => uint256) storage collection = platformsFeesInfo;
+        fees = _getFees(collection, tokens);
     }
 
     /**
@@ -1168,6 +1174,21 @@ contract LiquidityBorrowingManager is
 
             estimatedLifeTime = uint256(collateralBalance) / everySecond;
             if (estimatedLifeTime == 0) estimatedLifeTime = 1;
+        }
+    }
+
+    function _getFees(
+        mapping(address => uint256) storage collection,
+        address[] calldata tokens
+    ) internal view returns (uint256[] memory fees) {
+        fees = new uint256[](tokens.length);
+        for (uint256 i; i < tokens.length; ) {
+            address token = tokens[i];
+            uint256 amount = collection[token] / Constants.COLLATERAL_BALANCE_PRECISION;
+            fees[i] = amount;
+            unchecked {
+                ++i;
+            }
         }
     }
 

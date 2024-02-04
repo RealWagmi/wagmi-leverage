@@ -5,6 +5,7 @@
     "test": "npx hardhat test --show-stack-traces --typecheck",
     "test:fulltraceError": "npx hardhat test --vv --typecheck",
     "test:forge:fulltraceError": "forge test -vvvv --ffi --mt $test_function",
+    "test:forge": "forge test -vv --ffi --gas-report --mt $test_function",
     "test:coverage": "npx hardhat coverage  --testfiles 'test/*.ts'",
     "deploy": "npx hardhat run ./scripts/deploy.ts --network $npm_config_network",
     "slots": "npx hardhat check",

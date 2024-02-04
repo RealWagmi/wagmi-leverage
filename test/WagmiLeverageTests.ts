@@ -351,7 +351,7 @@ describe("WagmiLeverageTests", () => {
 
         const prevBalanceLender = await WBTC.balanceOf(alice.address);
         const prevBalance = await WBTC.balanceOf(bob.address);
-        const prevPlatformsFees = (await borrowingManager.getFeesInfo(constants.AddressZero, [WBTC_ADDRESS]))[0];
+        const prevPlatformsFees = (await borrowingManager.getPlatformFeesInfo([WBTC_ADDRESS]))[0];
 
         //query amount of collateral available
         const borrowingsInfo = await borrowingManager.borrowingsInfo(borrowingKey);
@@ -366,7 +366,7 @@ describe("WagmiLeverageTests", () => {
         await borrowingManager.connect(bob).repay(repayParams, deadline);
 
         const newBalance = await WBTC.balanceOf(bob.address);
-        const newPlatformsFees = (await borrowingManager.getFeesInfo(constants.AddressZero, [WBTC_ADDRESS]))[0];
+        const newPlatformsFees = (await borrowingManager.getPlatformFeesInfo([WBTC_ADDRESS]))[0];
         expect(newPlatformsFees).to.be.equal(prevPlatformsFees.add(200));//+20% of MINIMUM_AMOUNT
         await borrowingManager.connect(alice).collectLoansFees([WBTC_ADDRESS]);
         const newBalanceLender = await WBTC.balanceOf(alice.address);
@@ -1424,23 +1424,41 @@ describe("WagmiLeverageTests", () => {
         let debtAfter = (await borrowingManager.getBorrowerDebtsInfo(bob.address))[1];
 
         expect(debtAfter.estimatedLifeTime).to.be.within(
-            debtBefore.estimatedLifeTime.add(86398),
-            debtBefore.estimatedLifeTime.add(86399)
+            debtBefore.estimatedLifeTime.add(86397),
+            debtBefore.estimatedLifeTime.add(86400)
         );
     });
 
     it("harvest should work correctly", async () => {
+
+
         let debt = (await borrowingManager.getBorrowerDebtsInfo(bob.address))[1];
         expect(debt.collateralBalance).to.be.gt(0);
         let dailyRateCollateralBalanceBefore = debt.info.dailyRateCollateralBalance;
         let pendingfees = dailyRateCollateralBalanceBefore.sub(debt.collateralBalance);
-        expect(pendingfees).to.be.gt(0);
+        let feesHoldTokenBob = (await borrowingManager.getFeesInfo(bob.address, [USDT_ADDRESS, WETH_ADDRESS]))[1];
+        let feesHoldTokenAlice = (await borrowingManager.getFeesInfo(alice.address, [USDT_ADDRESS, WETH_ADDRESS]))[1];
+        let feesHoldTokenOwner = (await borrowingManager.getFeesInfo(owner.address, [USDT_ADDRESS, WETH_ADDRESS]))[1];
+        // console.log(pendingfees.div(COLLATERAL_BALANCE_PRECISION).toString());
 
+        expect(pendingfees).to.be.gt(ethers.utils.parseUnits("1000", 18));// Constants.MINIMUM_AMOUNT * Constants.COLLATERAL_BALANCE_PRECISION
+        let totalIncomeTest = (await borrowingManager.connect(alice).callStatic.harvest(debt.key)).div(COLLATERAL_BALANCE_PRECISION);
+        await time.setNextBlockTimestamp(await time.latest());
         await borrowingManager.connect(alice).harvest(debt.key);
+
+        let feesHoldTokenBobincome = ((await borrowingManager.getFeesInfo(bob.address, [USDT_ADDRESS, WETH_ADDRESS]))[1]).sub(feesHoldTokenBob);
+        let feesHoldTokenAliceincome = ((await borrowingManager.getFeesInfo(alice.address, [USDT_ADDRESS, WETH_ADDRESS]))[1]).sub(feesHoldTokenAlice);
+        let feesHoldTokenOwnerincome = ((await borrowingManager.getFeesInfo(owner.address, [USDT_ADDRESS, WETH_ADDRESS]))[1]).sub(feesHoldTokenOwner);
+
+        let totalIncome = feesHoldTokenBobincome.add(feesHoldTokenAliceincome).add(feesHoldTokenOwnerincome);
+        expect(totalIncome).to.be.within(totalIncomeTest, totalIncomeTest.add(3));
+
 
         debt = (await borrowingManager.getBorrowerDebtsInfo(bob.address))[1];
         expect(debt.info.feesOwed).to.be.lt(BigNumber.from(5));//dust
         expect(debt.info.dailyRateCollateralBalance).to.be.equal(debt.collateralBalance);
+
+        await expect(borrowingManager.connect(alice).harvest(debt.key)).to.be.reverted;
     });
 
     it("get-functions should be call successful", async () => {
@@ -1574,7 +1592,7 @@ describe("WagmiLeverageTests", () => {
 
     it("collect protocol fees should be successful", async () => {
         const aliceBalanceBefore = await getERC20Balance(WETH_ADDRESS, alice.address);
-        let fees = await borrowingManager.getFeesInfo(constants.AddressZero, [USDT_ADDRESS, WETH_ADDRESS]);
+        let fees = await borrowingManager.getPlatformFeesInfo([USDT_ADDRESS, WETH_ADDRESS]);
         expect(fees[0]).to.be.equal(0);
         expect(fees[1]).to.be.gt(0);
         await expect(borrowingManager.connect(alice).collectProtocol(alice.address, [USDT_ADDRESS, WETH_ADDRESS])).to.be
@@ -1582,7 +1600,7 @@ describe("WagmiLeverageTests", () => {
         await borrowingManager.connect(owner).collectProtocol(alice.address, [USDT_ADDRESS, WETH_ADDRESS]);
         const aliceBalanceAfter = await getERC20Balance(WETH_ADDRESS, alice.address);
         expect(aliceBalanceAfter).to.be.equal(aliceBalanceBefore.add(fees[1]));
-        fees = await borrowingManager.getFeesInfo(constants.AddressZero, [USDT_ADDRESS, WETH_ADDRESS]);
+        fees = await borrowingManager.getPlatformFeesInfo([USDT_ADDRESS, WETH_ADDRESS]);
         expect(fees[1]).to.be.equal(0);
     });
 

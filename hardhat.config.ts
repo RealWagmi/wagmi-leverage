@@ -82,6 +82,7 @@ const config: HardhatUserConfig = {
         url: `${process.env.ARCHIVE_NODE_RPC_URL}`,
         blockNumber: 17329500,
       },
+      allowBlocksWithSameTimestamp: true,
       allowUnlimitedContractSize: false,
       blockGasLimit: 40000000,
       gas: 40000000,

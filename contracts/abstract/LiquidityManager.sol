@@ -8,6 +8,7 @@ import "./ApproveSwapAndPay.sol";
 import "../Vault.sol";
 import { Constants } from "../libraries/Constants.sol";
 import { ErrLib } from "../libraries/ErrLib.sol";
+import { AmountsLiquidity } from "../libraries/AmountsLiquidity.sol";
 
 abstract contract LiquidityManager is ApproveSwapAndPay {
     using { ErrLib.revertError } for bool;
@@ -135,12 +136,12 @@ abstract contract LiquidityManager is ApproveSwapAndPay {
     ) private pure returns (uint256 borrowedAmount) {
         borrowedAmount = (
             zeroForSaleToken
-                ? LiquidityAmounts.getAmount1RoundingUpForLiquidity(
+                ? AmountsLiquidity.getAmount1RoundingUpForLiquidity(
                     TickMath.getSqrtRatioAtTick(tickLower),
                     TickMath.getSqrtRatioAtTick(tickUpper),
                     liquidity
                 )
-                : LiquidityAmounts.getAmount0RoundingUpForLiquidity(
+                : AmountsLiquidity.getAmount0RoundingUpForLiquidity(
                     TickMath.getSqrtRatioAtTick(tickLower),
                     TickMath.getSqrtRatioAtTick(tickUpper),
                     liquidity
@@ -413,7 +414,7 @@ abstract contract LiquidityManager is ApproveSwapAndPay {
                             cache.fee
                         );
                         // Calculate the amounts of token0 and token1 for a given liquidity
-                        (amounts.amount0, amounts.amount1) = LiquidityAmounts
+                        (amounts.amount0, amounts.amount1) = AmountsLiquidity
                             .getAmountsRoundingUpForLiquidity(
                                 cache.sqrtPriceX96,
                                 TickMath.getSqrtRatioAtTick(cache.tickLower),
@@ -581,9 +582,9 @@ abstract contract LiquidityManager is ApproveSwapAndPay {
         uint128 liquidity,
         uint256 holdTokenDebt
     ) private pure returns (uint256 holdTokenAmountIn, Amounts memory amounts) {
-        // Call getAmountsForLiquidity function from LiquidityAmounts library
+        // Call getAmountsForLiquidity function from AmountsLiquidity library
         // to get the amounts of token0 and token1 for a given liquidity position
-        (amounts.amount0, amounts.amount1) = LiquidityAmounts.getAmountsRoundingUpForLiquidity(
+        (amounts.amount0, amounts.amount1) = AmountsLiquidity.getAmountsRoundingUpForLiquidity(
             sqrtPriceX96,
             TickMath.getSqrtRatioAtTick(tickLower),
             TickMath.getSqrtRatioAtTick(tickUpper),

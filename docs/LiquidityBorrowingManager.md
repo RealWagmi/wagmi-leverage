@@ -355,7 +355,7 @@ function getFeesInfo(address feesOwner, address[] tokens) external view returns 
 
 | Name | Type | Description |
 |---|---|---|
-| feesOwner | address | The address of the owner of the fees OR address(0) for returns platformsFeesInfo. |
+| feesOwner | address | The address of the owner of the fees. |
 | tokens | address[] | An array of token addresses for which the fees are to be retrieved. |
 
 #### Returns
@@ -477,6 +477,28 @@ Get information about loans associated with a borrowing key
 | Name | Type | Description |
 |---|---|---|
 | loans | LiquidityManager.LoanInfo[] | An array containing LoanInfo structs representing the loans associated with the borrowing key |
+
+### getPlatformFeesInfo
+
+```solidity
+function getPlatformFeesInfo(address[] tokens) external view returns (uint256[] fees)
+```
+
+
+
+*Get the platform fees information for a list of tokens. This function returns an array of fees corresponding to the list of input tokens provided. Each fee is retrieved from the `platformsFeesInfo` mapping which stores the fee for each token address.*
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| tokens | address[] | An array of token addresses for which to retrieve the fees information. |
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| fees | uint256[] | Returns an array of fees, one per each token given as input in the same order. |
 
 ### harvest
 
