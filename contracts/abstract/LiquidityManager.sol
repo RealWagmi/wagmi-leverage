@@ -51,16 +51,14 @@ abstract contract LiquidityManager is ApproveSwapAndPay {
      * @param fee The fee associated with the restoring liquidity pool.
      * @param saleToken The address of the token being sold.
      * @param holdToken The address of the token being held.
-     * @param sqrtPriceX96 The square root of the price represented by a uint160 value.
      * @param holdTokenDebt The debt amount associated with the hold token represented by a uint256 value.
      */
-    struct RestoreLiquidityCache {
+    struct NftPositionCache {
         int24 tickLower;
         int24 tickUpper;
         uint24 fee;
         address saleToken;
         address holdToken;
-        uint160 sqrtPriceX96;
         uint256 holdTokenDebt;
     }
     /**
@@ -356,7 +354,8 @@ abstract contract LiquidityManager is ApproveSwapAndPay {
         SwapParams calldata externalSwap,
         LoanInfo[] memory loans
     ) internal {
-        RestoreLiquidityCache memory cache;
+        NftPositionCache memory cache;
+
         for (uint256 i; i < loans.length; ) {
             // Update the cache for the current loan
             LoanInfo memory loan = loans[i];
@@ -364,13 +363,21 @@ abstract contract LiquidityManager is ApproveSwapAndPay {
             address creditor = _getOwnerOf(loan.tokenId);
             // Check that the token is not burned
             if (creditor != address(0)) {
-                _upRestoreLiquidityCache(params.zeroForSaleToken, loan, cache);
+                _upNftPositionCache(params.zeroForSaleToken, loan, cache);
+
+                // Calculate the square root price using `_getCurrentSqrtPriceX96` function
+                uint160 sqrtPriceX96 = _getCurrentSqrtPriceX96(
+                    params.zeroForSaleToken,
+                    cache.saleToken,
+                    cache.holdToken,
+                    cache.fee
+                );
                 // Calculate the hold token amount to be used for swapping
                 (uint256 holdTokenAmountIn, Amounts memory amounts) = _getHoldTokenAmountIn(
                     params.zeroForSaleToken,
                     cache.tickLower,
                     cache.tickUpper,
-                    cache.sqrtPriceX96,
+                    sqrtPriceX96,
                     loan.liquidity,
                     cache.holdTokenDebt
                 );
@@ -409,13 +416,13 @@ abstract contract LiquidityManager is ApproveSwapAndPay {
                     } else {
                         //  The internal swap in the same pool in which liquidity is restored.
                         if (params.fee == cache.fee) {
-                            (cache.sqrtPriceX96, holdTokenAmountIn, ) = _calculateAmountsToSwap(
+                            (sqrtPriceX96, holdTokenAmountIn, ) = _calculateAmountsToSwap(
                                 !params.zeroForSaleToken,
                                 cache.tickLower,
                                 cache.tickUpper,
                                 loan.liquidity,
                                 params.fee,
-                                cache.sqrtPriceX96,
+                                sqrtPriceX96,
                                 cache.holdToken,
                                 cache.saleToken,
                                 cache.holdTokenDebt
@@ -432,7 +439,7 @@ abstract contract LiquidityManager is ApproveSwapAndPay {
                             })
                         );
                         // Update the value of sqrtPriceX96 in the cache using the _getCurrentSqrtPriceX96 function
-                        cache.sqrtPriceX96 = _getCurrentSqrtPriceX96(
+                        sqrtPriceX96 = _getCurrentSqrtPriceX96(
                             params.zeroForSaleToken,
                             cache.saleToken,
                             cache.holdToken,
@@ -441,7 +448,7 @@ abstract contract LiquidityManager is ApproveSwapAndPay {
                         // Calculate the amounts of token0 and token1 for a given liquidity
                         (amounts.amount0, amounts.amount1) = AmountsLiquidity
                             .getAmountsRoundingUpForLiquidity(
-                                cache.sqrtPriceX96,
+                                sqrtPriceX96,
                                 TickMath.getSqrtRatioAtTick(cache.tickLower),
                                 TickMath.getSqrtRatioAtTick(cache.tickUpper),
                                 loan.liquidity
@@ -622,15 +629,15 @@ abstract contract LiquidityManager is ApproveSwapAndPay {
     }
 
     /**
-     * @dev Updates the RestoreLiquidityCache struct with data from the underlyingPositionManager contract.
+     * @dev Updates the NftPositionCache struct with data from the underlyingPositionManager contract.
      * @param zeroForSaleToken A boolean value indicating whether the token for sale is the 0th token or not.
      * @param loan The LoanInfo struct containing loan details.
-     * @param cache The RestoreLiquidityCache struct to be updated.
+     * @param cache The NftPositionCache struct to be updated.
      */
-    function _upRestoreLiquidityCache(
+    function _upNftPositionCache(
         bool zeroForSaleToken,
         LoanInfo memory loan,
-        RestoreLiquidityCache memory cache
+        NftPositionCache memory cache
     ) internal view {
         // Get the positions data from `PositionManager` and store it in the cache variables
         (
@@ -657,13 +664,6 @@ abstract contract LiquidityManager is ApproveSwapAndPay {
             cache.tickLower,
             cache.tickUpper,
             loan.liquidity
-        );
-        // Calculate the square root price using `_getCurrentSqrtPriceX96` function
-        cache.sqrtPriceX96 = _getCurrentSqrtPriceX96(
-            zeroForSaleToken,
-            cache.saleToken,
-            cache.holdToken,
-            cache.fee
         );
     }
 }

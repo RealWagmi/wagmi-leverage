@@ -628,7 +628,7 @@ contract LiquidityBorrowingManager is
         bool zeroForSaleToken = borrowing.saleToken < borrowing.holdToken;
 
         // Create a memory struct to store liquidity cache information.
-        RestoreLiquidityCache memory cache;
+        NftPositionCache memory cache;
         // Get the array of LoanInfo structs associated with the given borrowing key.
         LoanInfo[] memory loans = loansInfo[borrowingKey];
         // Iterate through each loan in the loans array.
@@ -639,7 +639,7 @@ contract LiquidityBorrowingManager is
             // Check if the owner of the loan's token ID is equal to the `msg.sender`.
             if (creditor != address(0)) {
                 // Update the liquidity cache based on the loan information.
-                _upRestoreLiquidityCache(zeroForSaleToken, loan, cache);
+                _upNftPositionCache(zeroForSaleToken, loan, cache);
                 uint256 feesAmt = FullMath.mulDiv(feesOwed, cache.holdTokenDebt, borrowedAmount);
                 // Calculate the fees amount based on the total fees owed and holdTokenDebt.
                 loansFeesInfo[creditor][cache.holdToken] += feesAmt;
@@ -883,7 +883,7 @@ contract LiquidityBorrowingManager is
         uint256 totalBorrowedAmount
     ) private returns (uint256 removedAmt, uint256 feesAmt, bool completeRepayment) {
         // Create a memory struct to store liquidity cache information.
-        RestoreLiquidityCache memory cache;
+        NftPositionCache memory cache;
         // Get the array of LoanInfo structs associated with the given borrowing key.
         LoanInfo[] storage loans = loansInfo[borrowingKey];
         // Iterate through each loan in the loans array.
@@ -900,7 +900,7 @@ contract LiquidityBorrowingManager is
                 // Remove the borrowing key from the tokenIdToBorrowingKeys mapping.
                 tokenIdToBorrowingKeys[loan.tokenId].remove(borrowingKey);
                 // Update the liquidity cache based on the loan information.
-                _upRestoreLiquidityCache(zeroForSaleToken, loan, cache);
+                _upNftPositionCache(zeroForSaleToken, loan, cache);
                 // Add the holdTokenDebt value to the removedAmt.
                 removedAmt += cache.holdTokenDebt;
                 // Calculate the fees amount based on the total fees owed and holdTokenDebt.
