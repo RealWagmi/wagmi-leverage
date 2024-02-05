@@ -3,7 +3,7 @@ pragma solidity 0.8.21;
 import "../vendor0.8/uniswap/LiquidityAmounts.sol";
 import "../vendor0.8/uniswap/TickMath.sol";
 import "../interfaces/INonfungiblePositionManager.sol";
-import "../interfaces/ILightQuoterV3.sol";
+import { CalculateZapOutParams, ILightQuoterV3 } from "../interfaces/ILightQuoterV3.sol";
 import "./ApproveSwapAndPay.sol";
 import "../Vault.sol";
 import { Constants } from "../libraries/Constants.sol";
@@ -285,6 +285,37 @@ abstract contract LiquidityManager is ApproveSwapAndPay {
         );
     }
 
+    function _calculateAmountsToSwap(
+        bool zeroForIn,
+        int24 tickLower,
+        int24 tickUpper,
+        uint128 liquidity,
+        uint24 fee,
+        uint160 currentSqrtPriceX96,
+        address tokenIn,
+        address tokenOut,
+        uint256 holdTokenDebt
+    ) private view returns (uint160 sqrtPriceX96After, uint256 amountIn, uint256 amountOut) {
+        address pool = computePoolAddress(tokenIn, tokenOut, fee);
+        uint256 iterations;
+        (iterations, sqrtPriceX96After, amountIn, amountOut) = lightQuoterV3.calculateZapOut(
+            CalculateZapOutParams({
+                swapPool: pool,
+                zeroForIn: zeroForIn,
+                sqrtPriceX96: currentSqrtPriceX96,
+                tickLower: tickLower,
+                tickUpper: tickUpper,
+                desiredLiquidity: liquidity,
+                tokenInBalance: holdTokenDebt,
+                tokenOutBalance: _getBalance(tokenOut)
+            })
+        );
+        (iterations > 0 && amountIn == 0).revertError(ErrLib.ErrorCode.CALCULATE_ZAP_OUT_FAILED);
+        // console.log("_simulateSwap amountIn=", amountIn);
+        // console.log("_simulateSwap amountOut=", amountOut);
+        // console.log("_simulateSwap sqrtPriceX96After=", sqrtPriceX96After);
+    }
+
     /**
      * @dev This function is used to prevent front-running during a swap.
      *
@@ -378,21 +409,15 @@ abstract contract LiquidityManager is ApproveSwapAndPay {
                     } else {
                         //  The internal swap in the same pool in which liquidity is restored.
                         if (params.fee == cache.fee) {
-                            (cache.sqrtPriceX96, ) = _simulateSwap(
+                            (cache.sqrtPriceX96, holdTokenAmountIn, ) = _calculateAmountsToSwap(
                                 !params.zeroForSaleToken,
-                                params.fee,
-                                cache.holdToken,
-                                cache.saleToken,
-                                holdTokenAmountIn
-                            );
-
-                            // recalculate the hold token amount again for the new sqrtPriceX96
-                            (holdTokenAmountIn, ) = _getHoldTokenAmountIn(
-                                params.zeroForSaleToken,
                                 cache.tickLower,
                                 cache.tickUpper,
-                                cache.sqrtPriceX96, // updated by IQuoterV2.QuoteExactInputSingleParams
                                 loan.liquidity,
+                                params.fee,
+                                cache.sqrtPriceX96,
+                                cache.holdToken,
+                                cache.saleToken,
                                 cache.holdTokenDebt
                             );
                         }

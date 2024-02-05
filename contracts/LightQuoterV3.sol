@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity 0.8.21;
 
+import "./interfaces/ILightQuoterV3.sol";
 import { IUniswapV3Pool } from "./interfaces/IUniswapV3Pool.sol";
 import { SafeCast } from "./vendor0.8/uniswap/SafeCast.sol";
 import { Tick } from "./vendor0.8/uniswap/Tick.sol";
@@ -8,27 +9,26 @@ import { TickBitmap } from "./vendor0.8/uniswap/TickBitmap.sol";
 import { TickMath } from "./vendor0.8/uniswap/TickMath.sol";
 import { SwapMath } from "./vendor0.8/uniswap/SwapMath.sol";
 import { BitMath } from "./vendor0.8/uniswap/BitMath.sol";
+import { AmountsLiquidity } from "./libraries/AmountsLiquidity.sol";
 
 // import "hardhat/console.sol";
 
-contract LightQuoterV3 {
+contract LightQuoterV3 is ILightQuoterV3 {
     using SafeCast for uint256;
     using SafeCast for int256;
 
-    // using Tick for mapping(int24 => Tick.Info);
-    // using TickBitmap for mapping(int16 => uint256);
-
-    struct Slot0Start {
-        uint160 sqrtPriceX96;
-        int24 tick;
-        uint8 feeProtocol;
-    }
+    uint256 public constant MAX_ITER = 10;
 
     struct SwapCache {
+        bool zeroForOne;
         uint8 feeProtocol;
         uint128 liquidityStart;
         uint24 fee;
         int24 tickSpacing;
+        int24 tick;
+        uint160 sqrtPriceX96;
+        uint160 sqrtPriceX96Limit;
+        address swapPool;
     }
 
     // the top level state of the swap, the results of which are recorded in storage at the end
@@ -62,73 +62,172 @@ contract LightQuoterV3 {
         uint256 feeAmount;
     }
 
-    function _calcsSwap(
-        bool exactInput,
+    function quoteExactInputSingle(
+        bool zeroForIn,
+        address swapPool,
+        uint160 sqrtPriceLimitX96,
+        uint256 amountIn
+    ) external view returns (uint160 sqrtPriceX96After, uint256 amountOut) {
+        SwapCache memory cache = _prepareSwapCashe(zeroForIn, swapPool, sqrtPriceLimitX96);
+        return _calcsSwap(amountIn.toInt256(), cache);
+    }
+
+    function calculateZapOut(
+        CalculateZapOutParams memory params
+    )
+        external
+        view
+        returns (uint256 i, uint160 sqrtPriceX96After, uint256 swapAmountIn, uint256 swapAmountOut)
+    {
+        uint160 sqrtRatioAX96 = TickMath.getSqrtRatioAtTick(params.tickLower);
+        uint160 sqrtRatioBX96 = TickMath.getSqrtRatioAtTick(params.tickUpper);
+        SwapCache memory cache;
+
+        uint256 amountOut;
+        for (i; i < MAX_ITER; ) {
+            uint256 amountIn = _getHoldTokenAmountIn(
+                params.zeroForIn,
+                params.sqrtPriceX96,
+                sqrtRatioAX96,
+                sqrtRatioBX96,
+                params.desiredLiquidity,
+                params.tokenInBalance
+            );
+            if (i == 0) {
+                if (amountIn != 0) {
+                    (cache) = _prepareSwapCashe(params.zeroForIn, params.swapPool, 0);
+                } else {
+                    break;
+                }
+            }
+
+            (params.sqrtPriceX96, amountOut) = _calcsSwap(amountIn.toInt256(), cache);
+
+            (uint256 maxnAmountIn, uint256 minAmountOut) = _getMinAmtOut(
+                params.zeroForIn,
+                params.sqrtPriceX96,
+                sqrtRatioAX96,
+                sqrtRatioBX96,
+                params.desiredLiquidity
+            );
+
+            if (
+                i > 0 &&
+                amountOut + params.tokenOutBalance >= minAmountOut &&
+                maxnAmountIn <= params.tokenInBalance - amountIn
+            ) {
+                sqrtPriceX96After = params.sqrtPriceX96;
+                swapAmountIn = amountIn;
+                swapAmountOut = amountOut;
+
+                break;
+            }
+
+            unchecked {
+                ++i;
+            }
+        }
+    }
+
+    function _getHoldTokenAmountIn(
+        bool zeroForholdToken,
+        uint160 sqrtPriceX96,
+        uint160 sqrtRatioAX96,
+        uint160 sqrtRatioBX96,
+        uint128 liquidity,
+        uint256 holdTokenDebt
+    ) private pure returns (uint256 holdTokenAmountIn) {
+        // Call getAmountsForLiquidity function from LiquidityAmounts library
+        // to get the amounts of token0 and token1 for a given liquidity position
+        uint256 amount0;
+        uint256 amount1;
+        (amount0, amount1) = AmountsLiquidity.getAmountsRoundingUpForLiquidity(
+            sqrtPriceX96,
+            sqrtRatioAX96,
+            sqrtRatioBX96,
+            liquidity
+        );
+
+        // Calculate the holdTokenAmountIn based on the zeroForSaleToken flag
+        holdTokenAmountIn = zeroForholdToken ? holdTokenDebt - amount0 : holdTokenDebt - amount1;
+    }
+
+    function _getMinAmtOut(
+        bool zeroForholdToken,
+        uint160 sqrtPriceX96,
+        uint160 sqrtRatioAX96,
+        uint160 sqrtRatioBX96,
+        uint128 liquidity
+    ) private pure returns (uint256 maxnAmountIn, uint256 minAmountOut) {
+        (uint256 amount0, uint256 amount1) = AmountsLiquidity.getAmountsRoundingUpForLiquidity(
+            sqrtPriceX96,
+            sqrtRatioAX96,
+            sqrtRatioBX96,
+            liquidity
+        );
+        (maxnAmountIn, minAmountOut) = zeroForholdToken ? (amount0, amount1) : (amount1, amount0);
+    }
+
+    function _prepareSwapCashe(
         bool zeroForOne,
         address swapPool,
-        int256 amountSpecified, //exactOutput if negative, exactInput if positive
         uint160 sqrtPriceLimitX96
-    ) private view returns (uint160 sqrtPriceX96After, int256 amount0, int256 amount1) {
-        require(amountSpecified != 0, "AS");
+    ) private view returns (SwapCache memory cache) {
+        (uint160 sqrtPriceX96, int24 tick, , , , uint8 feeProtocol, ) = IUniswapV3Pool(swapPool)
+            .slot0();
 
-        Slot0Start memory slot0Start;
-        {
-            (
-                // the current price)
-                uint160 sqrtPriceX96,
-                // the current tick
-                int24 tick,
-                ,
-                ,
-                ,
-                // the current protocol fee as a percentage of the swap fee taken on withdrawal
-                // represented as an integer denominator (1/x)%
-                uint8 feeProtocol,
-
-            ) = IUniswapV3Pool(swapPool).slot0();
-
-            slot0Start = Slot0Start(sqrtPriceX96, tick, feeProtocol);
-
-            sqrtPriceLimitX96 = sqrtPriceLimitX96 == 0
-                ? (zeroForOne ? TickMath.MIN_SQRT_RATIO + 1 : TickMath.MAX_SQRT_RATIO - 1)
-                : sqrtPriceLimitX96;
-
+        if (sqrtPriceLimitX96 != 0) {
             require(
                 zeroForOne
-                    ? sqrtPriceLimitX96 < slot0Start.sqrtPriceX96 &&
+                    ? sqrtPriceLimitX96 < sqrtPriceX96 &&
                         sqrtPriceLimitX96 > TickMath.MIN_SQRT_RATIO
-                    : sqrtPriceLimitX96 > slot0Start.sqrtPriceX96 &&
+                    : sqrtPriceLimitX96 > sqrtPriceX96 &&
                         sqrtPriceLimitX96 < TickMath.MAX_SQRT_RATIO,
                 "SPL"
             );
+        } else {
+            sqrtPriceLimitX96 = zeroForOne
+                ? TickMath.MIN_SQRT_RATIO + 1
+                : TickMath.MAX_SQRT_RATIO - 1;
         }
 
-        SwapCache memory cache = SwapCache({
+        cache = SwapCache({
+            zeroForOne: zeroForOne,
             liquidityStart: IUniswapV3Pool(swapPool).liquidity(),
-            feeProtocol: zeroForOne ? (slot0Start.feeProtocol % 16) : (slot0Start.feeProtocol >> 4),
+            feeProtocol: zeroForOne ? (feeProtocol % 16) : (feeProtocol >> 4),
             fee: IUniswapV3Pool(swapPool).fee(),
-            tickSpacing: IUniswapV3Pool(swapPool).tickSpacing()
+            tickSpacing: IUniswapV3Pool(swapPool).tickSpacing(),
+            tick: tick,
+            sqrtPriceX96: sqrtPriceX96,
+            sqrtPriceX96Limit: sqrtPriceLimitX96,
+            swapPool: swapPool
         });
+    }
 
+    function _calcsSwap(
+        int256 amountIn,
+        SwapCache memory cache
+    ) private view returns (uint160, uint256) {
         SwapState memory state = SwapState({
-            amountSpecifiedRemaining: amountSpecified,
+            amountSpecifiedRemaining: amountIn,
             amountCalculated: 0,
-            sqrtPriceX96: slot0Start.sqrtPriceX96,
-            tick: slot0Start.tick,
+            sqrtPriceX96: cache.sqrtPriceX96,
+            tick: cache.tick,
             liquidity: cache.liquidityStart
         });
-
         // continue swapping as long as we haven't used the entire input/output and haven't reached the price limit
-        while (state.amountSpecifiedRemaining != 0 && state.sqrtPriceX96 != sqrtPriceLimitX96) {
+        while (
+            state.amountSpecifiedRemaining != 0 && state.sqrtPriceX96 != cache.sqrtPriceX96Limit
+        ) {
             StepComputations memory step;
 
             step.sqrtPriceStartX96 = state.sqrtPriceX96;
 
             (step.tickNext, step.initialized) = _nextInitializedTickWithinOneWord(
-                swapPool,
+                cache.swapPool,
                 state.tick,
                 cache.tickSpacing,
-                zeroForOne
+                cache.zeroForOne
             );
 
             // ensure that we do not overshoot the min/max tick, as the tick bitmap is not aware of these bounds
@@ -146,29 +245,22 @@ contract LightQuoterV3 {
                 .computeSwapStep(
                     state.sqrtPriceX96,
                     (
-                        zeroForOne
-                            ? step.sqrtPriceNextX96 < sqrtPriceLimitX96
-                            : step.sqrtPriceNextX96 > sqrtPriceLimitX96
+                        cache.zeroForOne
+                            ? step.sqrtPriceNextX96 < cache.sqrtPriceX96Limit
+                            : step.sqrtPriceNextX96 > cache.sqrtPriceX96Limit
                     )
-                        ? sqrtPriceLimitX96
+                        ? cache.sqrtPriceX96Limit
                         : step.sqrtPriceNextX96,
                     state.liquidity,
                     state.amountSpecifiedRemaining,
                     cache.fee
                 );
 
-            if (exactInput) {
-                // safe because we test that amountSpecified > amountIn + feeAmount in SwapMath
-                unchecked {
-                    state.amountSpecifiedRemaining -= (step.amountIn + step.feeAmount).toInt256();
-                }
-                state.amountCalculated -= step.amountOut.toInt256();
-            } else {
-                unchecked {
-                    state.amountSpecifiedRemaining += step.amountOut.toInt256();
-                }
-                state.amountCalculated += (step.amountIn + step.feeAmount).toInt256();
+            // safe because we test that amountSpecified > amountIn + feeAmount in SwapMath
+            unchecked {
+                state.amountSpecifiedRemaining -= (step.amountIn + step.feeAmount).toInt256();
             }
+            state.amountCalculated -= step.amountOut.toInt256();
 
             // if the protocol fee is on, calculate how much is owed, decrement feeAmount, and increment protocolFee
             if (cache.feeProtocol > 0) {
@@ -185,13 +277,13 @@ contract LightQuoterV3 {
                     // check for the placeholder value, which we replace with the actual value the first time the swap
                     // crosses an initialized tick
 
-                    (, int128 liquidityNet, , , , , , ) = IUniswapV3Pool(swapPool).ticks(
+                    (, int128 liquidityNet, , , , , , ) = IUniswapV3Pool(cache.swapPool).ticks(
                         step.tickNext
                     );
                     // if we're moving leftward, we interpret liquidityNet as the opposite sign
                     // safe because liquidityNet cannot be type(int128).min
                     unchecked {
-                        if (zeroForOne) liquidityNet = -liquidityNet;
+                        if (cache.zeroForOne) liquidityNet = -liquidityNet;
                     }
 
                     state.liquidity = liquidityNet < 0
@@ -200,20 +292,14 @@ contract LightQuoterV3 {
                 }
 
                 unchecked {
-                    state.tick = zeroForOne ? step.tickNext - 1 : step.tickNext;
+                    state.tick = cache.zeroForOne ? step.tickNext - 1 : step.tickNext;
                 }
             } else if (state.sqrtPriceX96 != step.sqrtPriceStartX96) {
                 // recompute unless we're on a lower tick boundary (i.e. already transitioned ticks), and haven't moved
                 state.tick = TickMath.getTickAtSqrtRatio(state.sqrtPriceX96);
             }
         }
-
-        unchecked {
-            (amount0, amount1) = zeroForOne == exactInput
-                ? (amountSpecified - state.amountSpecifiedRemaining, state.amountCalculated)
-                : (state.amountCalculated, amountSpecified - state.amountSpecifiedRemaining);
-        }
-        sqrtPriceX96After = state.sqrtPriceX96;
+        return (state.sqrtPriceX96, uint256(-state.amountCalculated));
     }
 
     function _position(int24 tick) private pure returns (int16 wordPos, uint8 bitPos) {
@@ -263,25 +349,5 @@ contract LightQuoterV3 {
                     : (compressed + 1 + int24(uint24(type(uint8).max - bitPos))) * tickSpacing;
             }
         }
-    }
-
-    function quoteExactInputSingle(
-        bool zeroForIn,
-        address swapPool,
-        uint160 sqrtPriceLimitX96,
-        uint256 amount
-    ) external view returns (uint160 sqrtPriceX96After, uint256 amountOut) {
-        int256 amount0;
-        int256 amount1;
-
-        (sqrtPriceX96After, amount0, amount1) = _calcsSwap(
-            true,
-            zeroForIn,
-            swapPool,
-            amount.toInt256(),
-            sqrtPriceLimitX96
-        );
-
-        amountOut = zeroForIn ? uint256(-amount1) : uint256(-amount0);
     }
 }

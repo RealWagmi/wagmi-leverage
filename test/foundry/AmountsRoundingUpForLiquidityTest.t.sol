@@ -5,6 +5,7 @@ import "forge-std/Test.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { LiquidityBorrowingManager } from "contracts/LiquidityBorrowingManager.sol";
+import { LightQuoterV3 } from "contracts/LightQuoterV3.sol";
 import { HelperContract } from "../testsHelpers/HelperContract.sol";
 import { INonfungiblePositionManager } from "contracts/interfaces/INonfungiblePositionManager.sol";
 
@@ -30,21 +31,19 @@ contract AmountsRoundingUpForLiquidityTest is Test, HelperContract {
     bytes32 constant UNISWAP_V3_POOL_INIT_CODE_HASH =
         0x30146866f3a846fe3c636beb2756dbd24cf321bc52c9113c837c21f47470dfeb;
     address constant alice = 0x1D8D3417d1d41AAc899A43C3592eAfC504634171;
-    LiquidityBorrowingManager borrowingManager; // = LiquidityBorrowingManager(0x4aC92419aaB89aF2ac1012e1E0159b26499381a3);
+    // LiquidityBorrowingManager borrowingManager;
+
+    uint256 roundingUpTestFork;
+    uint256 calculateAmountsToSwapTestFork;
 
     function setUp() public {
-        vm.createSelectFork("kava", 8367114);
+        roundingUpTestFork = vm.createFork("kava", 8367114);
+        calculateAmountsToSwapTestFork = vm.createFork("kava", 8394603);
         vm.label(address(USDT), "USDt");
         vm.label(address(ODIN), "ODIN");
         vm.label(address(this), "AmountsRoundingUpForLiquidityTest");
         vm.label(address(NONFUNGIBLE_POSITION_MANAGER_ADDRESS), "NONFUNGIBLE_POSITION_MANAGER");
-        borrowingManager = new LiquidityBorrowingManager(
-            NONFUNGIBLE_POSITION_MANAGER_ADDRESS,
-            LIGHT_QUOTER_V3,
-            UNISWAP_V3_FACTORY,
-            UNISWAP_V3_POOL_INIT_CODE_HASH
-        );
-        vm.label(address(borrowingManager), "LiquidityBorrowingManager");
+        vm.label(alice, "Alice");
     }
 
     LiquidityManager.LoanInfo[] loans;
@@ -87,23 +86,6 @@ contract AmountsRoundingUpForLiquidityTest is Test, HelperContract {
         });
     }
 
-    function _minimumLiquidityAmt(
-        int24 tickLower,
-        int24 tickUpper
-    ) private pure returns (uint128 minLiquidity) {
-        uint128 liquidity0 = LiquidityAmounts.getLiquidityForAmount0(
-            TickMath.getSqrtRatioAtTick(tickUpper - 1),
-            TickMath.getSqrtRatioAtTick(tickUpper),
-            Constants.MINIMUM_EXTRACTED_AMOUNT
-        );
-        uint128 liquidity1 = LiquidityAmounts.getLiquidityForAmount1(
-            TickMath.getSqrtRatioAtTick(tickLower),
-            TickMath.getSqrtRatioAtTick(tickLower + 1),
-            Constants.MINIMUM_EXTRACTED_AMOUNT
-        );
-        minLiquidity = liquidity0 > liquidity1 ? liquidity0 : liquidity1;
-    }
-
     function createRepayParams(
         uint24 internalSwapPoolfee,
         bytes32 _borrowingKey
@@ -125,9 +107,15 @@ contract AmountsRoundingUpForLiquidityTest is Test, HelperContract {
     }
 
     function test_AmountsRoundingUpKava() public {
+        vm.selectFork(roundingUpTestFork);
+        LiquidityBorrowingManager borrowingManager = new LiquidityBorrowingManager(
+            NONFUNGIBLE_POSITION_MANAGER_ADDRESS,
+            LIGHT_QUOTER_V3,
+            UNISWAP_V3_FACTORY,
+            UNISWAP_V3_POOL_INIT_CODE_HASH
+        );
+        vm.label(address(borrowingManager), "LiquidityBorrowingManager");
         vm.startPrank(alice);
-        uint128 minLiqAmt = _minimumLiquidityAmt(-312200, -306800);
-        console.log("minimumLiquidityAmt=", minLiqAmt);
 
         INonfungiblePositionManager(NONFUNGIBLE_POSITION_MANAGER_ADDRESS).approve(
             address(borrowingManager),
@@ -143,8 +131,60 @@ contract AmountsRoundingUpForLiquidityTest is Test, HelperContract {
             99502487562189054726,
             8580586475451077445,
             108537896990498585,
-            76304477072925, // 1202371769466
+            76304477072925,
             371
+        );
+
+        borrowingManager.borrow(AliceBorrowingParams, block.timestamp + 60);
+        bytes32[] memory AliceBorrowingKeys = borrowingManager.getBorrowingKeysForBorrower(
+            address(alice)
+        );
+
+        LiquidityBorrowingManager.RepayParams memory AliceRepayingParams = createRepayParams(
+            uint24(10000),
+            AliceBorrowingKeys[0]
+        );
+        borrowingManager.repay(AliceRepayingParams, block.timestamp + 60);
+
+        vm.stopPrank();
+    }
+
+    function test_CalculateZapOutKava() public {
+        vm.selectFork(calculateAmountsToSwapTestFork);
+        address lightQuoter = address(new LightQuoterV3());
+        LiquidityBorrowingManager borrowingManager = new LiquidityBorrowingManager(
+            NONFUNGIBLE_POSITION_MANAGER_ADDRESS,
+            lightQuoter,
+            UNISWAP_V3_FACTORY,
+            UNISWAP_V3_POOL_INIT_CODE_HASH
+        );
+        vm.label(address(borrowingManager), "LiquidityBorrowingManager");
+        vm.label(lightQuoter, "LightQuoterV3");
+        vm.label(borrowingManager.VAULT_ADDRESS(), "Vault");
+
+        address ownerPositionManager = INonfungiblePositionManager(
+            NONFUNGIBLE_POSITION_MANAGER_ADDRESS
+        ).ownerOf(384);
+        vm.startPrank(ownerPositionManager);
+
+        INonfungiblePositionManager(NONFUNGIBLE_POSITION_MANAGER_ADDRESS).approve(
+            address(borrowingManager),
+            384
+        );
+        vm.stopPrank();
+        vm.startPrank(alice);
+        _maxApproveIfNecessary(address(USDT), address(borrowingManager), type(uint256).max);
+        _maxApproveIfNecessary(address(ODIN), address(borrowingManager), type(uint256).max);
+
+        LiquidityBorrowingManager.BorrowParams memory AliceBorrowingParams = createBorrowParams(
+            uint24(10000),
+            address(USDT),
+            address(ODIN),
+            1492537313432835820895,
+            37012999757887272302,
+            1536828855480484849,
+            1011284991173027,
+            384
         );
 
         borrowingManager.borrow(AliceBorrowingParams, block.timestamp + 60);
