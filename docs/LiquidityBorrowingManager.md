@@ -716,31 +716,6 @@ function setSwapCallToWhitelist(address swapTarget, bytes4 funcSelector, bool is
 | funcSelector | bytes4 | The function selector of the swap call. |
 | isAllowed | bool | A boolean indicating whether the swap call is allowed or not. |
 
-### takeOverDebt
-
-```solidity
-function takeOverDebt(bytes32 borrowingKey, uint256 collateralAmt, uint256 minBorrowedAmount, uint256 deadline) external nonpayable returns (uint256 payAmount)
-```
-
-Take over debt by transferring ownership of a borrowing to the current caller
-
-*This function allows the current caller to take over a debt from another borrower. The function validates the borrowingKey and checks if the collateral balance is negative. If the conditions are met, the function transfers ownership of the borrowing to the current caller, updates the daily rate collateral balance, and pays the collateral amount to the vault. Emits a `TakeOverDebt` event.*
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| borrowingKey | bytes32 | The unique key associated with the borrowing to be taken over |
-| collateralAmt | uint256 | The amount of collateral to be provided by the new borrower |
-| minBorrowedAmount | uint256 | The minimum borrowed amount required to take over the debt. |
-| deadline | uint256 | The deadline timestamp after which the transaction is considered invalid. |
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| payAmount | uint256 | The total amount paid by the new borrower, including fees. |
-
 ### transferOwnership
 
 ```solidity
@@ -998,25 +973,6 @@ Indicates that a borrower has repaid their loan, optionally with the help of a l
 | borrower  | address | undefined |
 | liquidator  | address | undefined |
 | borrowingKey  | bytes32 | undefined |
-
-### TakeOverDebt
-
-```solidity
-event TakeOverDebt(address oldBorrower, address newBorrower, bytes32 oldBorrowingKey, bytes32 newBorrowingKey)
-```
-
-Indicates that a new borrower has taken over the debt from an old borrower
-
-
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| oldBorrower  | address | undefined |
-| newBorrower  | address | undefined |
-| oldBorrowingKey  | bytes32 | undefined |
-| newBorrowingKey  | bytes32 | undefined |
 
 ### UpdateHoldTokenDailyRate
 

@@ -129,13 +129,6 @@ contract LiquidityBorrowingManager is
     event UpdateHoldTokenDailyRate(address saleToken, address holdToken, uint256 value);
     /// Indicates that a borrower has increased their collateral balance for a loan
     event IncreaseCollateralBalance(address borrower, bytes32 borrowingKey, uint256 collateralAmt);
-    /// Indicates that a new borrower has taken over the debt from an old borrower
-    event TakeOverDebt(
-        address oldBorrower,
-        address newBorrower,
-        bytes32 oldBorrowingKey,
-        bytes32 newBorrowingKey
-    );
 
     event Harvest(bytes32 borrowingKey, uint256 harvestedAmt);
 
@@ -425,89 +418,6 @@ contract LiquidityBorrowingManager is
             Constants.COLLATERAL_BALANCE_PRECISION;
         _pay(borrowing.holdToken, msg.sender, VAULT_ADDRESS, collateralAmt);
         emit IncreaseCollateralBalance(msg.sender, borrowingKey, collateralAmt);
-    }
-
-    /**
-     * @notice Take over debt by transferring ownership of a borrowing to the current caller
-     * @dev This function allows the current caller to take over a debt from another borrower.
-     * The function validates the borrowingKey and checks if the collateral balance is negative.
-     * If the conditions are met, the function transfers ownership of the borrowing to the current caller,
-     * updates the daily rate collateral balance, and pays the collateral amount to the vault.
-     * Emits a `TakeOverDebt` event.
-     * @param borrowingKey The unique key associated with the borrowing to be taken over
-     * @param collateralAmt The amount of collateral to be provided by the new borrower
-     * @param minBorrowedAmount The minimum borrowed amount required to take over the debt.
-     * @param deadline The deadline timestamp after which the transaction is considered invalid.
-     *
-     *  @return payAmount The total amount paid by the new borrower, including fees.
-     */
-    function takeOverDebt(
-        bytes32 borrowingKey,
-        uint256 collateralAmt,
-        uint256 minBorrowedAmount,
-        uint256 deadline
-    ) external nonReentrant checkDeadline(deadline) returns (uint256 payAmount) {
-        BorrowingInfo memory oldBorrowing = borrowingsInfo[borrowingKey];
-        // Ensure that the borrowed position exists
-        _existenceCheck(oldBorrowing.borrowedAmount);
-        // Ensure that the borrowedAmount hasn't changed
-        (oldBorrowing.borrowedAmount < minBorrowedAmount).revertError(
-            ErrLib.ErrorCode.UNEXPECTED_CHANGES
-        );
-
-        uint256 accLoanRatePerSeconds;
-        uint256 minPayment;
-        {
-            // Update token rate info and retrieve the accumulated loan rate per second for holdToken
-            (, TokenInfo storage holdTokenRateInfo) = _updateTokenRateInfo(
-                oldBorrowing.saleToken,
-                oldBorrowing.holdToken
-            );
-            accLoanRatePerSeconds = holdTokenRateInfo.accLoanRatePerSeconds;
-            // Calculate the collateral balance and current fees for the oldBorrowing
-            (int256 collateralBalance, uint256 currentFees) = _calculateCollateralBalance(
-                oldBorrowing.borrowedAmount,
-                oldBorrowing.accLoanRatePerSeconds,
-                oldBorrowing.dailyRateCollateralBalance,
-                accLoanRatePerSeconds
-            );
-            // Ensure the position is under liquidation
-            (collateralBalance >= 0).revertError(ErrLib.ErrorCode.FORBIDDEN);
-            // Pick up platform fees from the oldBorrowing's holdToken and add them to the feesOwed
-            currentFees = _pickUpPlatformFees(oldBorrowing.holdToken, currentFees);
-            oldBorrowing.feesOwed += currentFees;
-            // Calculate the minimum payment required based on the collateral balance
-            minPayment = (uint256(-collateralBalance) / Constants.COLLATERAL_BALANCE_PRECISION) + 1;
-            (collateralAmt <= minPayment).revertError(
-                ErrLib.ErrorCode.COLLATERAL_AMOUNT_IS_NOT_ENOUGH
-            );
-        }
-        // Retrieve the old loans associated with the borrowing key and remove them from storage
-        LoanInfo[] memory oldLoans = loansInfo[borrowingKey];
-        _removeKeysAndClearStorage(oldBorrowing.borrower, borrowingKey, oldLoans);
-        // Initialize a new borrowing using the same saleToken, holdToken
-        (
-            uint256 feesDebt,
-            bytes32 newBorrowingKey,
-            BorrowingInfo storage newBorrowing
-        ) = _initOrUpdateBorrowing(
-                oldBorrowing.saleToken,
-                oldBorrowing.holdToken,
-                accLoanRatePerSeconds
-            );
-        // Add the new borrowing key and old loans to the newBorrowing
-        _addKeysAndLoansInfo(newBorrowingKey, oldLoans);
-        // Increase the borrowed amount, liquidation bonus, and fees owed of the newBorrowing based on the oldBorrowing
-        newBorrowing.borrowedAmount += oldBorrowing.borrowedAmount;
-        newBorrowing.liquidationBonus += oldBorrowing.liquidationBonus;
-        newBorrowing.feesOwed += oldBorrowing.feesOwed;
-        // oldBorrowing.dailyRateCollateralBalance is 0
-        newBorrowing.dailyRateCollateralBalance +=
-            (collateralAmt - minPayment) *
-            Constants.COLLATERAL_BALANCE_PRECISION;
-        payAmount = collateralAmt + feesDebt;
-        _pay(oldBorrowing.holdToken, msg.sender, VAULT_ADDRESS, payAmount);
-        emit TakeOverDebt(oldBorrowing.borrower, msg.sender, borrowingKey, newBorrowingKey);
     }
 
     /**
