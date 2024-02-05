@@ -19,8 +19,7 @@ library ErrLib {
         UNEXPECTED_CHANGES, //13
         TOO_BIG_DAILY_RATE, //14
         UNACCEPTABLE_SQRT_PRICE, //15
-        INVALID_SWAP_DATA_INDEX, //16
-        CALCULATE_ZAP_OUT_FAILED //17
+        INVALID_SWAP_DATA_INDEX //16
     }
 
     error RevertErrorCode(ErrorCode code);
