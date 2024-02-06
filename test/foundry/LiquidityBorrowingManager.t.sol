@@ -142,7 +142,7 @@ contract ContractTest is Test, HelperContract {
         assertEq(WBTC.balanceOf(address(this)), 10e8);
         assertEq(WETH.balanceOf(address(this)), 100e18);
         assertEq(borrowingManager.owner(), address(this));
-        assertEq(borrowingManager.dailyRateOperator(), address(this));
+        assertEq(borrowingManager.operator(), address(this));
         assertEq(
             borrowingManager.computePoolAddress(address(USDT), address(WETH), 500),
             address(WETH_USDT_500_POOL)
@@ -189,10 +189,8 @@ contract ContractTest is Test, HelperContract {
             }),
             loans: loanInfoArrayMemory
         });
-        (borrow.maxDailyRate, ) = borrowingManager.getHoldTokenDailyRateInfo(
-            address(WBTC),
-            address(WETH)
-        );
+        borrow.maxDailyRate = (borrowingManager.getHoldTokenInfo(address(WBTC), address(WETH)))
+            .currentDailyRate;
     }
 
     function _minimumLiquidityAmt(

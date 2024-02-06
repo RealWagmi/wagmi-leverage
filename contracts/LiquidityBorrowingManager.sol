@@ -65,6 +65,7 @@ contract LiquidityBorrowingManager is
         uint256 accLoanRatePerSeconds;
         uint256 borrowedAmount;
         uint256 holdTokenBalance;
+        uint256 holdTokenEntraceFee;
     }
     /// @notice Struct representing the extended borrowing information.
     struct BorrowingInfoExt {
@@ -115,7 +116,8 @@ contract LiquidityBorrowingManager is
         uint256 borrowedAmount,
         uint256 borrowingCollateral,
         uint256 liquidationBonus,
-        uint256 dailyRatePrepayment
+        uint256 dailyRatePrepayment,
+        uint256 holdTokenEntraceFee
     );
     /// Indicates that a borrower has repaid their loan, optionally with the help of a liquidator
     event Repay(address borrower, address liquidator, bytes32 borrowingKey);
@@ -127,6 +129,8 @@ contract LiquidityBorrowingManager is
     event CollectLoansFees(address recipient, address[] tokens, uint256[] amounts);
     /// Indicates that the daily interest rate for holding token(for specific pair) has been updated
     event UpdateHoldTokenDailyRate(address saleToken, address holdToken, uint256 value);
+    /// Indicates that the entrance fee for holding token(for specific pair) has been updated
+    event UpdateHoldTokeEntranceFee(address saleToken, address holdToken, uint256 value);
     /// Indicates that a borrower has increased their collateral balance for a loan
     event IncreaseCollateralBalance(address borrower, bytes32 borrowingKey, uint256 collateralAmt);
 
@@ -137,6 +141,11 @@ contract LiquidityBorrowingManager is
     /// @dev Modifier to check if the current block timestamp is before or equal to the deadline.
     modifier checkDeadline(uint256 deadline) {
         (_blockTimestamp() > deadline).revertError(ErrLib.ErrorCode.TOO_OLD_TRANSACTION);
+        _;
+    }
+
+    modifier onlyOperator() {
+        (msg.sender != operator).revertError(ErrLib.ErrorCode.INVALID_CALLER);
         _;
     }
 
@@ -214,16 +223,33 @@ contract LiquidityBorrowingManager is
         address saleToken,
         address holdToken,
         uint256 value
-    ) external {
-        (msg.sender != dailyRateOperator).revertError(ErrLib.ErrorCode.INVALID_CALLER);
+    ) external onlyOperator {
         if (value > Constants.MAX_DAILY_RATE || value < Constants.MIN_DAILY_RATE) {
             revert InvalidSettingsValue(value);
         }
         // If the value is within the acceptable range, the function updates the currentDailyRate property
         // of the holdTokenRateInfo structure associated with the token pair.
-        (, TokenInfo storage holdTokenRateInfo) = _updateTokenRateInfo(saleToken, holdToken);
+        (, TokenInfo storage holdTokenRateInfo) = _updateHoldTokenRateInfo(saleToken, holdToken);
         holdTokenRateInfo.currentDailyRate = value;
         emit UpdateHoldTokenDailyRate(saleToken, holdToken, value);
+    }
+
+    function updateHoldTokenEntranceFee(
+        address saleToken,
+        address holdToken,
+        uint256 value
+    ) external onlyOperator {
+        if (value > Constants.MAX_ENTRANCE_FEE_BPS) {
+            revert InvalidSettingsValue(value);
+        }
+        // If the value is within the acceptable range, the function updates the currentDailyRate property
+        // of the holdTokenRateInfo structure associated with the token pair.
+        (, TokenInfo storage holdTokenEntranceFeeInfo) = _updateHoldTokenRateInfo(
+            saleToken,
+            holdToken
+        );
+        holdTokenEntranceFeeInfo.entranceFeeBP = value;
+        emit UpdateHoldTokeEntranceFee(saleToken, holdToken, value);
     }
 
     /**
@@ -318,13 +344,13 @@ contract LiquidityBorrowingManager is
      * @dev Returns the current daily rate for holding token.
      * @param saleToken The address of the token being sold.
      * @param holdToken The address of the token being held.
-     * @return currentDailyRate The current daily rate .
+     * @return  holdTokenRateInfo The structured data containing detailed information for the hold token.
      */
-    function getHoldTokenDailyRateInfo(
+    function getHoldTokenInfo(
         address saleToken,
         address holdToken
-    ) external view returns (uint256 currentDailyRate, TokenInfo memory holdTokenRateInfo) {
-        (currentDailyRate, holdTokenRateInfo) = _getHoldTokenRateInfo(saleToken, holdToken);
+    ) external view returns (TokenInfo memory holdTokenRateInfo) {
+        holdTokenRateInfo = _getHoldTokenInfo(saleToken, holdToken);
     }
 
     /**
@@ -373,10 +399,8 @@ contract LiquidityBorrowingManager is
         // Check if the borrowed position is existing
         if (borrowing.borrowedAmount > 0) {
             // Get the current daily rate for the hold token
-            (uint256 currentDailyRate, ) = _getHoldTokenRateInfo(
-                borrowing.saleToken,
-                borrowing.holdToken
-            );
+            uint256 currentDailyRate = _getHoldTokenInfo(borrowing.saleToken, borrowing.holdToken)
+                .currentDailyRate;
             // Calculate the collateral amount per second
             uint256 everySecond = (
                 FullMath.mulDivRoundingUp(
@@ -438,7 +462,12 @@ contract LiquidityBorrowingManager is
     function borrow(
         BorrowParams calldata params,
         uint256 deadline
-    ) external nonReentrant checkDeadline(deadline) returns (uint256, uint256, uint256, uint256) {
+    )
+        external
+        nonReentrant
+        checkDeadline(deadline)
+        returns (uint256, uint256, uint256, uint256, uint256)
+    {
         // Precalculating borrowing details and storing them in cache
         BorrowCache memory cache = _precalculateBorrowing(params);
         // Initializing borrowing variables and obtaining borrowing key
@@ -446,7 +475,12 @@ contract LiquidityBorrowingManager is
             uint256 feesDebt,
             bytes32 borrowingKey,
             BorrowingInfo storage borrowing
-        ) = _initOrUpdateBorrowing(params.saleToken, params.holdToken, cache.accLoanRatePerSeconds);
+        ) = _initOrUpdateBorrowing(
+                params.saleToken,
+                params.holdToken,
+                cache.accLoanRatePerSeconds,
+                cache.holdTokenEntraceFee
+            );
         // Adding borrowing key and loans information to storage
         _addKeysAndLoansInfo(borrowingKey, params.loans);
         // Calculating liquidation bonus based on hold token, borrowed amount, and number of used loans
@@ -468,13 +502,22 @@ contract LiquidityBorrowingManager is
         (marginDeposit > params.maxMarginDeposit).revertError(
             ErrLib.ErrorCode.TOO_BIG_MARGIN_DEPOSIT
         );
+        //
+        cache.holdTokenEntraceFee =
+            cache.holdTokenEntraceFee /
+            Constants.COLLATERAL_BALANCE_PRECISION +
+            1;
 
         // Transfer the required tokens to the VAULT_ADDRESS for collateral and holdTokenBalance
         _pay(
             params.holdToken,
             msg.sender,
             VAULT_ADDRESS,
-            marginDeposit + liquidationBonus + cache.dailyRateCollateral + feesDebt
+            marginDeposit +
+                liquidationBonus +
+                cache.dailyRateCollateral +
+                feesDebt +
+                cache.holdTokenEntraceFee
         );
         // Transferring holdTokenBalance to VAULT_ADDRESS
         _pay(params.holdToken, address(this), VAULT_ADDRESS, cache.holdTokenBalance);
@@ -485,9 +528,16 @@ contract LiquidityBorrowingManager is
             cache.borrowedAmount,
             marginDeposit,
             liquidationBonus,
-            cache.dailyRateCollateral
+            cache.dailyRateCollateral,
+            cache.holdTokenEntraceFee
         );
-        return (cache.borrowedAmount, marginDeposit, liquidationBonus, cache.dailyRateCollateral);
+        return (
+            cache.borrowedAmount,
+            marginDeposit,
+            liquidationBonus,
+            cache.dailyRateCollateral,
+            cache.holdTokenEntraceFee
+        );
     }
 
     /**
@@ -509,7 +559,7 @@ contract LiquidityBorrowingManager is
         _existenceCheck(borrowing.borrowedAmount);
 
         // Update token rate information and get holdTokenRateInfo storage reference
-        (, TokenInfo storage holdTokenRateInfo) = _updateTokenRateInfo(
+        (, TokenInfo storage holdTokenRateInfo) = _updateHoldTokenRateInfo(
             borrowing.saleToken,
             borrowing.holdToken
         );
@@ -600,7 +650,7 @@ contract LiquidityBorrowingManager is
         uint256 liquidationBonus = borrowing.liquidationBonus;
         int256 collateralBalance;
         // Update token rate information and get holdTokenRateInfo storage reference
-        (, TokenInfo storage holdTokenRateInfo) = _updateTokenRateInfo(
+        (, TokenInfo storage holdTokenRateInfo) = _updateHoldTokenRateInfo(
             borrowing.saleToken,
             borrowing.holdToken
         );
@@ -895,7 +945,7 @@ contract LiquidityBorrowingManager is
             // Create a storage reference for the hold token rate information
             TokenInfo storage holdTokenRateInfo;
             // Update the token rate information and retrieve the dailyRate and TokenInfo for the holdTokenRateInfo
-            (cache.dailyRateCollateral, holdTokenRateInfo) = _updateTokenRateInfo(
+            (cache.dailyRateCollateral, holdTokenRateInfo) = _updateHoldTokenRateInfo(
                 params.saleToken,
                 params.holdToken
             );
@@ -903,6 +953,12 @@ contract LiquidityBorrowingManager is
             (cache.dailyRateCollateral > params.maxDailyRate).revertError(
                 ErrLib.ErrorCode.TOO_BIG_DAILY_RATE
             );
+
+            cache.holdTokenEntraceFee = holdTokenRateInfo.entranceFeeBP;
+
+            if (cache.holdTokenEntraceFee == 0) {
+                cache.holdTokenEntraceFee = Constants.DEFAULT_ENTRANCE_FEE_BPS;
+            }
 
             // Set the accumulated loan rate per second from the updated holdTokenRateInfo
             cache.accLoanRatePerSeconds = holdTokenRateInfo.accLoanRatePerSeconds;
@@ -957,6 +1013,12 @@ contract LiquidityBorrowingManager is
                 );
             }
         }
+        // Calculate the hold token entrance fee based on the hold token balance and entrance fee basis points
+        cache.holdTokenEntraceFee =
+            (cache.holdTokenBalance *
+                cache.holdTokenEntraceFee *
+                Constants.COLLATERAL_BALANCE_PRECISION) /
+            Constants.BP;
 
         // Ensure that the received holdToken balance meets the minimum required
         if (cache.holdTokenBalance < params.minHoldTokenOut) {
@@ -978,7 +1040,8 @@ contract LiquidityBorrowingManager is
     function _initOrUpdateBorrowing(
         address saleToken,
         address holdToken,
-        uint256 accLoanRatePerSeconds
+        uint256 accLoanRatePerSeconds,
+        uint256 entranceFee
     ) private returns (uint256 feesDebt, bytes32 borrowingKey, BorrowingInfo storage borrowing) {
         // Compute the borrowingKey using the msg.sender, saleToken, and holdToken
         borrowingKey = Keys.computeBorrowingKey(msg.sender, saleToken, holdToken);
@@ -1014,6 +1077,10 @@ contract LiquidityBorrowingManager is
             borrowing.saleToken = saleToken;
             borrowing.holdToken = holdToken;
         }
+        // Pick up platform fees from the entrance fee
+        entranceFee = _pickUpPlatformFees(holdToken, entranceFee);
+        // Increment the fees owed in the borrowing position
+        borrowing.feesOwed += entranceFee;
         // Set the accumulated loan rate per second for the borrowing position
         borrowing.accLoanRatePerSeconds = accLoanRatePerSeconds;
     }
@@ -1039,7 +1106,7 @@ contract LiquidityBorrowingManager is
     /**
      * @dev This internal function is used to get information about a specific debt.
      * It retrieves the borrowing information from the borrowingsInfo mapping based on the borrowingKey,
-     * calculates the current daily rate and hold token rate info using the _getHoldTokenRateInfo function,
+     * calculates the current daily rate and hold token rate info using the _getHoldTokenInfo function,
      * calculates the collateral balance using the _calculateCollateralBalance function,
      * and calculates the estimated lifetime of the debt if the collateral balance is greater than zero.
      * @param borrowingKey The unique key associated with the debt.
@@ -1060,8 +1127,8 @@ contract LiquidityBorrowingManager is
     {
         // Retrieve the borrowing information from the borrowingsInfo mapping based on the borrowingKey
         borrowing = borrowingsInfo[borrowingKey];
-        // Calculate the current daily rate and hold token rate info using the _getHoldTokenRateInfo function
-        (uint256 currentDailyRate, TokenInfo memory holdTokenRateInfo) = _getHoldTokenRateInfo(
+        // Calculate the current daily rate and hold token rate info using the _getHoldTokenInfo function
+        TokenInfo memory holdTokenRateInfo = _getHoldTokenInfo(
             borrowing.saleToken,
             borrowing.holdToken
         );
@@ -1077,7 +1144,7 @@ contract LiquidityBorrowingManager is
             uint256 everySecond = (
                 FullMath.mulDivRoundingUp(
                     borrowing.borrowedAmount,
-                    currentDailyRate * Constants.COLLATERAL_BALANCE_PRECISION,
+                    holdTokenRateInfo.currentDailyRate * Constants.COLLATERAL_BALANCE_PRECISION,
                     1 days * Constants.BP
                 )
             );

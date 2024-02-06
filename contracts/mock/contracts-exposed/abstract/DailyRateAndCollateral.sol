@@ -7,23 +7,26 @@ import "../../../../contracts/abstract/DailyRateAndCollateral.sol";
 contract $DailyRateAndCollateral is DailyRateAndCollateral {
     bytes32 public constant __hh_exposed_bytecode_marker = "hardhat-exposed";
 
-    event return$_updateTokenRateInfo(uint256 currentDailyRate, TokenInfo holdTokenRateInfo);
+    event return$_updateHoldTokenInfo(uint256 currentDailyRate, TokenInfo holdTokenRateInfo);
 
     constructor() payable {}
 
-    function $_getHoldTokenRateInfo(
+    function $_getHoldTokenInfo(
         address saleToken,
         address holdToken
-    ) external view returns (uint256 currentDailyRate, TokenInfo memory holdTokenRateInfo) {
-        (currentDailyRate, holdTokenRateInfo) = super._getHoldTokenRateInfo(saleToken, holdToken);
+    ) external view returns (TokenInfo memory holdTokenRateInfo) {
+        holdTokenRateInfo = super._getHoldTokenInfo(saleToken, holdToken);
     }
 
-    function $_updateTokenRateInfo(
+    function $_updateHoldTokenInfo(
         address saleToken,
         address holdToken
     ) external returns (uint256 currentDailyRate, TokenInfo memory holdTokenRateInfo) {
-        (currentDailyRate, holdTokenRateInfo) = super._updateTokenRateInfo(saleToken, holdToken);
-        emit return$_updateTokenRateInfo(currentDailyRate, holdTokenRateInfo);
+        (currentDailyRate, holdTokenRateInfo) = super._updateHoldTokenRateInfo(
+            saleToken,
+            holdToken
+        );
+        emit return$_updateHoldTokenInfo(currentDailyRate, holdTokenRateInfo);
     }
 
     function $_calculateCollateralBalance(

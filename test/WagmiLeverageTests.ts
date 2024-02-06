@@ -136,7 +136,7 @@ describe("WagmiLeverageTests", () => {
     it("should deploy LiquidityBorrowingManager correctly", async () => {
         expect(vaultAddress).not.to.be.undefined;
         expect(await borrowingManager.owner()).to.equal(owner.address);
-        expect(await borrowingManager.dailyRateOperator()).to.equal(owner.address);
+        expect(await borrowingManager.operator()).to.equal(owner.address);
         expect(await borrowingManager.underlyingPositionManager()).to.equal(NONFUNGIBLE_POSITION_MANAGER_ADDRESS);
         expect(await borrowingManager.UNDERLYING_V3_FACTORY_ADDRESS()).to.equal(UNISWAP_V3_FACTORY);
         expect(await borrowingManager.UNDERLYING_V3_POOL_INIT_CODE_HASH()).to.equal(UNISWAP_V3_POOL_INIT_CODE_HASH);
@@ -174,7 +174,7 @@ describe("WagmiLeverageTests", () => {
         // DAILY_RATE_OPERATOR
         await expect(borrowingManager.connect(owner).updateSettings(2, [bob.address, 20, 4])).to.be.reverted;
         await borrowingManager.connect(owner).updateSettings(2, [bob.address]);
-        expect(await borrowingManager.dailyRateOperator()).to.equal(bob.address);
+        expect(await borrowingManager.operator()).to.equal(bob.address);
 
         // LIQUIDATION_BONUS_FOR_TOKEN
         await expect(borrowingManager.connect(owner).updateSettings(3, [USDT_ADDRESS, 101, 1000000])).to.be.reverted; ////MAX_LIQUIDATION_BONUS = 100;
@@ -303,14 +303,14 @@ describe("WagmiLeverageTests", () => {
     });
 
     it("The token flow should be correct(borrow then repay)", async () => {
-        const amountWBTC = ethers.utils.parseUnits("0.05", 8); //token0
+        const amountWBTC = ethers.utils.parseUnits("0.01", 8); //token0
         const deadline = (await time.latest()) + 60;
-        const minLeverageDesired = 50;
+        const minLeverageDesired = 2;
         const maxMarginDepositWBTC = amountWBTC.div(minLeverageDesired);
 
         const loans = [
             {
-                liquidity: nftpos[3].liquidity,
+                liquidity: nftpos[3].liquidity.div(3),
                 tokenId: nftpos[3].tokenId,
             },
         ];
@@ -334,10 +334,27 @@ describe("WagmiLeverageTests", () => {
             loans: loans,
         };
 
-        borrowParams.maxDailyRate = (await borrowingManager.getHoldTokenDailyRateInfo(borrowParams.saleToken, borrowParams.holdToken))[0];
+        borrowParams.maxDailyRate = (await borrowingManager.getHoldTokenInfo(borrowParams.saleToken, borrowParams.holdToken))[0];
 
+        await borrowingManager.connect(owner).updateHoldTokenEntranceFee(WETH_ADDRESS, WBTC_ADDRESS, 1); //0.01% 
+        const prevVaultHoldTokenBalace = await getERC20Balance(WBTC_ADDRESS, vaultAddress);
+        const prevVaultSaleTokenTokenBalace = await getERC20Balance(WETH_ADDRESS, vaultAddress);
+        const [
+            borrowedAmount,
+            marginDeposit,
+            liquidBonus,
+            dailyRateCollateral,
+            holdTokenEntraceFee
+        ] = await borrowingManager.connect(bob).callStatic.borrow(borrowParams, deadline);
+        await time.setNextBlockTimestamp(await time.latest());
         //borrow tokens
         await borrowingManager.connect(bob).borrow(borrowParams, deadline);
+
+        const afterBorrowVaultHoldTokenBalace = await getERC20Balance(WBTC_ADDRESS, vaultAddress);
+        const afterBorrowVaultSaleTokenTokenBalace = await getERC20Balance(WETH_ADDRESS, vaultAddress);
+        expect(afterBorrowVaultSaleTokenTokenBalace).to.be.equal(prevVaultSaleTokenTokenBalace);
+        expect(afterBorrowVaultHoldTokenBalace).to.be.equal(prevVaultHoldTokenBalace.add(borrowedAmount).add(liquidBonus).add(dailyRateCollateral).add(holdTokenEntraceFee));
+
 
         const borrowingKey = (await borrowingManager.getBorrowingKeysForBorrower(bob.address))[0];
 
@@ -351,12 +368,16 @@ describe("WagmiLeverageTests", () => {
 
         const prevBalanceLender = await WBTC.balanceOf(alice.address);
         const prevBalance = await WBTC.balanceOf(bob.address);
-        const prevPlatformsFees = (await borrowingManager.getPlatformFeesInfo([WBTC_ADDRESS]))[0];
-
+        const afterBorrowPlatformsFees = (await borrowingManager.getPlatformFeesInfo([WBTC_ADDRESS]))[0];
+        let entrance = holdTokenEntraceFee.mul(2000).div(10000);// +20%
+        expect(afterBorrowPlatformsFees).to.be.within(entrance.sub(2), entrance);
         //query amount of collateral available
         const borrowingsInfo = await borrowingManager.borrowingsInfo(borrowingKey);
+        entrance = borrowingsInfo.feesOwed.div(COLLATERAL_BALANCE_PRECISION).add(afterBorrowPlatformsFees);
+        expect(holdTokenEntraceFee).to.be.within(entrance, entrance.add(2));
         const dailyCollateral = borrowingsInfo.dailyRateCollateralBalance.div(COLLATERAL_BALANCE_PRECISION);
         const liquidationBonus = borrowingsInfo.liquidationBonus;
+        expect(liquidationBonus).to.be.equal(liquidBonus);
         //should be more than 0
         expect(dailyCollateral).to.be.gt(0);
         expect(liquidationBonus).to.be.gt(0);
@@ -367,11 +388,24 @@ describe("WagmiLeverageTests", () => {
 
         const newBalance = await WBTC.balanceOf(bob.address);
         const newPlatformsFees = (await borrowingManager.getPlatformFeesInfo([WBTC_ADDRESS]))[0];
-        expect(newPlatformsFees).to.be.equal(prevPlatformsFees.add(200));//+20% of MINIMUM_AMOUNT
+        let feeCompensationUpToMin = BigNumber.from(1000).sub(borrowingsInfo.feesOwed.div(COLLATERAL_BALANCE_PRECISION)).mul(2000).div(10000);
+        let feeIncludedfeeCompensation = afterBorrowPlatformsFees.add(feeCompensationUpToMin);// 10000 MINIMUM_AMOUNT
+        expect(newPlatformsFees).to.be.within(feeIncludedfeeCompensation.sub(1), feeIncludedfeeCompensation.add(1));//+ ~20%-
         await borrowingManager.connect(alice).collectLoansFees([WBTC_ADDRESS]);
         const newBalanceLender = await WBTC.balanceOf(alice.address);
-        expect(newBalanceLender).to.be.equal(prevBalanceLender.add(800));//+80% of MINIMUM_AMOUNT
-        expect(newBalance).to.be.equal(prevBalance.add(liquidationBonus).add(dailyCollateral.sub(1000)));//- MINIMUM_AMOUNT
+        feeCompensationUpToMin = BigNumber.from(1000).sub(borrowingsInfo.feesOwed.div(COLLATERAL_BALANCE_PRECISION)).mul(8000).div(10000).add(borrowingsInfo.feesOwed.div(COLLATERAL_BALANCE_PRECISION));
+        feeIncludedfeeCompensation = prevBalanceLender.add(feeCompensationUpToMin);
+        expect(newBalanceLender).to.be.within(feeIncludedfeeCompensation.sub(1), feeIncludedfeeCompensation.add(1));//+ ~80% of MINIMUM_AMOUNT
+        expect(newBalance).to.be.equal(prevBalance.add(liquidationBonus).add(dailyCollateral.sub(1000)).add(borrowingsInfo.feesOwed.div(COLLATERAL_BALANCE_PRECISION)));//- MINIMUM_AMOUNT
+
+        await borrowingManager.connect(alice).collectLoansFees([WBTC_ADDRESS, WETH_ADDRESS]);
+        await borrowingManager.connect(owner).collectProtocol(owner.address, [WBTC_ADDRESS, WETH_ADDRESS]);
+        const afterCollectVaultHoldTokenBalace = await getERC20Balance(WBTC_ADDRESS, vaultAddress);
+        const afterCollectVaultSaleTokenBalace = await getERC20Balance(WETH_ADDRESS, vaultAddress);
+        // check that the vault has the correct amount of tokens
+        expect(afterCollectVaultSaleTokenBalace).to.be.equal(prevVaultSaleTokenTokenBalace);
+        expect(afterCollectVaultHoldTokenBalace).to.be.gte(prevVaultHoldTokenBalace);
+
     });
 
     it("The _frontRunningAttackPrevent should work", async () => {
@@ -403,7 +437,7 @@ describe("WagmiLeverageTests", () => {
             swapData: swapData,
         };
 
-        const maxDailyRate = (await borrowingManager.getHoldTokenDailyRateInfo(WETH_ADDRESS, WBTC_ADDRESS))[0];
+        const maxDailyRate = (await borrowingManager.getHoldTokenInfo(WETH_ADDRESS, WBTC_ADDRESS))[0];
 
         let params = {
             internalSwapPoolfee: 500,
@@ -531,7 +565,7 @@ describe("WagmiLeverageTests", () => {
             swapData: swapData,
         };
 
-        const maxDailyRate = (await borrowingManager.getHoldTokenDailyRateInfo(WETH_ADDRESS, WBTC_ADDRESS))[0];
+        const maxDailyRate = (await borrowingManager.getHoldTokenInfo(WETH_ADDRESS, WBTC_ADDRESS))[0];
 
         let params: LiquidityBorrowingManager.BorrowParamsStruct = {
             internalSwapPoolfee: 500,
@@ -580,7 +614,7 @@ describe("WagmiLeverageTests", () => {
             swapData: swapData,
         };
 
-        const maxDailyRate = (await borrowingManager.getHoldTokenDailyRateInfo(WETH_ADDRESS, WBTC_ADDRESS))[0];
+        const maxDailyRate = (await borrowingManager.getHoldTokenInfo(WETH_ADDRESS, WBTC_ADDRESS))[0];
 
         const params: LiquidityBorrowingManager.BorrowParamsStruct = {
             internalSwapPoolfee: 500,
@@ -622,7 +656,7 @@ describe("WagmiLeverageTests", () => {
             swapData: swapData,
         };
 
-        const maxDailyRate = (await borrowingManager.getHoldTokenDailyRateInfo(WETH_ADDRESS, WBTC_ADDRESS))[0];
+        const maxDailyRate = (await borrowingManager.getHoldTokenInfo(WETH_ADDRESS, WBTC_ADDRESS))[0];
 
         const params: LiquidityBorrowingManager.BorrowParamsStruct = {
             internalSwapPoolfee: 500,
@@ -667,8 +701,8 @@ describe("WagmiLeverageTests", () => {
             sqrtPriceLimitX96: 0
         };
         await borrowingManager.connect(bob).repay(params, deadline);
-        const rateInfo = await borrowingManager.getHoldTokenDailyRateInfo(WETH_ADDRESS, WBTC_ADDRESS);
-        expect(rateInfo[1].totalBorrowed).to.be.equal(0);
+        const rateInfo = await borrowingManager.getHoldTokenInfo(WETH_ADDRESS, WBTC_ADDRESS);
+        expect(rateInfo.totalBorrowed).to.be.equal(0);
         await time.increase(86400);
     });
 
@@ -694,7 +728,7 @@ describe("WagmiLeverageTests", () => {
             swapData: swapData,
         };
 
-        const maxDailyRate = (await borrowingManager.getHoldTokenDailyRateInfo(WBTC_ADDRESS, WETH_ADDRESS))[0];
+        const maxDailyRate = (await borrowingManager.getHoldTokenInfo(WBTC_ADDRESS, WETH_ADDRESS))[0];
 
 
         let params: LiquidityBorrowingManager.BorrowParamsStruct = {
@@ -744,7 +778,7 @@ describe("WagmiLeverageTests", () => {
             swapData: swapData,
         };
 
-        const maxDailyRate = (await borrowingManager.getHoldTokenDailyRateInfo(WBTC_ADDRESS, WETH_ADDRESS))[0];
+        const maxDailyRate = (await borrowingManager.getHoldTokenInfo(WBTC_ADDRESS, WETH_ADDRESS))[0];
 
         const params: LiquidityBorrowingManager.BorrowParamsStruct = {
             internalSwapPoolfee: 500,
@@ -784,7 +818,7 @@ describe("WagmiLeverageTests", () => {
             swapData: swapData,
         };
 
-        const maxDailyRate = (await borrowingManager.getHoldTokenDailyRateInfo(WBTC_ADDRESS, WETH_ADDRESS))[0];
+        const maxDailyRate = (await borrowingManager.getHoldTokenInfo(WBTC_ADDRESS, WETH_ADDRESS))[0];
 
         const params: LiquidityBorrowingManager.BorrowParamsStruct = {
             internalSwapPoolfee: 500,
@@ -829,8 +863,8 @@ describe("WagmiLeverageTests", () => {
             sqrtPriceLimitX96: 0
         };
         await borrowingManager.connect(bob).repay(params, deadline);
-        const rateInfo = await borrowingManager.getHoldTokenDailyRateInfo(WBTC_ADDRESS, WETH_ADDRESS);
-        expect(rateInfo[1].totalBorrowed).to.be.equal(0);
+        const rateInfo = await borrowingManager.getHoldTokenInfo(WBTC_ADDRESS, WETH_ADDRESS);
+        expect(rateInfo.totalBorrowed).to.be.equal(0);
         await time.increase(86400);
     });
     //===========================================================================================
@@ -856,7 +890,7 @@ describe("WagmiLeverageTests", () => {
             swapData: swapData,
         };
 
-        const maxDailyRate = (await borrowingManager.getHoldTokenDailyRateInfo(USDT_ADDRESS, WETH_ADDRESS))[0];
+        const maxDailyRate = (await borrowingManager.getHoldTokenInfo(USDT_ADDRESS, WETH_ADDRESS))[0];
 
         let params: LiquidityBorrowingManager.BorrowParamsStruct = {
             internalSwapPoolfee: 500,
@@ -905,7 +939,7 @@ describe("WagmiLeverageTests", () => {
             swapData: swapData,
         };
 
-        const maxDailyRate = (await borrowingManager.getHoldTokenDailyRateInfo(USDT_ADDRESS, WETH_ADDRESS))[0];
+        const maxDailyRate = (await borrowingManager.getHoldTokenInfo(USDT_ADDRESS, WETH_ADDRESS))[0];
 
         const params: LiquidityBorrowingManager.BorrowParamsStruct = {
             internalSwapPoolfee: 500,
@@ -942,7 +976,7 @@ describe("WagmiLeverageTests", () => {
             swapData: swapData,
         };
 
-        const maxDailyRate = (await borrowingManager.getHoldTokenDailyRateInfo(USDT_ADDRESS, WETH_ADDRESS))[0];
+        const maxDailyRate = (await borrowingManager.getHoldTokenInfo(USDT_ADDRESS, WETH_ADDRESS))[0];
 
         const params: LiquidityBorrowingManager.BorrowParamsStruct = {
             internalSwapPoolfee: 500,
@@ -987,8 +1021,8 @@ describe("WagmiLeverageTests", () => {
             sqrtPriceLimitX96: 0
         };
         await borrowingManager.connect(bob).repay(params, deadline);
-        const rateInfo = await borrowingManager.getHoldTokenDailyRateInfo(USDT_ADDRESS, WETH_ADDRESS);
-        expect(rateInfo[1].totalBorrowed).to.be.equal(0);
+        const rateInfo = await borrowingManager.getHoldTokenInfo(USDT_ADDRESS, WETH_ADDRESS);
+        expect(rateInfo.totalBorrowed).to.be.equal(0);
         await time.increase(86400);
     });
 
@@ -1026,7 +1060,7 @@ describe("WagmiLeverageTests", () => {
             },
         ];
 
-        const maxDailyRate = (await borrowingManager.getHoldTokenDailyRateInfo(WETH_ADDRESS, WBTC_ADDRESS))[0];
+        const maxDailyRate = (await borrowingManager.getHoldTokenInfo(WETH_ADDRESS, WBTC_ADDRESS))[0];
 
         let params = {
             internalSwapPoolfee: 500,
@@ -1076,7 +1110,7 @@ describe("WagmiLeverageTests", () => {
             },
         ];
 
-        const maxDailyRate = (await borrowingManager.getHoldTokenDailyRateInfo(WETH_ADDRESS, WBTC_ADDRESS))[0];
+        const maxDailyRate = (await borrowingManager.getHoldTokenInfo(WETH_ADDRESS, WBTC_ADDRESS))[0];
 
         let params: LiquidityBorrowingManager.BorrowParamsStruct = {
             internalSwapPoolfee: 500,
@@ -1128,7 +1162,7 @@ describe("WagmiLeverageTests", () => {
             },
         ];
 
-        let maxDailyRate = (await borrowingManager.getHoldTokenDailyRateInfo(WETH_ADDRESS, WBTC_ADDRESS))[0];
+        let maxDailyRate = (await borrowingManager.getHoldTokenInfo(WETH_ADDRESS, WBTC_ADDRESS))[0];
 
         let params = {
             internalSwapPoolfee: 500,
@@ -1177,7 +1211,7 @@ describe("WagmiLeverageTests", () => {
             },
         ];
 
-        maxDailyRate = (await borrowingManager.getHoldTokenDailyRateInfo(USDT_ADDRESS, WETH_ADDRESS))[0];
+        maxDailyRate = (await borrowingManager.getHoldTokenInfo(USDT_ADDRESS, WETH_ADDRESS))[0];
 
         params = {
             internalSwapPoolfee: 500,
@@ -1196,7 +1230,7 @@ describe("WagmiLeverageTests", () => {
     });
 
     it("updating the daily rate should be correct", async () => {
-        expect((await borrowingManager.getHoldTokenDailyRateInfo(USDT_ADDRESS, WETH_ADDRESS))[0]).to.be.equal(10); // 0.1% default rate
+        expect((await borrowingManager.getHoldTokenInfo(USDT_ADDRESS, WETH_ADDRESS)).currentDailyRate).to.be.equal(10); // 0.1% default rate
         let latest = await time.latest();
         let debt = (await borrowingManager.getBorrowerDebtsInfo(bob.address))[1];
         expect(debt.estimatedLifeTime).to.be.equal(86400); // 1 day
@@ -1220,10 +1254,11 @@ describe("WagmiLeverageTests", () => {
         expect(debt.estimatedLifeTime).to.be.equal(0);
         expect(debt.collateralBalance.div(COLLATERAL_BALANCE_PRECISION)).to.be.lte(0);
 
-        await expect(borrowingManager.connect(owner).updateHoldTokenDailyRate(USDT_ADDRESS, WETH_ADDRESS, 200)).to.be
+        await expect(borrowingManager.connect(owner).updateHoldTokenDailyRate(USDT_ADDRESS, WETH_ADDRESS, 10001)).to.be
             .reverted;
         await expect(borrowingManager.connect(owner).updateHoldTokenDailyRate(USDT_ADDRESS, WETH_ADDRESS, 1)).to.be
             .reverted;
+        await borrowingManager.connect(owner).updateHoldTokenEntranceFee(USDT_ADDRESS, WETH_ADDRESS, 30); //0.3% 
         snapshot_global = await takeSnapshot();
     });
 
@@ -1423,7 +1458,7 @@ describe("WagmiLeverageTests", () => {
         debt = (await borrowingManager.getBorrowerDebtsInfo(bob.address))[1];
         expect(debt.info.feesOwed).to.be.lt(BigNumber.from(5));//dust
         expect(debt.info.dailyRateCollateralBalance).to.be.equal(debt.collateralBalance);
-
+        await time.setNextBlockTimestamp(await time.latest());
         await expect(borrowingManager.connect(alice).harvest(debt.key)).to.be.reverted;
     });
 
@@ -1438,12 +1473,14 @@ describe("WagmiLeverageTests", () => {
         expect(await borrowingManager.getLenderCreditsCount(nftpos[0].tokenId)).to.be.equal(1);
         expect(await borrowingManager.getBorrowerDebtsCount(bob.address)).to.be.equal(2);
 
-        let rateInfo = await borrowingManager.getHoldTokenDailyRateInfo(WETH_ADDRESS, USDT_ADDRESS);
-        expect(rateInfo[0]).to.be.equal(10); // default
-        expect(rateInfo[1].totalBorrowed).to.be.equal(0);
-        rateInfo = await borrowingManager.getHoldTokenDailyRateInfo(USDT_ADDRESS, WETH_ADDRESS);
-        expect(rateInfo[0]).to.be.equal(20);
-        expect(rateInfo[1].totalBorrowed).to.be.gt(0);
+        let rateInfo = await borrowingManager.getHoldTokenInfo(WETH_ADDRESS, USDT_ADDRESS);
+        expect(rateInfo.currentDailyRate).to.be.equal(10); // default
+        expect(rateInfo.entranceFeeBP).to.be.equal(10); // default
+        expect(rateInfo.totalBorrowed).to.be.equal(0);
+        rateInfo = await borrowingManager.getHoldTokenInfo(USDT_ADDRESS, WETH_ADDRESS);
+        expect(rateInfo.currentDailyRate).to.be.equal(20);
+        expect(rateInfo.entranceFeeBP).to.be.equal(30);
+        expect(rateInfo.totalBorrowed).to.be.gt(0);
         extinfo = await borrowingManager.getBorrowerDebtsInfo(bob.address);
         expect(extinfo[1].key).to.be.equal(borrowingKey);
 
@@ -1509,8 +1546,8 @@ describe("WagmiLeverageTests", () => {
         // borrower only
         await expect(borrowingManager.connect(alice).repay(params, deadline)).to.be.reverted;
         await borrowingManager.connect(bob).repay(params, deadline);
-        let rateInfo = await borrowingManager.getHoldTokenDailyRateInfo(USDT_ADDRESS, WETH_ADDRESS);
-        expect(rateInfo[1].totalBorrowed).to.be.equal(0);
+        let rateInfo = await borrowingManager.getHoldTokenInfo(USDT_ADDRESS, WETH_ADDRESS);
+        expect(rateInfo.totalBorrowed).to.be.equal(0);
 
         // WBTC_WETH
         borrowingKey = (await borrowingManager.getBorrowingKeysForBorrower(bob.address))[0];
@@ -1538,8 +1575,8 @@ describe("WagmiLeverageTests", () => {
         await expect(borrowingManager.connect(alice).repay(params, deadline)).to.be.reverted;
         await borrowingManager.connect(bob).repay(params, deadline);
 
-        rateInfo = await borrowingManager.getHoldTokenDailyRateInfo(WETH_ADDRESS, WBTC_ADDRESS);
-        expect(rateInfo[1].totalBorrowed).to.be.equal(0);
+        rateInfo = await borrowingManager.getHoldTokenInfo(WETH_ADDRESS, WBTC_ADDRESS);
+        expect(rateInfo.totalBorrowed).to.be.equal(0);
         expect(await borrowingManager.getLenderCreditsCount(nftpos[0].tokenId)).to.be.equal(0);
         expect(await borrowingManager.getLenderCreditsCount(nftpos[1].tokenId)).to.be.equal(0);
         expect(await borrowingManager.getLenderCreditsCount(nftpos[2].tokenId)).to.be.equal(0);

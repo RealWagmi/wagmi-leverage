@@ -10,6 +10,8 @@ library Constants {
     uint256 internal constant MAX_LIQUIDATION_BONUS = 100; // 1%
     uint256 internal constant MAX_DAILY_RATE = 10000; // 100%
     uint256 internal constant MIN_DAILY_RATE = 5; // 0.05 %
+    uint256 internal constant MAX_ENTRANCE_FEE_BPS = 1000; // 10%
+    uint256 internal constant DEFAULT_ENTRANCE_FEE_BPS = 10; // 0.1%
     uint256 internal constant MAX_NUM_LOANS_PER_POSITION = 7;
     uint256 internal constant COLLATERAL_BALANCE_PRECISION = 1e18;
     uint256 internal constant MINIMUM_AMOUNT = 1000;

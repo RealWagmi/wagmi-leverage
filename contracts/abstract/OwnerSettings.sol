@@ -9,13 +9,13 @@ abstract contract OwnerSettings is Ownable {
      *
      * @param PLATFORM_FEES_BP The percentage of platform fees in basis points.
      * @param DEFAULT_LIQUIDATION_BONUS The default liquidation bonus.
-     * @param DAILY_RATE_OPERATOR The operator for calculating the daily rate.
+     * @param OPERATOR The operator for operating the daily rate and entrance fee.
      * @param LIQUIDATION_BONUS_FOR_TOKEN The liquidation bonus for a specific token.
      */
     enum ITEM {
         PLATFORM_FEES_BP,
         DEFAULT_LIQUIDATION_BONUS,
-        DAILY_RATE_OPERATOR,
+        OPERATOR,
         LIQUIDATION_BONUS_FOR_TOKEN
     }
     /**
@@ -31,7 +31,7 @@ abstract contract OwnerSettings is Ownable {
     /**
      * @dev Address of the daily rate operator.
      */
-    address public dailyRateOperator;
+    address public operator;
     /**
      * @dev Platform fees in basis points.
      * 2000 BP represents a 20% fee on the daily rate.
@@ -53,7 +53,7 @@ abstract contract OwnerSettings is Ownable {
     error InvalidSettingsValue(uint256 value);
 
     constructor() {
-        dailyRateOperator = msg.sender;
+        operator = msg.sender;
     }
 
     /**
@@ -77,22 +77,20 @@ abstract contract OwnerSettings is Ownable {
                 values[1],
                 values[2]
             );
-        } else if (_item == ITEM.DAILY_RATE_OPERATOR) {
-            require(values.length == 1);
-            dailyRateOperator = address(uint160(values[0]));
         } else {
+            require(values.length == 1);
             if (_item == ITEM.PLATFORM_FEES_BP) {
-                require(values.length == 1);
                 if (values[0] > Constants.MAX_PLATFORM_FEE) {
                     revert InvalidSettingsValue(values[0]);
                 }
                 platformFeesBP = values[0];
             } else if (_item == ITEM.DEFAULT_LIQUIDATION_BONUS) {
-                require(values.length == 1);
                 if (values[0] > Constants.MAX_LIQUIDATION_BONUS) {
                     revert InvalidSettingsValue(values[0]);
                 }
                 dafaultLiquidationBonusBP = values[0];
+            } else if (_item == ITEM.OPERATOR) {
+                operator = address(uint160(values[0]));
             }
         }
         emit UpdateSettingsByOwner(_item, values);

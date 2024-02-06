@@ -11,12 +11,14 @@ abstract contract DailyRateAndCollateral {
      * @param accLoanRatePerSeconds The accumulated loan rate per second for the token.
      * @param currentDailyRate The current daily loan rate for the token.
      * @param totalBorrowed The total amount borrowed for the token.
+     * @param entranceFeeBP The entrance fee in basis points for the token.
      */
     struct TokenInfo {
         uint32 latestUpTimestamp;
         uint256 accLoanRatePerSeconds;
         uint256 currentDailyRate;
         uint256 totalBorrowed;
+        uint256 entranceFeeBP;
     }
 
     /// pairKey => TokenInfo
@@ -30,22 +32,25 @@ abstract contract DailyRateAndCollateral {
      * current daily rate. The latest update timestamp is also recorded for future calculations.
      * @param saleToken The address of the sale token in the pair.
      * @param holdToken The address of the hold token in the pair.
-     * @return currentDailyRate The current daily rate for the hold token.
      * @return holdTokenRateInfo The struct containing information about the hold token rate.
      */
-    function _getHoldTokenRateInfo(
+    function _getHoldTokenInfo(
         address saleToken,
         address holdToken
-    ) internal view returns (uint256 currentDailyRate, TokenInfo memory holdTokenRateInfo) {
+    ) internal view returns (TokenInfo memory holdTokenRateInfo) {
         bytes32 key = Keys.computePairKey(saleToken, holdToken);
         holdTokenRateInfo = holdTokenInfo[key];
-        currentDailyRate = holdTokenRateInfo.currentDailyRate;
-        if (currentDailyRate == 0) {
-            currentDailyRate = Constants.DEFAULT_DAILY_RATE;
+
+        if (holdTokenRateInfo.entranceFeeBP == 0) {
+            holdTokenRateInfo.entranceFeeBP = Constants.DEFAULT_ENTRANCE_FEE_BPS;
+        }
+
+        if (holdTokenRateInfo.currentDailyRate == 0) {
+            holdTokenRateInfo.currentDailyRate = Constants.DEFAULT_DAILY_RATE;
         }
         if (holdTokenRateInfo.totalBorrowed > 0) {
             uint256 timeWeightedRate = (uint32(block.timestamp) -
-                holdTokenRateInfo.latestUpTimestamp) * currentDailyRate;
+                holdTokenRateInfo.latestUpTimestamp) * holdTokenRateInfo.currentDailyRate;
             holdTokenRateInfo.accLoanRatePerSeconds +=
                 (timeWeightedRate * Constants.COLLATERAL_BALANCE_PRECISION) /
                 1 days;
@@ -65,7 +70,7 @@ abstract contract DailyRateAndCollateral {
      * @return currentDailyRate The updated current daily rate for the hold token.
      * @return holdTokenRateInfo The struct containing the updated hold token rate information.
      */
-    function _updateTokenRateInfo(
+    function _updateHoldTokenRateInfo(
         address saleToken,
         address holdToken
     ) internal returns (uint256 currentDailyRate, TokenInfo storage holdTokenRateInfo) {

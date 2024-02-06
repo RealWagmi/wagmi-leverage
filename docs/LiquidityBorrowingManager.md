@@ -64,7 +64,7 @@ The address of the vault contract.
 ### borrow
 
 ```solidity
-function borrow(LiquidityBorrowingManager.BorrowParams params, uint256 deadline) external nonpayable returns (uint256, uint256, uint256, uint256)
+function borrow(LiquidityBorrowingManager.BorrowParams params, uint256 deadline) external nonpayable returns (uint256, uint256, uint256, uint256, uint256)
 ```
 
 
@@ -86,6 +86,7 @@ function borrow(LiquidityBorrowingManager.BorrowParams params, uint256 deadline)
 | _1 | uint256 | undefined |
 | _2 | uint256 | undefined |
 | _3 | uint256 | undefined |
+| _4 | uint256 | undefined |
 
 ### borrowingsInfo
 
@@ -236,23 +237,6 @@ function dafaultLiquidationBonusBP() external view returns (uint256)
 |---|---|---|
 | _0 | uint256 | undefined |
 
-### dailyRateOperator
-
-```solidity
-function dailyRateOperator() external view returns (address)
-```
-
-
-
-
-
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | address | undefined |
-
 ### getBorrowerDebtsCount
 
 ```solidity
@@ -364,10 +348,10 @@ function getFeesInfo(address feesOwner, address[] tokens) external view returns 
 |---|---|---|
 | fees | uint256[] | An array containing the fees for each token. |
 
-### getHoldTokenDailyRateInfo
+### getHoldTokenInfo
 
 ```solidity
-function getHoldTokenDailyRateInfo(address saleToken, address holdToken) external view returns (uint256 currentDailyRate, struct DailyRateAndCollateral.TokenInfo holdTokenRateInfo)
+function getHoldTokenInfo(address saleToken, address holdToken) external view returns (struct DailyRateAndCollateral.TokenInfo holdTokenRateInfo)
 ```
 
 
@@ -385,8 +369,7 @@ function getHoldTokenDailyRateInfo(address saleToken, address holdToken) externa
 
 | Name | Type | Description |
 |---|---|---|
-| currentDailyRate | uint256 | The current daily rate . |
-| holdTokenRateInfo | DailyRateAndCollateral.TokenInfo | undefined |
+| holdTokenRateInfo | DailyRateAndCollateral.TokenInfo | The structured data containing detailed information for the hold token. |
 
 ### getLenderCreditsCount
 
@@ -525,7 +508,7 @@ Allows lenders to harvest the fees accumulated from their loans.
 ### holdTokenInfo
 
 ```solidity
-function holdTokenInfo(bytes32) external view returns (uint32 latestUpTimestamp, uint256 accLoanRatePerSeconds, uint256 currentDailyRate, uint256 totalBorrowed)
+function holdTokenInfo(bytes32) external view returns (uint32 latestUpTimestamp, uint256 accLoanRatePerSeconds, uint256 currentDailyRate, uint256 totalBorrowed, uint256 entranceFeeBP)
 ```
 
 pairKey =&gt; TokenInfo
@@ -546,6 +529,7 @@ pairKey =&gt; TokenInfo
 | accLoanRatePerSeconds | uint256 | undefined |
 | currentDailyRate | uint256 | undefined |
 | totalBorrowed | uint256 | undefined |
+| entranceFeeBP | uint256 | undefined |
 
 ### increaseCollateralBalance
 
@@ -628,6 +612,23 @@ borrowingKey=&gt;LoanInfo
 |---|---|---|
 | liquidity | uint128 | undefined |
 | tokenId | uint256 | undefined |
+
+### operator
+
+```solidity
+function operator() external view returns (address)
+```
+
+
+
+
+
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | address | undefined |
 
 ### owner
 
@@ -785,6 +786,24 @@ This function is used to update the daily rate for holding token for specific pa
 | holdToken | address | The address of the hold token. |
 | value | uint256 | The new value of the daily rate for the hold token will be calculated based on the volatility of the pair and the popularity of loans in it |
 
+### updateHoldTokenEntranceFee
+
+```solidity
+function updateHoldTokenEntranceFee(address saleToken, address holdToken, uint256 value) external nonpayable
+```
+
+
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| saleToken | address | undefined |
+| holdToken | address | undefined |
+| value | uint256 | undefined |
+
 ### updateSettings
 
 ```solidity
@@ -832,7 +851,7 @@ swapTarget   =&gt; (func.selector =&gt; is allowed)
 ### Borrow
 
 ```solidity
-event Borrow(address borrower, bytes32 borrowingKey, uint256 borrowedAmount, uint256 borrowingCollateral, uint256 liquidationBonus, uint256 dailyRatePrepayment)
+event Borrow(address borrower, bytes32 borrowingKey, uint256 borrowedAmount, uint256 borrowingCollateral, uint256 liquidationBonus, uint256 dailyRatePrepayment, uint256 holdTokenEntraceFee)
 ```
 
 Indicates that a borrower has made a new loan
@@ -849,6 +868,7 @@ Indicates that a borrower has made a new loan
 | borrowingCollateral  | uint256 | undefined |
 | liquidationBonus  | uint256 | undefined |
 | dailyRatePrepayment  | uint256 | undefined |
+| holdTokenEntraceFee  | uint256 | undefined |
 
 ### CollectLoansFees
 
@@ -973,6 +993,24 @@ Indicates that a borrower has repaid their loan, optionally with the help of a l
 | borrower  | address | undefined |
 | liquidator  | address | undefined |
 | borrowingKey  | bytes32 | undefined |
+
+### UpdateHoldTokeEntranceFee
+
+```solidity
+event UpdateHoldTokeEntranceFee(address saleToken, address holdToken, uint256 value)
+```
+
+Indicates that the entrance fee for holding token(for specific pair) has been updated
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| saleToken  | address | undefined |
+| holdToken  | address | undefined |
+| value  | uint256 | undefined |
 
 ### UpdateHoldTokenDailyRate
 
