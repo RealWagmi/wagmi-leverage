@@ -216,6 +216,7 @@ contract ContractTest is Test, HelperContract {
         bytes memory swapData = "";
 
         repay = LiquidityBorrowingManager.RepayParams({
+            returnOnlyHoldToken: true,
             isEmergency: false,
             internalSwapPoolfee: 500, //token1 - WETH
             externalSwap: ApproveSwapAndPay.SwapParams({

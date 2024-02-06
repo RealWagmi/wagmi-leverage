@@ -84,6 +84,8 @@ contract LiquidityBorrowingManager is
     /// @title RepayParams
     /// @notice This struct represents the parameters required for repaying a loan.
     struct RepayParams {
+        /// @return returnOnlyHoldToken A boolean representing whether the contract returns only the HoldToken
+        bool returnOnlyHoldToken;
         /// @notice The activation of the emergency liquidity restoration mode (available only to the lender)
         bool isEmergency;
         /// @notice The pool fee level for the internal swap
@@ -747,6 +749,13 @@ contract LiquidityBorrowingManager is
                 address(underlyingPositionManager),
                 type(uint128).max
             );
+            // when params.sqrtPriceLimitX96 is set (It is highly recommended for both internal and external swaps)
+            // or returnOnlyHoldToken option is set (in this case the swap is only in the internal pool)
+            //  params.internalSwapPoolfee is required for _frontRunningAttackPrevent and _simulateSwap functions
+            (params.internalSwapPoolfee == 0 &&
+                (params.sqrtPriceLimitX96 != 0 || params.returnOnlyHoldToken)).revertError(
+                    ErrLib.ErrorCode.INTERNAL_SWAP_POOL_FEE_REQUIRED
+                );
 
             _restoreLiquidity(
                 RestoreLiquidityParams({
@@ -766,6 +775,20 @@ contract LiquidityBorrowingManager is
             );
             // Remove borrowing key from related data structures
             _removeKeysAndClearStorage(borrowing.borrower, params.borrowingKey, loans);
+
+            if (saleTokenBack > 0 && params.returnOnlyHoldToken) {
+                // Call the internal v3SwapExactInput function
+                holdTokenBack += _v3SwapExactInput(
+                    v3SwapExactInputParams({
+                        fee: params.internalSwapPoolfee,
+                        tokenIn: borrowing.saleToken,
+                        tokenOut: borrowing.holdToken,
+                        amountIn: saleTokenBack
+                    })
+                );
+
+                saleTokenBack = 0;
+            }
             // Pay a profit to a msg.sender
             _pay(borrowing.holdToken, address(this), msg.sender, holdTokenBack);
             _pay(borrowing.saleToken, address(this), msg.sender, saleTokenBack);

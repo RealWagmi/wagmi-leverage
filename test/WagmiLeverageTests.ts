@@ -31,6 +31,7 @@ import {
     Vault,
     ISwapRouter,
     AggregatorMock,
+    IQuoterV2
 } from "../typechain-types";
 
 import {
@@ -78,6 +79,7 @@ describe("WagmiLeverageTests", () => {
     let vault: Vault;
     let nftpos: PositionManagerPosInfo[];
     let swapData: string;
+
     const swapIface = new ethers.utils.Interface(["function swap(bytes calldata wrappedCallData)"]);
 
     before(async () => {
@@ -354,11 +356,12 @@ describe("WagmiLeverageTests", () => {
         const afterBorrowVaultSaleTokenTokenBalace = await getERC20Balance(WETH_ADDRESS, vaultAddress);
         expect(afterBorrowVaultSaleTokenTokenBalace).to.be.equal(prevVaultSaleTokenTokenBalace);
         expect(afterBorrowVaultHoldTokenBalace).to.be.equal(prevVaultHoldTokenBalace.add(borrowedAmount).add(liquidBonus).add(dailyRateCollateral).add(holdTokenEntraceFee));
-
+        const local_snapshot = await takeSnapshot();
 
         const borrowingKey = (await borrowingManager.getBorrowingKeysForBorrower(bob.address))[0];
 
         let repayParams = {
+            returnOnlyHoldToken: false,
             isEmergency: false,
             internalSwapPoolfee: 500,
             externalSwap: swapParams,
@@ -382,26 +385,54 @@ describe("WagmiLeverageTests", () => {
         expect(dailyCollateral).to.be.gt(0);
         expect(liquidationBonus).to.be.gt(0);
         //console.log("dailyCollateral", dailyCollateral.toString());
-
+        const [saleTokenBack, holdTokenBack] = await borrowingManager.connect(bob).callStatic.repay(repayParams, deadline);
+        await time.setNextBlockTimestamp(await time.latest());
         //BOB repay his loan but loose his dailyCollateral even tho it hasn't been a day
         await borrowingManager.connect(bob).repay(repayParams, deadline);
 
-        const newBalance = await WBTC.balanceOf(bob.address);
+        let newBalance = await WBTC.balanceOf(bob.address);
         const newPlatformsFees = (await borrowingManager.getPlatformFeesInfo([WBTC_ADDRESS]))[0];
         let feeCompensationUpToMin = BigNumber.from(1000).sub(borrowingsInfo.feesOwed.div(COLLATERAL_BALANCE_PRECISION)).mul(2000).div(10000);
         let feeIncludedfeeCompensation = afterBorrowPlatformsFees.add(feeCompensationUpToMin);// 10000 MINIMUM_AMOUNT
         expect(newPlatformsFees).to.be.within(feeIncludedfeeCompensation.sub(1), feeIncludedfeeCompensation.add(1));//+ ~20%-
         await borrowingManager.connect(alice).collectLoansFees([WBTC_ADDRESS]);
-        const newBalanceLender = await WBTC.balanceOf(alice.address);
+        let newBalanceLender = await WBTC.balanceOf(alice.address);
         feeCompensationUpToMin = BigNumber.from(1000).sub(borrowingsInfo.feesOwed.div(COLLATERAL_BALANCE_PRECISION)).mul(8000).div(10000).add(borrowingsInfo.feesOwed.div(COLLATERAL_BALANCE_PRECISION));
         feeIncludedfeeCompensation = prevBalanceLender.add(feeCompensationUpToMin);
         expect(newBalanceLender).to.be.within(feeIncludedfeeCompensation.sub(1), feeIncludedfeeCompensation.add(1));//+ ~80% of MINIMUM_AMOUNT
-        expect(newBalance).to.be.equal(prevBalance.add(liquidationBonus).add(dailyCollateral.sub(1000)).add(borrowingsInfo.feesOwed.div(COLLATERAL_BALANCE_PRECISION)));//- MINIMUM_AMOUNT
+        let holdTokenBalance = prevBalance.add(liquidationBonus).add(dailyCollateral.sub(1000)).add(borrowingsInfo.feesOwed.div(COLLATERAL_BALANCE_PRECISION));
+        expect(newBalance).to.be.within(holdTokenBalance.sub(2), holdTokenBalance.add(2));//with remaining marginDeposit in saleToken
 
         await borrowingManager.connect(alice).collectLoansFees([WBTC_ADDRESS, WETH_ADDRESS]);
         await borrowingManager.connect(owner).collectProtocol(owner.address, [WBTC_ADDRESS, WETH_ADDRESS]);
-        const afterCollectVaultHoldTokenBalace = await getERC20Balance(WBTC_ADDRESS, vaultAddress);
-        const afterCollectVaultSaleTokenBalace = await getERC20Balance(WETH_ADDRESS, vaultAddress);
+        let afterCollectVaultHoldTokenBalace = await getERC20Balance(WBTC_ADDRESS, vaultAddress);
+        let afterCollectVaultSaleTokenBalace = await getERC20Balance(WETH_ADDRESS, vaultAddress);
+        // check that the vault has the correct amount of tokens
+        expect(afterCollectVaultSaleTokenBalace).to.be.equal(prevVaultSaleTokenTokenBalace);
+        expect(afterCollectVaultHoldTokenBalace).to.be.gte(prevVaultHoldTokenBalace);
+
+        await local_snapshot.restore();
+
+        repayParams = {
+            returnOnlyHoldToken: true,//now we want to return only the holdToken
+            isEmergency: false,
+            internalSwapPoolfee: 500,
+            externalSwap: swapParams,
+            borrowingKey: borrowingKey,
+            sqrtPriceLimitX96: 0
+        };
+
+        await borrowingManager.connect(bob).repay(repayParams, deadline);
+        newBalance = await WBTC.balanceOf(bob.address);
+
+        let [, amountOut] = await lightQuoter.quoteExactInputSingle(false, WBTC_WETH_500_POOL_ADDRESS, 0, saleTokenBack);
+        holdTokenBalance = prevBalance.add(liquidationBonus).add(dailyCollateral.sub(1000)).add(borrowingsInfo.feesOwed.div(COLLATERAL_BALANCE_PRECISION).add(amountOut));
+        expect(newBalance).to.be.within(holdTokenBalance.sub(2), holdTokenBalance.add(2));//with remaining marginDeposit in holdToken
+
+        await borrowingManager.connect(alice).collectLoansFees([WBTC_ADDRESS, WETH_ADDRESS]);
+        await borrowingManager.connect(owner).collectProtocol(owner.address, [WBTC_ADDRESS, WETH_ADDRESS]);
+        afterCollectVaultHoldTokenBalace = await getERC20Balance(WBTC_ADDRESS, vaultAddress);
+        afterCollectVaultSaleTokenBalace = await getERC20Balance(WETH_ADDRESS, vaultAddress);
         // check that the vault has the correct amount of tokens
         expect(afterCollectVaultSaleTokenBalace).to.be.equal(prevVaultSaleTokenTokenBalace);
         expect(afterCollectVaultHoldTokenBalace).to.be.gte(prevVaultHoldTokenBalace);
@@ -471,6 +502,7 @@ describe("WagmiLeverageTests", () => {
         await router.connect(alice).exactInputSingle(swapping);
 
         let paramsRep: LiquidityBorrowingManager.RepayParamsStruct = {
+            returnOnlyHoldToken: true,
             isEmergency: false,
             internalSwapPoolfee: 500,
             externalSwap: swapParams,
@@ -483,6 +515,7 @@ describe("WagmiLeverageTests", () => {
         await router.connect(alice).exactInputSingle(swapping);
 
         paramsRep = {
+            returnOnlyHoldToken: true,
             isEmergency: false,
             internalSwapPoolfee: 500,
             externalSwap: swapParams,
@@ -506,6 +539,7 @@ describe("WagmiLeverageTests", () => {
             swapData: swapData,
         };
         paramsRep = {
+            returnOnlyHoldToken: true,
             isEmergency: false,
             internalSwapPoolfee: 500,
             externalSwap: swapParams,
@@ -532,6 +566,7 @@ describe("WagmiLeverageTests", () => {
             swapData: swapData,
         };
         paramsRep = {
+            returnOnlyHoldToken: true,
             isEmergency: false,
             internalSwapPoolfee: 500,
             externalSwap: swapParams,
@@ -694,6 +729,7 @@ describe("WagmiLeverageTests", () => {
         };
 
         let params = {
+            returnOnlyHoldToken: true,
             isEmergency: false,
             internalSwapPoolfee: 500,
             externalSwap: swapParams,
@@ -856,6 +892,7 @@ describe("WagmiLeverageTests", () => {
         };
 
         let params = {
+            returnOnlyHoldToken: true,
             isEmergency: false,
             internalSwapPoolfee: 500,
             externalSwap: swapParams,
@@ -1014,6 +1051,7 @@ describe("WagmiLeverageTests", () => {
         };
 
         let params = {
+            returnOnlyHoldToken: true,
             isEmergency: false,
             internalSwapPoolfee: 500,
             externalSwap: swapParams,
@@ -1284,6 +1322,7 @@ describe("WagmiLeverageTests", () => {
         };
 
         let params: LiquidityBorrowingManager.RepayParamsStruct = {
+            returnOnlyHoldToken: true,
             isEmergency: true, //emergency
             internalSwapPoolfee: 0,
             externalSwap: swapParams,
@@ -1362,6 +1401,7 @@ describe("WagmiLeverageTests", () => {
         };
 
         let params: LiquidityBorrowingManager.RepayParamsStruct = {
+            returnOnlyHoldToken: true,
             isEmergency: false,
             internalSwapPoolfee: 500,
             externalSwap: swapParams,
@@ -1384,6 +1424,7 @@ describe("WagmiLeverageTests", () => {
             swapData: "0x",
         };
         params = {
+            returnOnlyHoldToken: true,
             isEmergency: false,
             internalSwapPoolfee: 500,
             externalSwap: swapParams,
@@ -1510,6 +1551,7 @@ describe("WagmiLeverageTests", () => {
         };
 
         const params: LiquidityBorrowingManager.RepayParamsStruct = {
+            returnOnlyHoldToken: true,
             isEmergency: false,
             internalSwapPoolfee: 500,
             externalSwap: swapParams,
@@ -1537,6 +1579,7 @@ describe("WagmiLeverageTests", () => {
         };
 
         let params: LiquidityBorrowingManager.RepayParamsStruct = {
+            returnOnlyHoldToken: true,
             isEmergency: false,
             internalSwapPoolfee: 500,
             externalSwap: swapParams,
@@ -1566,6 +1609,7 @@ describe("WagmiLeverageTests", () => {
         };
 
         params = {
+            returnOnlyHoldToken: true,
             isEmergency: false,
             internalSwapPoolfee: 500,
             externalSwap: swapParams,

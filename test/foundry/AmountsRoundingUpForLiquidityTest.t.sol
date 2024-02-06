@@ -93,6 +93,7 @@ contract AmountsRoundingUpForLiquidityTest is Test, HelperContract {
         bytes memory swapData = "";
 
         repay = LiquidityBorrowingManager.RepayParams({
+            returnOnlyHoldToken: true,
             isEmergency: false,
             internalSwapPoolfee: internalSwapPoolfee, //token1 - WETH
             externalSwap: ApproveSwapAndPay.SwapParams({
