@@ -1,5 +1,13 @@
 # wagmi-leverage
 
+## Installation
+```bash
+git clone --recursive https://github.com/RealWagmi/wagmi-leverage.git
+npm install
+mv .env_example .env
+npm run test
+```
+
 ## main entry points:
 
 ### borrow
@@ -21,21 +29,24 @@ This function is used to repay a loan.The position is closed either by the trade
 
 | Network | ChainId | Contract | Address |
 |------| ------- | -----| -----|
-| Arbitrum | 42161 | LightQuoterV3 | [0xb9235A074C68A046308aEbD7414Fb89e674adEae](https://arbiscan.io/address/0xb9235A074C68A046308aEbD7414Fb89e674adEae) |
-| Kava | 2222 | LightQuoterV3 | [0xbd352897CF946E205C80520976F6573b7FF3a734](https://kavascan.com/address/0xbd352897CF946E205C80520976F6573b7FF3a734) |
+| Arbitrum | 42161 | LightQuoterV3 | [0x5Aad6a48929D31Dd66aFA5Ab2A783209c7B35509](https://arbiscan.io/address/0x5Aad6a48929D31Dd66aFA5Ab2A783209c7B35509) |
+| Kava | 2222 | LightQuoterV3 | [0x900BE45982cB0b2E573ee109e67e1a0D4FC47Fff](https://kavascan.com/address/0x900BE45982cB0b2E573ee109e67e1a0D4FC47Fff) |
+| METIS | 1088 | LightQuoterV3 | [0xdd9c5CA0270809b091bf477a7e28890EA1cbd1cF](https://explorer.metis.io/address/0xdd9c5CA0270809b091bf477a7e28890EA1cbd1cF) |
 
 ##
 
 | V3 | Network | ChainId | Contract | Address |
 |------|------| ------- | -----| -----|
-| Uniswap | Arbitrum | 42161 | LiquidityBorrowingManager | [0xdfC29937Cc69bB1d45808eCb56EB5B08ed4EeD3d](https://arbiscan.io/address/0xdfC29937Cc69bB1d45808eCb56EB5B08ed4EeD3d) |
-| Uniswap | Arbitrum | 42161 | Vault| [0x5115Cd6a44e150bB98fd02aa8E2C32382CB92627](https://arbiscan.io/address/0x5115Cd6a44e150bB98fd02aa8E2C32382CB92627) |
-| Sushiswap | Arbitrum | 42161 | LiquidityBorrowingManager | [0xAdB0367855243D025cC1E66FA3296D891D468839](https://arbiscan.io/address/0xAdB0367855243D025cC1E66FA3296D891D468839) |
-| Sushiswap | Arbitrum | 42161 | Vault| [0xB6c07217d898ba2aAFB7B407FEb69D62286bb254](https://arbiscan.io/address/0xB6c07217d898ba2aAFB7B407FEb69D62286bb254) |
-| Wagmi | Kava | 2222 | LiquidityBorrowingManager | [0x71523Ea3CBEa82dDFdF8435Df79Aa53f21930e32](https://kavascan.com/address/0x71523Ea3CBEa82dDFdF8435Df79Aa53f21930e32) |
-| Wagmi | Kava | 2222 | Vault| [0x64c11cdCC29bE731fC28C38621B4E746FE6717a7](https://kavascan.com/address/0x64c11cdCC29bE731fC28C38621B4E746FE6717a7) |
-| Kinetix | Kava | 2222 | LiquidityBorrowingManager | [0x7336A896B2e332c9c5B693329E12E715aB3dDaE4](https://kavascan.com/address/0x7336A896B2e332c9c5B693329E12E715aB3dDaE4) |
-| Kinetix | Kava | 2222 | Vault| [0x14254b79cB905c31d6b5A9D166c08602bb605A72](https://kavascan.com/address/0x14254b79cB905c31d6b5A9D166c08602bb605A72) |
+| Uniswap | Arbitrum | 42161 | LiquidityBorrowingManager | [0x793288e6B1bd67fFC3d31992c54e0a3B2bDd655c](https://arbiscan.io/address/0x793288e6B1bd67fFC3d31992c54e0a3B2bDd655c) |
+| Uniswap | Arbitrum | 42161 | Vault| [0xaEb20c4f9D9df915697B6aC6518458Fa2FA8AC80](https://arbiscan.io/address/0xaEb20c4f9D9df915697B6aC6518458Fa2FA8AC80) |
+| Sushiswap | Arbitrum | 42161 | LiquidityBorrowingManager | [0x6374e71E15C6c7706237386584EC8c55c97e7bDa](https://arbiscan.io/address/0x6374e71E15C6c7706237386584EC8c55c97e7bDa) |
+| Sushiswap | Arbitrum | 42161 | Vault| [0x86397aA2AFe9BFa1d76bc8963d248ef9B40837aC](https://arbiscan.io/address/0x86397aA2AFe9BFa1d76bc8963d248ef9B40837aC) |
+| Wagmi | Kava | 2222 | LiquidityBorrowingManager | [0xCc99476805F82e1446541FCb1010269EbC092ae2](https://kavascan.com/address/0xCc99476805F82e1446541FCb1010269EbC092ae2) |
+| Wagmi | Kava | 2222 | Vault| [0xCFE7beDD2bfa1C348ec8de1e210be079bc0eD13e](https://kavascan.com/address/0xCFE7beDD2bfa1C348ec8de1e210be079bc0eD13e) |
+| Kinetix | Kava | 2222 | LiquidityBorrowingManager | [0x45861d6700eAFdD9C8cAD21348ecC2a90328F3E1](https://kavascan.com/address/0x45861d6700eAFdD9C8cAD21348ecC2a90328F3E1) |
+| Kinetix | Kava | 2222 | Vault| [0xEF28cC9dd2e68f3496Fa432876CA055ffdFCc5c1](https://kavascan.com/address/0xEF28cC9dd2e68f3496Fa432876CA055ffdFCc5c1) |
+| Wagmi | METIS | 1088 | LiquidityBorrowingManager | [0x3C422982E76261a3eC73363CAcf5C3731e318104](https://explorer.metis.io/address/0x3C422982E76261a3eC73363CAcf5C3731e318104) |
+| Wagmi | METIS | 1088 | Vault| [0xfa0769525516D247ee040188e029798A259f0e0E](https://explorer.metis.io/address/0xfa0769525516D247ee040188e029798A259f0e0E) |
 
 ##
 

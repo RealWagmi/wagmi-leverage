@@ -79,7 +79,7 @@ const config: HardhatUserConfig = {
       //hardfork: "istanbul",
       chainId: 1,
       forking: {
-        url: `${process.env.ARCHIVE_NODE_RPC_URL}`,
+        url: "https://rpc.ankr.com/eth",
         blockNumber: 17329500,
       },
       allowBlocksWithSameTimestamp: true,
@@ -159,6 +159,15 @@ const config: HardhatUserConfig = {
       accounts: [`${process.env.PRIVATE_KEY}`],
       loggingEnabled: true,
     },
+    metis: {
+      url: "https://andromeda.metis.io/?owner=1088", // public endpoint
+      chainId: 1088,
+      gas: 'auto',
+      gasMultiplier: 1.2,
+      gasPrice: 'auto',
+      accounts: [`${process.env.PRIVATE_KEY}`],
+      loggingEnabled: true,
+    },
   },
   mocha: {
     timeout: 100000,
@@ -171,7 +180,18 @@ const config: HardhatUserConfig = {
       polygon: `${process.env.POLIGONSCAN_API_KEY}`,
       opera: `${process.env.FTMSCAN_API_KEY}`,
       arbitrumOne: `${process.env.ARBISCAN_API_KEY}`,
+      metis: "metis",
     },
+    customChains: [
+      {
+        network: "metis",
+        chainId: 1088,
+        urls: {
+          apiURL: "https://api.routescan.io/v2/network/mainnet/evm/1088/etherscan",
+          browserURL: "https://andromeda-explorer.metis.io"
+        }
+      }
+    ]
   }
 };
 
