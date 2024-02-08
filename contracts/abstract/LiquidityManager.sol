@@ -274,7 +274,7 @@ abstract contract LiquidityManager is ApproveSwapAndPay {
         address tokenIn,
         address tokenOut,
         uint256 amountIn
-    ) private view returns (uint160 sqrtPriceX96After, uint256 amountOut) {
+    ) internal view returns (uint160 sqrtPriceX96After, uint256 amountOut) {
         // Quote exact input single for swap
         address pool = computePoolAddress(tokenIn, tokenOut, fee);
         (sqrtPriceX96After, amountOut) = lightQuoterV3.quoteExactInputSingle(

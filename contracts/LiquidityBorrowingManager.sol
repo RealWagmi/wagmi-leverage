@@ -119,6 +119,7 @@ contract LiquidityBorrowingManager is
         uint256 borrowingCollateral,
         uint256 liquidationBonus,
         uint256 dailyRatePrepayment,
+        uint256 feesDebt,
         uint256 holdTokenEntraceFee
     );
     /// Indicates that a borrower has repaid their loan, optionally with the help of a liquidator
@@ -531,6 +532,7 @@ contract LiquidityBorrowingManager is
             marginDeposit,
             liquidationBonus,
             cache.dailyRateCollateral,
+            feesDebt,
             cache.holdTokenEntraceFee
         );
         return (
@@ -777,17 +779,25 @@ contract LiquidityBorrowingManager is
             _removeKeysAndClearStorage(borrowing.borrower, params.borrowingKey, loans);
 
             if (saleTokenBack > 0 && params.returnOnlyHoldToken) {
-                // Call the internal v3SwapExactInput function
-                holdTokenBack += _v3SwapExactInput(
-                    v3SwapExactInputParams({
-                        fee: params.internalSwapPoolfee,
-                        tokenIn: borrowing.saleToken,
-                        tokenOut: borrowing.holdToken,
-                        amountIn: saleTokenBack
-                    })
+                (, uint256 holdTokenAmountOut) = _simulateSwap(
+                    zeroForSaleToken,
+                    params.internalSwapPoolfee,
+                    borrowing.saleToken, // saleToken is tokenIn
+                    borrowing.holdToken,
+                    saleTokenBack
                 );
-
-                saleTokenBack = 0;
+                if (holdTokenAmountOut > 0) {
+                    // Call the internal v3SwapExactInput function
+                    holdTokenBack += _v3SwapExactInput(
+                        v3SwapExactInputParams({
+                            fee: params.internalSwapPoolfee,
+                            tokenIn: borrowing.saleToken,
+                            tokenOut: borrowing.holdToken,
+                            amountIn: saleTokenBack
+                        })
+                    );
+                    saleTokenBack = 0;
+                }
             }
             // Pay a profit to a msg.sender
             _pay(borrowing.holdToken, address(this), msg.sender, holdTokenBack);
@@ -979,8 +989,11 @@ contract LiquidityBorrowingManager is
 
             cache.holdTokenEntraceFee = holdTokenRateInfo.entranceFeeBP;
 
+            // To disable entry fees, set it to one
             if (cache.holdTokenEntraceFee == 0) {
                 cache.holdTokenEntraceFee = Constants.DEFAULT_ENTRANCE_FEE_BPS;
+            } else if (cache.holdTokenEntraceFee == 1) {
+                cache.holdTokenEntraceFee = 0;
             }
 
             // Set the accumulated loan rate per second from the updated holdTokenRateInfo

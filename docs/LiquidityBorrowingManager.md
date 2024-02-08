@@ -851,7 +851,7 @@ swapTarget   =&gt; (func.selector =&gt; is allowed)
 ### Borrow
 
 ```solidity
-event Borrow(address borrower, bytes32 borrowingKey, uint256 borrowedAmount, uint256 borrowingCollateral, uint256 liquidationBonus, uint256 dailyRatePrepayment, uint256 holdTokenEntraceFee)
+event Borrow(address borrower, bytes32 borrowingKey, uint256 borrowedAmount, uint256 borrowingCollateral, uint256 liquidationBonus, uint256 dailyRatePrepayment, uint256 feesDebt, uint256 holdTokenEntraceFee)
 ```
 
 Indicates that a borrower has made a new loan
@@ -868,6 +868,7 @@ Indicates that a borrower has made a new loan
 | borrowingCollateral  | uint256 | undefined |
 | liquidationBonus  | uint256 | undefined |
 | dailyRatePrepayment  | uint256 | undefined |
+| feesDebt  | uint256 | undefined |
 | holdTokenEntraceFee  | uint256 | undefined |
 
 ### CollectLoansFees

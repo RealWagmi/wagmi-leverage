@@ -5,6 +5,7 @@ import "forge-std/Test.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IUniswapV3Pool } from "contracts/interfaces/IUniswapV3Pool.sol";
 import { LiquidityBorrowingManager } from "contracts/LiquidityBorrowingManager.sol";
+import { LightQuoterV3 } from "contracts/LightQuoterV3.sol";
 import { AggregatorMock } from "contracts/mock/AggregatorMock.sol";
 import { HelperContract } from "../testsHelpers/HelperContract.sol";
 import { INonfungiblePositionManager } from "contracts/interfaces/INonfungiblePositionManager.sol";
@@ -31,6 +32,7 @@ contract ContractTest is Test, HelperContract {
     address constant UNISWAP_V3_FACTORY = 0x1F98431c8aD98523631AE4a59f267346ea31F984;
     /// Mainnet, Goerli, Arbitrum, Optimism, Polygon
     address constant UNISWAP_V3_QUOTER_V2 = 0x61fFE014bA17989E743c5F6cB21bF9697530B21e;
+    address constant LIGHT_QUOTER_V3 = 0xbd352897CF946E205C80520976F6573b7FF3a734;
     bytes32 constant UNISWAP_V3_POOL_INIT_CODE_HASH =
         0xe34f199b19b2b4f47f68442619d555527d244f78a3297ea89325f843f87b8b54;
     /// Mainnet, Goerli, Arbitrum, Optimism, Polygon
@@ -38,6 +40,7 @@ contract ContractTest is Test, HelperContract {
     address constant bob = 0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC;
     AggregatorMock aggregatorMock;
     LiquidityBorrowingManager borrowingManager;
+    LightQuoterV3 lightQuoterV3;
 
     uint256 tokenId;
 
@@ -49,13 +52,16 @@ contract ContractTest is Test, HelperContract {
         vm.label(address(WBTC_WETH_500_POOL), "WBTC_WETH_500_POOL");
         vm.label(address(WETH_USDT_500_POOL), "WETH_USDT_500_POOL");
         vm.label(address(this), "ContractTest");
+
         aggregatorMock = new AggregatorMock(UNISWAP_V3_QUOTER_V2);
+        lightQuoterV3 = new LightQuoterV3();
         borrowingManager = new LiquidityBorrowingManager(
             NONFUNGIBLE_POSITION_MANAGER_ADDRESS,
-            UNISWAP_V3_QUOTER_V2,
+            address(lightQuoterV3),
             UNISWAP_V3_FACTORY,
             UNISWAP_V3_POOL_INIT_CODE_HASH
         );
+        vm.label(address(lightQuoterV3), "LIGHT_QUOTER_V3");
         vm.label(address(borrowingManager), "LiquidityBorrowingManager");
         vm.label(address(aggregatorMock), "AggregatorMock");
         deal(address(USDT), address(this), 1_000_000_000e6);
@@ -260,7 +266,7 @@ contract ContractTest is Test, HelperContract {
     function test_MinimumLiquiditeAmount() public {
         vm.startPrank(bob);
         uint128 minLiqAmt = _minimumLiquidityAmt(253_320, 264_600);
-        console.log("minimumLiquidityAmt=", minLiqAmt);
+        // console.log("minimumLiquidityAmt=", minLiqAmt);
 
         LiquidityBorrowingManager.BorrowParams memory BobBorrowingParams = createBorrowParams(
             tokenId,
