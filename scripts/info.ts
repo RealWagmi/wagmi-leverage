@@ -7,14 +7,19 @@ async function sleep(ms: number) {
 const config = {
     borrowingManagerAddress: {
         ["kava"]: {
-            ["wagmi"]: "0x71523Ea3CBEa82dDFdF8435Df79Aa53f21930e32",
-            ["kinetix"]: "0x7336A896B2e332c9c5B693329E12E715aB3dDaE4"
+            ["wagmi"]: "0xCc99476805F82e1446541FCb1010269EbC092ae2",
+            ["kinetix"]: "0x45861d6700eAFdD9C8cAD21348ecC2a90328F3E1"
         },
 
         ["arbitrum"]:
         {
-            ["uniswap"]: "0xdfC29937Cc69bB1d45808eCb56EB5B08ed4EeD3d",
-            ["sushiswap"]: "0xAdB0367855243D025cC1E66FA3296D891D468839"
+            ["uniswap"]: "0x793288e6B1bd67fFC3d31992c54e0a3B2bDd655c",
+            ["sushiswap"]: "0x6374e71E15C6c7706237386584EC8c55c97e7bDa"
+        },
+
+        ["metis"]:
+        {
+            ["wagmi"]: "0x3C422982E76261a3eC73363CAcf5C3731e318104"
         },
 
     }
@@ -23,7 +28,7 @@ const config = {
 
 async function main() {
     //const [deployer] = await ethers.getSigners();
-    const dexnames = ["uniswap", "sushiswap"];
+    const dexnames = ["wagmi", "kinetix"];
     const user = "0x3c1Cb7D4c0ce0dc72eDc7Ea06acC866e62a8f1d8";// George's address
 
 
@@ -38,6 +43,10 @@ async function main() {
 
         const LiquidityBorrowingManager = await ethers.getContractFactory("LiquidityBorrowingManager");
         const borrowingManager = LiquidityBorrowingManager.attach(borrowingManagerAddress);
+
+        // await borrowingManager.updateSettings(2, [user]);
+        // await sleep(5000);
+        // ====================================================
 
         const borrowerNum = (await borrowingManager.getBorrowerDebtsCount(user)).toNumber();
 
