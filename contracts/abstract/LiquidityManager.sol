@@ -46,21 +46,26 @@ abstract contract LiquidityManager is ApproveSwapAndPay {
         uint256 totalBorrowedAmount;
     }
     /**
-     * @notice Contains cache data for restoring liquidity.
-     * @dev This struct is used to store cached values required for restoring liquidity.
-     * @param tickLower The lower tick boundary represented by an int24 value.
-     * @param tickUpper The upper tick boundary represented by an int24 value.
-     * @param fee The fee associated with the restoring liquidity pool.
-     * @param saleToken The address of the token being sold.
-     * @param holdToken The address of the token being held.
-     * @param holdTokenDebt The debt amount associated with the hold token represented by a uint256 value.
+     * @title NFT Position Cache Data Structure
+     * @notice This struct holds the cache data necessary for restoring liquidity to an NFT position.
+     * @dev Stores essential parameters for an NFT representing a position in a Uniswap-like pool.
+     * @param tickLower The lower bound of the liquidity position's price range, represented as an int24.
+     * @param tickUpper The upper bound of the liquidity position's price range, represented as an int24.
+     * @param fee The fee tier of the Uniswap pool in which this liquidity will be restored, represented as a uint24.
+     * @param liquidity The amount of NFT Position liquidity.
+     * @param saleToken The ERC-20 sale token.
+     * @param holdToken The ERC-20 hold token.
+     * @param operator The address of the operator who is permitted to restore liquidity and manage this position.
+     * @param holdTokenDebt The outstanding debt of the hold token that needs to be repaid when liquidity is restored, represented as a uint256.
      */
     struct NftPositionCache {
         int24 tickLower;
         int24 tickUpper;
         uint24 fee;
+        uint128 liquidity;
         address saleToken;
         address holdToken;
+        address operator;
         uint256 holdTokenDebt;
     }
     /**
@@ -173,81 +178,51 @@ abstract contract LiquidityManager is ApproveSwapAndPay {
     }
 
     /**
-     * @dev Extracts liquidity from loans and returns the borrowed amount.
-     * @param zeroForSaleToken A boolean value indicating whether the token for sale is the 0th token or not.
-     * @param token0 The address of one of the tokens in the pair.
-     * @param token1 The address of the other token in the pair.
-     * @param loans An array of LoanInfo struct instances containing loan information.
-     * @return borrowedAmount The total amount borrowed.
+     * @notice This function extracts liquidity from provided loans and calculates the total borrowed amount.
+     * @dev Iterates through an array of LoanInfo structs, validates loan parameters, and accumulates borrowed amounts.
+     * @param zeroForSaleToken A boolean indicating whether the token for sale is the 0th token in the pair.
+     * @param saleToken The address of the token being sold in the trading pair.
+     * @param holdToken The address of the token being held in the trading pair.
+     * @param loans An array of LoanInfo struct instances, each representing a loan from which to extract liquidity.
+     * @return borrowedAmount The total amount of the holdToken that has been borrowed across all provided loans.
      */
     function _extractLiquidity(
         bool zeroForSaleToken,
-        address token0,
-        address token1,
+        address saleToken,
+        address holdToken,
         LoanInfo[] memory loans
     ) internal returns (uint256 borrowedAmount) {
-        if (!zeroForSaleToken) {
-            (token0, token1) = (token1, token0);
-        }
+        NftPositionCache memory cache;
 
         for (uint256 i; i < loans.length; ) {
-            uint256 tokenId = loans[i].tokenId;
-            uint128 liquidity = loans[i].liquidity;
+            LoanInfo memory loan = loans[i];
             // Extract position-related details
-            {
-                int24 tickLower;
-                int24 tickUpper;
-                uint128 posLiquidity;
-                {
-                    address operator;
-                    address posToken0;
-                    address posToken1;
+            _upNftPositionCache(zeroForSaleToken, loan, cache);
 
-                    (
-                        ,
-                        operator,
-                        posToken0,
-                        posToken1,
-                        ,
-                        tickLower,
-                        tickUpper,
-                        posLiquidity,
-                        ,
-                        ,
-                        ,
+            // Check operator approval
+            if (cache.operator != address(this)) {
+                revert NotApproved(loan.tokenId);
+            }
+            // Check token validity
+            if (cache.saleToken != saleToken || cache.holdToken != holdToken) {
+                revert InvalidTokens(loan.tokenId);
+            }
 
-                    ) = underlyingPositionManager.positions(tokenId);
-                    // Check operator approval
-                    if (operator != address(this)) {
-                        revert NotApproved(tokenId);
-                    }
-                    // Check token validity
-                    if (posToken0 != token0 || posToken1 != token1) {
-                        revert InvalidTokens(tokenId);
-                    }
-                }
-
-                // Check borrowed liquidity validity
-                uint128 minLiquidityAmt = _getMinLiquidityAmt(tickLower, tickUpper);
-                if (liquidity > posLiquidity || liquidity < minLiquidityAmt) {
-                    revert InvalidBorrowedLiquidityAmount(
-                        tokenId,
-                        posLiquidity,
-                        minLiquidityAmt,
-                        liquidity
-                    );
-                }
-
-                // Calculate borrowed amount
-                borrowedAmount += _getSingleSideRoundUpBorrowedAmount(
-                    zeroForSaleToken,
-                    tickLower,
-                    tickUpper,
-                    liquidity
+            // Check borrowed liquidity validity
+            uint128 minLiquidityAmt = _getMinLiquidityAmt(cache.tickLower, cache.tickUpper);
+            if (loan.liquidity > cache.liquidity || loan.liquidity < minLiquidityAmt) {
+                revert InvalidBorrowedLiquidityAmount(
+                    loan.tokenId,
+                    cache.liquidity,
+                    minLiquidityAmt,
+                    loan.liquidity
                 );
             }
+
+            // Calculate borrowed amount
+            borrowedAmount += cache.holdTokenDebt;
             // Decrease liquidity and move to the next loan
-            _decreaseLiquidity(tokenId, liquidity);
+            _decreaseLiquidity(loan.tokenId, loan.liquidity);
 
             unchecked {
                 ++i;
@@ -642,13 +617,13 @@ abstract contract LiquidityManager is ApproveSwapAndPay {
         // Get the positions data from `PositionManager` and store it in the cache variables
         (
             ,
-            ,
+            cache.operator,
             cache.saleToken,
             cache.holdToken,
             cache.fee,
             cache.tickLower,
             cache.tickUpper,
-            ,
+            cache.liquidity,
             ,
             ,
             ,
