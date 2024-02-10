@@ -262,37 +262,26 @@ abstract contract LiquidityManager is ApproveSwapAndPay {
 
     function _calculateAmountsToSwap(
         bool zeroForIn,
-        int24 tickLower,
-        int24 tickUpper,
-        uint128 liquidity,
-        uint24 fee,
         uint160 currentSqrtPriceX96,
-        address tokenIn,
-        address tokenOut,
-        uint256 holdTokenDebt,
+        uint128 liquidity,
+        NftPositionCache memory cache,
         uint256 tokenOutBalance
     ) private view returns (uint160 sqrtPriceX96After, uint256 amountIn, Amounts memory amounts) {
-        address pool = computePoolAddress(tokenIn, tokenOut, fee);
-        uint256 iterations;
-        (
-            iterations,
-            sqrtPriceX96After,
-            amountIn,
-            ,
-            amounts.amount0,
-            amounts.amount1
-        ) = lightQuoterV3.calculateExactZapIn(
-            CalculateExactZapInParams({
-                swapPool: pool,
-                zeroForIn: zeroForIn,
-                sqrtPriceX96: currentSqrtPriceX96,
-                tickLower: tickLower,
-                tickUpper: tickUpper,
-                liquidityExactAmount: liquidity,
-                tokenInBalance: holdTokenDebt,
-                tokenOutBalance: tokenOutBalance
-            })
-        );
+        address pool = computePoolAddress(cache.holdToken, cache.saleToken, cache.fee);
+
+        (, sqrtPriceX96After, amountIn, , amounts.amount0, amounts.amount1) = lightQuoterV3
+            .calculateExactZapIn(
+                CalculateExactZapInParams({
+                    swapPool: pool,
+                    zeroForIn: zeroForIn,
+                    sqrtPriceX96: currentSqrtPriceX96,
+                    tickLower: cache.tickLower,
+                    tickUpper: cache.tickUpper,
+                    liquidityExactAmount: liquidity,
+                    tokenInBalance: cache.holdTokenDebt,
+                    tokenOutBalance: tokenOutBalance
+                })
+            );
     }
 
     /**
@@ -401,14 +390,9 @@ abstract contract LiquidityManager is ApproveSwapAndPay {
                         if (params.fee == cache.fee) {
                             (sqrtPriceX96, holdTokenAmountIn, amounts) = _calculateAmountsToSwap(
                                 !params.zeroForSaleToken,
-                                cache.tickLower,
-                                cache.tickUpper,
-                                loan.liquidity,
-                                params.fee,
                                 sqrtPriceX96,
-                                cache.holdToken,
-                                cache.saleToken,
-                                cache.holdTokenDebt,
+                                loan.liquidity,
+                                cache,
                                 saleTokenBalance
                             );
                         }

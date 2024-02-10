@@ -94,12 +94,9 @@ contract LightQuoterV3 is ILightQuoterV3 {
 
         uint256 amountInNext;
         (amountInNext, maxnAmountIn, minAmountOut) = _getHoldTokenAmountIn(
-            params.zeroForIn,
-            params.sqrtPriceX96,
             sqrtRatioAX96,
             sqrtRatioBX96,
-            params.liquidityExactAmount,
-            params.tokenInBalance
+            params
         );
 
         if (amountInNext != 0 && params.tokenOutBalance < minAmountOut) {
@@ -110,12 +107,9 @@ contract LightQuoterV3 is ILightQuoterV3 {
                 (params.sqrtPriceX96, amountOut) = _calcsSwap(amountIn.toInt256(), cache);
 
                 (amountInNext, maxnAmountIn, minAmountOut) = _getHoldTokenAmountIn(
-                    params.zeroForIn,
-                    params.sqrtPriceX96,
                     sqrtRatioAX96,
                     sqrtRatioBX96,
-                    params.liquidityExactAmount,
-                    params.tokenInBalance
+                    params
                 );
 
                 if (
@@ -141,27 +135,24 @@ contract LightQuoterV3 is ILightQuoterV3 {
     }
 
     function _getHoldTokenAmountIn(
-        bool zeroForholdToken,
-        uint160 sqrtPriceX96,
         uint160 sqrtRatioAX96,
         uint160 sqrtRatioBX96,
-        uint128 liquidity,
-        uint256 holdTokenDebt
+        CalculateExactZapInParams memory params
     ) private pure returns (uint256 holdTokenAmountIn, uint256 maxnAmountIn, uint256 minAmountOut) {
         // Call getAmountsForLiquidity function from LiquidityAmounts library
         // to get the amounts of token0 and token1 for a given liquidity position
 
         (uint256 amount0, uint256 amount1) = AmountsLiquidity.getAmountsRoundingUpForLiquidity(
-            sqrtPriceX96,
+            params.sqrtPriceX96,
             sqrtRatioAX96,
             sqrtRatioBX96,
-            liquidity
+            params.liquidityExactAmount
         );
 
         // Calculate the holdTokenAmountIn based on the zeroForSaleToken flag
-        (holdTokenAmountIn, maxnAmountIn, minAmountOut) = zeroForholdToken
-            ? (holdTokenDebt - amount0, amount0, amount1)
-            : (holdTokenDebt - amount1, amount1, amount0);
+        (holdTokenAmountIn, maxnAmountIn, minAmountOut) = params.zeroForIn
+            ? (params.tokenInBalance - amount0, amount0, amount1)
+            : (params.tokenInBalance - amount1, amount1, amount0);
     }
 
     function _prepareSwapCashe(

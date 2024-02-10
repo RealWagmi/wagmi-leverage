@@ -490,14 +490,17 @@ contract LiquidityBorrowingManager is
                 cache.accLoanRatePerSeconds,
                 cache.holdTokenEntraceFee
             );
-        // Adding borrowing key and loans information to storage
-        uint256 pushCounter = _addKeysAndLoansInfo(borrowingKey, params.loans);
-        // Calculating liquidation bonus based on hold token, borrowed amount, and number of used loans
-        uint256 liquidationBonus = getLiquidationBonus(
-            params.holdToken,
-            cache.borrowedAmount,
-            pushCounter
-        );
+        uint256 liquidationBonus;
+        {
+            // Adding borrowing key and loans information to storage
+            uint256 pushCounter = _addKeysAndLoansInfo(borrowingKey, params.loans);
+            // Calculating liquidation bonus based on hold token, borrowed amount, and number of used loans
+            liquidationBonus = getLiquidationBonus(
+                params.holdToken,
+                cache.borrowedAmount,
+                pushCounter
+            );
+        }
         // Updating borrowing details
         borrowing.borrowedAmount += cache.borrowedAmount;
         borrowing.liquidationBonus += liquidationBonus;
