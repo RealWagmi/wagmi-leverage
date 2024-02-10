@@ -2,7 +2,7 @@
 cache_path = 'forge-cache'
 libs = ["node_modules", "lib"]
 optimizer = true
-optimizer_runs = 777
+optimizer_runs = 999
 out = "forge-artifacts"
 remappings = [
   "forge-std/=lib/forge-std/src/",

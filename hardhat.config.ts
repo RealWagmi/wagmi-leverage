@@ -64,7 +64,7 @@ const config: HardhatUserConfig = {
           evmVersion: "paris",
           optimizer: {
             enabled: true,
-            runs: 777
+            runs: 999
           }
 
         }

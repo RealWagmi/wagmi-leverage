@@ -24,6 +24,16 @@ abstract contract DailyRateAndCollateral {
     /// pairKey => TokenInfo
     mapping(bytes32 => TokenInfo) public holdTokenInfo;
 
+    function _checkEntranceFee(uint256 entranceFeeBP) internal pure returns (uint256) {
+        if (entranceFeeBP == 0) {
+            entranceFeeBP = Constants.DEFAULT_ENTRANCE_FEE_BPS;
+        } else if (entranceFeeBP == 1) {
+            // To disable entry fees, set it to one
+            entranceFeeBP = 0;
+        }
+        return entranceFeeBP;
+    }
+
     /**
      * @notice This internal view function retrieves the current daily rate for the hold token specified by `holdToken`
      * in relation to the sale token specified by `saleToken`. It also returns detailed information about the hold token rate stored
@@ -37,26 +47,10 @@ abstract contract DailyRateAndCollateral {
     function _getHoldTokenInfo(
         address saleToken,
         address holdToken
-    ) internal view returns (TokenInfo memory holdTokenRateInfo) {
-        bytes32 key = Keys.computePairKey(saleToken, holdToken);
-        holdTokenRateInfo = holdTokenInfo[key];
-
-        if (holdTokenRateInfo.entranceFeeBP == 0) {
-            holdTokenRateInfo.entranceFeeBP = Constants.DEFAULT_ENTRANCE_FEE_BPS;
-        }
-
-        if (holdTokenRateInfo.currentDailyRate == 0) {
-            holdTokenRateInfo.currentDailyRate = Constants.DEFAULT_DAILY_RATE;
-        }
-        if (holdTokenRateInfo.totalBorrowed > 0) {
-            uint256 timeWeightedRate = (uint32(block.timestamp) -
-                holdTokenRateInfo.latestUpTimestamp) * holdTokenRateInfo.currentDailyRate;
-            holdTokenRateInfo.accLoanRatePerSeconds +=
-                (timeWeightedRate * Constants.COLLATERAL_BALANCE_PRECISION) /
-                1 days;
-        }
-
-        holdTokenRateInfo.latestUpTimestamp = uint32(block.timestamp);
+    ) internal view returns (TokenInfo memory) {
+        (, TokenInfo memory holdTokenRateInfo) = _getHTInfo(saleToken, holdToken);
+        holdTokenRateInfo.entranceFeeBP = _checkEntranceFee(holdTokenRateInfo.entranceFeeBP);
+        return holdTokenRateInfo;
     }
 
     /**
@@ -73,22 +67,12 @@ abstract contract DailyRateAndCollateral {
     function _updateHoldTokenRateInfo(
         address saleToken,
         address holdToken
-    ) internal returns (uint256 currentDailyRate, TokenInfo storage holdTokenRateInfo) {
-        bytes32 key = Keys.computePairKey(saleToken, holdToken);
-        holdTokenRateInfo = holdTokenInfo[key];
-        currentDailyRate = holdTokenRateInfo.currentDailyRate;
-        if (currentDailyRate == 0) {
-            currentDailyRate = Constants.DEFAULT_DAILY_RATE;
-        }
-        if (holdTokenRateInfo.totalBorrowed > 0) {
-            uint256 timeWeightedRate = (uint32(block.timestamp) -
-                holdTokenRateInfo.latestUpTimestamp) * currentDailyRate;
-            holdTokenRateInfo.accLoanRatePerSeconds +=
-                (timeWeightedRate * Constants.COLLATERAL_BALANCE_PRECISION) /
-                1 days;
-        }
-
-        holdTokenRateInfo.latestUpTimestamp = uint32(block.timestamp);
+    ) internal returns (uint256, TokenInfo storage) {
+        (bytes32 key, TokenInfo memory info) = _getHTInfo(saleToken, holdToken);
+        TokenInfo storage holdTokenRateInfo = holdTokenInfo[key];
+        holdTokenRateInfo.accLoanRatePerSeconds = info.accLoanRatePerSeconds;
+        holdTokenRateInfo.latestUpTimestamp = info.latestUpTimestamp;
+        return (info.currentDailyRate, holdTokenRateInfo);
     }
 
     /**
@@ -119,5 +103,26 @@ abstract contract DailyRateAndCollateral {
             );
             collateralBalance = int256(borrowingDailyRateCollateral) - int256(currentFees);
         }
+    }
+
+    function _getHTInfo(
+        address saleToken,
+        address holdToken
+    ) private view returns (bytes32 key, TokenInfo memory holdTokenRateInfo) {
+        key = Keys.computePairKey(saleToken, holdToken);
+        holdTokenRateInfo = holdTokenInfo[key];
+
+        if (holdTokenRateInfo.currentDailyRate == 0) {
+            holdTokenRateInfo.currentDailyRate = Constants.DEFAULT_DAILY_RATE;
+        }
+        if (holdTokenRateInfo.totalBorrowed > 0) {
+            uint256 timeWeightedRate = (uint32(block.timestamp) -
+                holdTokenRateInfo.latestUpTimestamp) * holdTokenRateInfo.currentDailyRate;
+            holdTokenRateInfo.accLoanRatePerSeconds +=
+                (timeWeightedRate * Constants.COLLATERAL_BALANCE_PRECISION) /
+                1 days;
+        }
+
+        holdTokenRateInfo.latestUpTimestamp = uint32(block.timestamp);
     }
 }

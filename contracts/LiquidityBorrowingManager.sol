@@ -1011,12 +1011,7 @@ contract LiquidityBorrowingManager is
 
             cache.holdTokenEntraceFee = holdTokenRateInfo.entranceFeeBP;
 
-            // To disable entry fees, set it to one
-            if (cache.holdTokenEntraceFee == 0) {
-                cache.holdTokenEntraceFee = Constants.DEFAULT_ENTRANCE_FEE_BPS;
-            } else if (cache.holdTokenEntraceFee == 1) {
-                cache.holdTokenEntraceFee = 0;
-            }
+            cache.holdTokenEntraceFee = _checkEntranceFee(cache.holdTokenEntraceFee);
 
             // Set the accumulated loan rate per second from the updated holdTokenRateInfo
             cache.accLoanRatePerSeconds = holdTokenRateInfo.accLoanRatePerSeconds;
