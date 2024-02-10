@@ -1,4 +1,10 @@
 // SPDX-License-Identifier: SAL-1.0
+
+/**
+ * WAGMI Leverage Protocol v1.0
+ * wagmi.com
+ */
+
 pragma solidity 0.8.21;
 
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
@@ -485,12 +491,12 @@ contract LiquidityBorrowingManager is
                 cache.holdTokenEntraceFee
             );
         // Adding borrowing key and loans information to storage
-        _addKeysAndLoansInfo(borrowingKey, params.loans);
+        uint256 pushCounter = _addKeysAndLoansInfo(borrowingKey, params.loans);
         // Calculating liquidation bonus based on hold token, borrowed amount, and number of used loans
         uint256 liquidationBonus = getLiquidationBonus(
             params.holdToken,
             cache.borrowedAmount,
-            params.loans.length
+            pushCounter
         );
         // Updating borrowing details
         borrowing.borrowedAmount += cache.borrowedAmount;
@@ -833,7 +839,7 @@ contract LiquidityBorrowingManager is
         if (liquidationBonus < liq.minBonusAmount) {
             liquidationBonus = liq.minBonusAmount;
         }
-        liquidationBonus *= times;
+        liquidationBonus *= (times > 0 ? times : 1);
     }
 
     /**
@@ -942,7 +948,10 @@ contract LiquidityBorrowingManager is
      * @param borrowingKey The borrowing key to be added or updated.
      * @param sourceLoans An array of LoanInfo structs representing the loans to be associated with the borrowing key.
      */
-    function _addKeysAndLoansInfo(bytes32 borrowingKey, LoanInfo[] memory sourceLoans) private {
+    function _addKeysAndLoansInfo(
+        bytes32 borrowingKey,
+        LoanInfo[] memory sourceLoans
+    ) private returns (uint256 pushCounter) {
         // Get the storage reference to the loans array for the borrowing key
         LoanInfo[] storage loans = loansInfo[borrowingKey];
         // Iterate through the sourceLoans array
@@ -950,9 +959,22 @@ contract LiquidityBorrowingManager is
             // Get the current loan from the sourceLoans array
             LoanInfo memory loan = sourceLoans[i];
             // Get the storage reference to the tokenIdLoansKeys array for the loan's token ID
-            tokenIdToBorrowingKeys[loan.tokenId].add(borrowingKey);
-            // Push the current loan to the loans array
-            loans.push(loan);
+            if (tokenIdToBorrowingKeys[loan.tokenId].add(borrowingKey)) {
+                // Push the current loan to the loans array
+                loans.push(loan);
+                pushCounter++;
+            } else {
+                // If already exists, find the loan and update its liquidity
+                for (uint256 j; j < loans.length; ) {
+                    if (loans[j].tokenId == loan.tokenId) {
+                        loans[j].liquidity += loan.liquidity;
+                        break;
+                    }
+                    unchecked {
+                        ++j;
+                    }
+                }
+            }
             unchecked {
                 ++i;
             }
