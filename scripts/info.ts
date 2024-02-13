@@ -44,10 +44,6 @@ async function main() {
         const LiquidityBorrowingManager = await ethers.getContractFactory("LiquidityBorrowingManager");
         const borrowingManager = LiquidityBorrowingManager.attach(borrowingManagerAddress);
 
-        // await borrowingManager.updateSettings(2, [user]);
-        // await sleep(5000);
-        // ====================================================
-
         const borrowerNum = (await borrowingManager.getBorrowerDebtsCount(user)).toNumber();
 
         console.log("number of positions:", borrowerNum.toString());
