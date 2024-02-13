@@ -29,24 +29,29 @@ This function is used to repay a loan.The position is closed either by the trade
 
 | Network | ChainId | Contract | Address |
 |------| ------- | -----| -----|
-| Arbitrum | 42161 | LightQuoterV3 | [0x5Aad6a48929D31Dd66aFA5Ab2A783209c7B35509](https://arbiscan.io/address/0x5Aad6a48929D31Dd66aFA5Ab2A783209c7B35509) |
-| Kava | 2222 | LightQuoterV3 | [0x900BE45982cB0b2E573ee109e67e1a0D4FC47Fff](https://kavascan.com/address/0x900BE45982cB0b2E573ee109e67e1a0D4FC47Fff) |
-| METIS | 1088 | LightQuoterV3 | [0xdd9c5CA0270809b091bf477a7e28890EA1cbd1cF](https://explorer.metis.io/address/0xdd9c5CA0270809b091bf477a7e28890EA1cbd1cF) |
+| Arbitrum | 42161 | LightQuoterV3 | [0x89edB9a26Bdf692fC9c89b5A78fF456433Dfc3fc](https://arbiscan.io/address/0x89edB9a26Bdf692fC9c89b5A78fF456433Dfc3fc) |
+| Kava | 2222 | LightQuoterV3 | [0x46ccC72dfE0B552329a2D3c3384bb2B96b23CF52](https://kavascan.com/address/0x46ccC72dfE0B552329a2D3c3384bb2B96b23CF52) |
+| METIS | 1088 | LightQuoterV3 | [0xaB120F1FD31FB1EC39893B75d80a3822b1Cd8d0c](https://explorer.metis.io/address/0xaB120F1FD31FB1EC39893B75d80a3822b1Cd8d0c) |
 
 ##
 
 | V3 | Network | ChainId | Contract | Address |
 |------|------| ------- | -----| -----|
-| Uniswap | Arbitrum | 42161 | LiquidityBorrowingManager | [0x793288e6B1bd67fFC3d31992c54e0a3B2bDd655c](https://arbiscan.io/address/0x793288e6B1bd67fFC3d31992c54e0a3B2bDd655c) |
-| Uniswap | Arbitrum | 42161 | Vault| [0xaEb20c4f9D9df915697B6aC6518458Fa2FA8AC80](https://arbiscan.io/address/0xaEb20c4f9D9df915697B6aC6518458Fa2FA8AC80) |
-| Sushiswap | Arbitrum | 42161 | LiquidityBorrowingManager | [0x6374e71E15C6c7706237386584EC8c55c97e7bDa](https://arbiscan.io/address/0x6374e71E15C6c7706237386584EC8c55c97e7bDa) |
-| Sushiswap | Arbitrum | 42161 | Vault| [0x86397aA2AFe9BFa1d76bc8963d248ef9B40837aC](https://arbiscan.io/address/0x86397aA2AFe9BFa1d76bc8963d248ef9B40837aC) |
-| Wagmi | Kava | 2222 | LiquidityBorrowingManager | [0xCc99476805F82e1446541FCb1010269EbC092ae2](https://kavascan.com/address/0xCc99476805F82e1446541FCb1010269EbC092ae2) |
-| Wagmi | Kava | 2222 | Vault| [0xCFE7beDD2bfa1C348ec8de1e210be079bc0eD13e](https://kavascan.com/address/0xCFE7beDD2bfa1C348ec8de1e210be079bc0eD13e) |
-| Kinetix | Kava | 2222 | LiquidityBorrowingManager | [0x45861d6700eAFdD9C8cAD21348ecC2a90328F3E1](https://kavascan.com/address/0x45861d6700eAFdD9C8cAD21348ecC2a90328F3E1) |
-| Kinetix | Kava | 2222 | Vault| [0xEF28cC9dd2e68f3496Fa432876CA055ffdFCc5c1](https://kavascan.com/address/0xEF28cC9dd2e68f3496Fa432876CA055ffdFCc5c1) |
-| Wagmi | METIS | 1088 | LiquidityBorrowingManager | [0x3C422982E76261a3eC73363CAcf5C3731e318104](https://explorer.metis.io/address/0x3C422982E76261a3eC73363CAcf5C3731e318104) |
-| Wagmi | METIS | 1088 | Vault| [0xfa0769525516D247ee040188e029798A259f0e0E](https://explorer.metis.io/address/0xfa0769525516D247ee040188e029798A259f0e0E) |
+| Uniswap | Arbitrum | 42161 | LiquidityBorrowingManager | [0x44f4E18B1D4D8c0517a5163a4a6f33534d50d71e](https://arbiscan.io/address/0x44f4E18B1D4D8c0517a5163a4a6f33534d50d71e) |
+| Uniswap | Arbitrum | 42161 | Vault| [0xb2Fc7d6b5420456856FC73c234Aa73fe7D6399A1](https://arbiscan.io/address/0xb2Fc7d6b5420456856FC73c234Aa73fe7D6399A1) |
+| Uniswap | Arbitrum | 42161 | PositionEffectivityChart| [0xa3817414Dd31a07cbcc74894d25069f73A87a64b](https://arbiscan.io/address/0xa3817414Dd31a07cbcc74894d25069f73A87a64b) |
+| Sushiswap | Arbitrum | 42161 | LiquidityBorrowingManager | [0x663bAAC9D162b23aB324b46707CE3dE353405663](https://arbiscan.io/address/0x663bAAC9D162b23aB324b46707CE3dE353405663) |
+| Sushiswap | Arbitrum | 42161 | Vault| [0x6faA75527DE14ded1A90D25F052260Ad175EBeea](https://arbiscan.io/address/0x6faA75527DE14ded1A90D25F052260Ad175EBeea) |
+| Sushiswap | Arbitrum | 42161 | PositionEffectivityChart| [0x941FFdE71f0B3dd32c191fA28A1c2310361ece84](https://arbiscan.io/address/0x941FFdE71f0B3dd32c191fA28A1c2310361ece84) |
+| Wagmi | Kava | 2222 | LiquidityBorrowingManager | [0xfB0114e6eeC8B2740f5fDc71F62dA1De11a8678D](https://kavascan.com/address/0xfB0114e6eeC8B2740f5fDc71F62dA1De11a8678D) |
+| Wagmi | Kava | 2222 | Vault| [0xaf0d0ac1DA67E4FAac5801eEE954511b5DD34414](https://kavascan.com/address/0xaf0d0ac1DA67E4FAac5801eEE954511b5DD34414) |
+| Wagmi | Kava | 2222 | PositionEffectivityChart| [0xAa40097C55245AA7a87D248E7e8FF902b3a1D6Ab](https://kavascan.com/address/0xAa40097C55245AA7a87D248E7e8FF902b3a1D6Ab) |
+| Kinetix | Kava | 2222 | LiquidityBorrowingManager | [0xdbcbc01b8ba67da94c7C62153a221ffa988feC9D](https://kavascan.com/address/0xdbcbc01b8ba67da94c7C62153a221ffa988feC9D) |
+| Kinetix | Kava | 2222 | Vault| [0x2ADBA4119320E2bE5524F16B6aA99fc124bCB962](https://kavascan.com/address/0x2ADBA4119320E2bE5524F16B6aA99fc124bCB962) |
+| Kinetix | Kava | 2222 | PositionEffectivityChart| [0x35e79BCe31eF892c24Da7D7C8EFB1d47dB37cA57](https://kavascan.com/address/0x35e79BCe31eF892c24Da7D7C8EFB1d47dB37cA57) |
+| Wagmi | METIS | 1088 | LiquidityBorrowingManager | [0x05D73f76689e4844581a9DB03f82960cBf3C4D2b](https://explorer.metis.io/address/0x05D73f76689e4844581a9DB03f82960cBf3C4D2b) |
+| Wagmi | METIS | 1088 | Vault| [0x99701EF8002025Fa37Be0e2b2b35124F8339A0e6](https://explorer.metis.io/address/0x99701EF8002025Fa37Be0e2b2b35124F8339A0e6) |
+| Wagmi | METIS | 1088 | PositionEffectivityChart| [0x242c5fAaAa8A5fe49a66698fff7bCAb85cF3cF17](https://explorer.metis.io/address/0x242c5fAaAa8A5fe49a66698fff7bCAb85cF3cF17) |
 
 ##
 

@@ -7,19 +7,19 @@ async function sleep(ms: number) {
 const config = {
     borrowingManagerAddress: {
         ["kava"]: {
-            ["wagmi"]: "0xCc99476805F82e1446541FCb1010269EbC092ae2",
-            ["kinetix"]: "0x45861d6700eAFdD9C8cAD21348ecC2a90328F3E1"
+            ["wagmi"]: "0xfB0114e6eeC8B2740f5fDc71F62dA1De11a8678D",
+            ["kinetix"]: "0xdbcbc01b8ba67da94c7C62153a221ffa988feC9D"
         },
 
         ["arbitrum"]:
         {
-            ["uniswap"]: "0x793288e6B1bd67fFC3d31992c54e0a3B2bDd655c",
-            ["sushiswap"]: "0x6374e71E15C6c7706237386584EC8c55c97e7bDa"
+            ["uniswap"]: "0x44f4E18B1D4D8c0517a5163a4a6f33534d50d71e",
+            ["sushiswap"]: "0x663bAAC9D162b23aB324b46707CE3dE353405663"
         },
 
         ["metis"]:
         {
-            ["wagmi"]: "0x3C422982E76261a3eC73363CAcf5C3731e318104"
+            ["wagmi"]: "0x05D73f76689e4844581a9DB03f82960cBf3C4D2b"
         },
 
     }
