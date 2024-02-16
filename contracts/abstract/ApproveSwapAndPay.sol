@@ -4,40 +4,19 @@ pragma solidity 0.8.21;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { TransferHelper } from "../libraries/TransferHelper.sol";
 import { IUniswapV3Pool } from "../interfaces/IUniswapV3Pool.sol";
+import { IApproveSwapAndPay } from "../interfaces/abstract/IApproveSwapAndPay.sol";
 import { SafeCast } from "../vendor0.8/uniswap/SafeCast.sol";
 import "../libraries/ExternalCall.sol";
 import "../libraries/ErrLib.sol";
 
-abstract contract ApproveSwapAndPay {
+// import "hardhat/console.sol";
+
+abstract contract ApproveSwapAndPay is IApproveSwapAndPay {
     using SafeCast for uint256;
     using TransferHelper for address;
-    using { ExternalCall._patchAmountAndCall } for address;
+    using { ExternalCall._externalCall } for address;
     using { ExternalCall._readFirstBytes4 } for bytes;
     using { ErrLib.revertError } for bool;
-
-    /// @notice Struct representing the parameters for a Uniswap V3 exact input swap.
-    struct v3SwapExactInputParams {
-        /// @dev The fee tier to be used for the swap.
-        uint24 fee;
-        /// @dev The address of the token to be swapped from.
-        address tokenIn;
-        /// @dev The address of the token to be swapped to.
-        address tokenOut;
-        /// @dev The amount of `tokenIn` to be swapped.
-        uint256 amountIn;
-    }
-
-    /// @notice Struct to hold parameters for swapping tokens
-    struct SwapParams {
-        /// @notice Address of the aggregator's router
-        address swapTarget;
-        /// @notice The index in the `swapData` array where the swap amount in is stored
-        uint256 swapAmountInDataIndex;
-        /// @notice The maximum gas limit for the swap call
-        uint256 maxGasForCall;
-        /// @notice The aggregator's data that stores paths and amounts for swapping through
-        bytes swapData;
-    }
 
     /// @dev The minimum value that can be returned from #getSqrtRatioAtTick. Equivalent to getSqrtRatioAtTick(MIN_TICK)
     uint160 internal constant MIN_SQRT_RATIO = 4295128739;
@@ -49,7 +28,7 @@ abstract contract ApproveSwapAndPay {
     bytes32 public immutable UNDERLYING_V3_POOL_INIT_CODE_HASH;
 
     ///     swapTarget   => (func.selector => is allowed)
-    mapping(address => mapping(bytes4 => bool)) public whitelistedCall;
+    mapping(address => mapping(bytes4 => bool)) internal whitelistedCall;
 
     error SwapSlippageCheckError(uint256 expectedOut, uint256 receivedOut);
 
@@ -59,6 +38,20 @@ abstract contract ApproveSwapAndPay {
     ) {
         UNDERLYING_V3_FACTORY_ADDRESS = _UNDERLYING_V3_FACTORY_ADDRESS;
         UNDERLYING_V3_POOL_INIT_CODE_HASH = _UNDERLYING_V3_POOL_INIT_CODE_HASH;
+    }
+
+    /**
+     * @notice Checks if a swap call is whitelisted.
+     * @dev Determines if a given `swapTarget` address and function `selector` are whitelisted for swaps.
+     * @param swapTarget The address to check if it is a whitelisted destination for a swap call.
+     * @param selector The function selector to check if it is whitelisted for calls to the `swapTarget`.
+     * @return IsWhitelisted Returns `true` if the `swapTarget` address and `selector` combination is whitelisted, otherwise `false`.
+     */
+    function swapIsWhitelisted(
+        address swapTarget,
+        bytes4 selector
+    ) external view returns (bool IsWhitelisted) {
+        IsWhitelisted = whitelistedCall[swapTarget][selector];
     }
 
     /**
@@ -128,47 +121,39 @@ abstract contract ApproveSwapAndPay {
     }
 
     /**
-     * @dev Executes a swap between two tokens using an external contract.
-     * @param tokenIn The address of the token to be swapped.
-     * @param tokenOut The address of the token to receive in the swap.
-     * @param externalSwap The swap parameters from the external contract.
-     * @param amountIn The amount of `tokenIn` to be swapped.
-     * @param amountOutMin The minimum amount of `tokenOut` expected to receive from the swap.
-     * @return amountOut The actual amount of `tokenOut` received from the swap.
-     * @notice This function will revert if the swap target is not approved or the resulting amountOut
-     * is zero or below the specified minimum amountOut.
+     * @dev Performs a series of external swap calls as defined by the `externalSwap` parameter.
+     * It iterates through an array of `SwapParams`, executing each corresponding swap.
+     *
+     * Emits a revert with specific error code if:
+     * - The swap target is not whitelisted for the specified function selector.
+     * - The external swap call is unsuccessful.
+     *
+     * @param tokenIn The address of the input token that will be swapped.
+     * @param externalSwap An array of `SwapParams` containing the targets, gas limits,
+     *                     and data for each external swap call.
      */
-    function _patchAmountsAndCallSwap(
-        address tokenIn,
-        address tokenOut,
-        SwapParams calldata externalSwap,
-        uint256 amountIn,
-        uint256 amountOutMin
-    ) internal returns (uint256 amountOut) {
-        bytes4 funcSelector = externalSwap.swapData._readFirstBytes4();
-        // Verifying if the swap target is whitelisted for the specified function selector
-        (!whitelistedCall[externalSwap.swapTarget][funcSelector]).revertError(
-            ErrLib.ErrorCode.SWAP_TARGET_NOT_APPROVED
-        );
-        // Maximizing approval if necessary
-        _maxApproveIfNecessary(tokenIn, externalSwap.swapTarget, amountIn);
-        uint256 balanceOutBefore = _getBalance(tokenOut);
-        (externalSwap.swapAmountInDataIndex > externalSwap.swapData.length / 0x20).revertError(
-            ErrLib.ErrorCode.INVALID_SWAP_DATA_INDEX
-        );
-        // Patching the amount and calling the external swap
-        bool success = externalSwap.swapTarget._patchAmountAndCall(
-            externalSwap.swapData,
-            externalSwap.maxGasForCall,
-            externalSwap.swapAmountInDataIndex,
-            amountIn
-        );
-        (!success).revertError(ErrLib.ErrorCode.INVALID_SWAP);
-        // Calculating the actual amount of output tokens received
-        amountOut = _getBalance(tokenOut) - balanceOutBefore;
-        // Checking if the received amount satisfies the minimum requirement
-        if (amountOut < amountOutMin) {
-            revert SwapSlippageCheckError(amountOutMin, amountOut);
+    function _callExternalSwap(address tokenIn, SwapParams[] calldata externalSwap) internal {
+        for (uint256 i = 0; i < externalSwap.length; ) {
+            (address swapTarget, uint256 maxGasForCall, bytes calldata swapData) = (
+                externalSwap[i].swapTarget,
+                externalSwap[i].maxGasForCall,
+                externalSwap[i].swapData
+            );
+            (swapTarget == address(0)).revertError(ErrLib.ErrorCode.SWAP_TARGET_ADDRESS_IS_ZERO);
+            bytes4 funcSelector = swapData._readFirstBytes4();
+            // Verifying if the swap target is whitelisted for the specified function selector
+            (!whitelistedCall[swapTarget][funcSelector]).revertError(
+                ErrLib.ErrorCode.SWAP_TARGET_NOT_APPROVED
+            );
+            // Maximizing approval if necessary
+            _maxApproveIfNecessary(tokenIn, swapTarget, type(uint128).max);
+
+            // calling the external swap
+            bool success = swapTarget._externalCall(swapData, maxGasForCall);
+            (!success).revertError(ErrLib.ErrorCode.INVALID_SWAP);
+            unchecked {
+                ++i;
+            }
         }
     }
 
@@ -201,6 +186,8 @@ abstract contract ApproveSwapAndPay {
     function _v3SwapExactInput(
         v3SwapExactInputParams memory params
     ) internal returns (uint256 amountOut) {
+        // fee must be non-zero
+        (params.fee == 0).revertError(ErrLib.ErrorCode.INTERNAL_SWAP_POOL_REQUIRED);
         // Determine if tokenIn has a 0th token
         bool zeroForTokenIn = params.tokenIn < params.tokenOut;
         // Compute the address of the Uniswap V3 pool based on tokenIn, tokenOut, and fee

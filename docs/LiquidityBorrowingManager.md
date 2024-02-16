@@ -64,7 +64,7 @@ The address of the vault contract.
 ### borrow
 
 ```solidity
-function borrow(LiquidityBorrowingManager.BorrowParams params, uint256 deadline) external nonpayable returns (uint256, uint256, uint256, uint256, uint256)
+function borrow(ILiquidityBorrowingManager.BorrowParams params, uint256 deadline) external nonpayable returns (uint256, uint256, uint256, uint256, uint256)
 ```
 
 
@@ -75,7 +75,7 @@ function borrow(LiquidityBorrowingManager.BorrowParams params, uint256 deadline)
 
 | Name | Type | Description |
 |---|---|---|
-| params | LiquidityBorrowingManager.BorrowParams | undefined |
+| params | ILiquidityBorrowingManager.BorrowParams | undefined |
 | deadline | uint256 | undefined |
 
 #### Returns
@@ -262,7 +262,7 @@ function getBorrowerDebtsCount(address borrower) external view returns (uint256 
 ### getBorrowerDebtsInfo
 
 ```solidity
-function getBorrowerDebtsInfo(address borrower) external view returns (struct LiquidityBorrowingManager.BorrowingInfoExt[] extinfo)
+function getBorrowerDebtsInfo(address borrower) external view returns (struct ILiquidityBorrowingManager.BorrowingInfoExt[] extinfo)
 ```
 
 Retrieves the debts information for a specific borrower.
@@ -279,7 +279,7 @@ Retrieves the debts information for a specific borrower.
 
 | Name | Type | Description |
 |---|---|---|
-| extinfo | LiquidityBorrowingManager.BorrowingInfoExt[] | An array of BorrowingInfoExt structs representing the borrowing information. |
+| extinfo | ILiquidityBorrowingManager.BorrowingInfoExt[] | An array of BorrowingInfoExt structs representing the borrowing information. |
 
 ### getBorrowingKeysForBorrower
 
@@ -351,7 +351,7 @@ function getFeesInfo(address feesOwner, address[] tokens) external view returns 
 ### getHoldTokenInfo
 
 ```solidity
-function getHoldTokenInfo(address saleToken, address holdToken) external view returns (struct DailyRateAndCollateral.TokenInfo holdTokenRateInfo)
+function getHoldTokenInfo(address saleToken, address holdToken) external view returns (struct IDailyRateAndCollateral.TokenInfo holdTokenRateInfo)
 ```
 
 
@@ -369,7 +369,7 @@ function getHoldTokenInfo(address saleToken, address holdToken) external view re
 
 | Name | Type | Description |
 |---|---|---|
-| holdTokenRateInfo | DailyRateAndCollateral.TokenInfo | The structured data containing detailed information for the hold token. |
+| holdTokenRateInfo | IDailyRateAndCollateral.TokenInfo | The structured data containing detailed information for the hold token. |
 
 ### getLenderCreditsCount
 
@@ -396,7 +396,7 @@ function getLenderCreditsCount(uint256 tokenId) external view returns (uint256 c
 ### getLenderCreditsInfo
 
 ```solidity
-function getLenderCreditsInfo(uint256 tokenId) external view returns (struct LiquidityBorrowingManager.BorrowingInfoExt[] extinfo)
+function getLenderCreditsInfo(uint256 tokenId) external view returns (struct ILiquidityBorrowingManager.BorrowingInfoExt[] extinfo)
 ```
 
 Retrieves the borrowing information for a specific NonfungiblePositionManager tokenId.
@@ -413,7 +413,7 @@ Retrieves the borrowing information for a specific NonfungiblePositionManager to
 
 | Name | Type | Description |
 |---|---|---|
-| extinfo | LiquidityBorrowingManager.BorrowingInfoExt[] | An array of BorrowingInfoExt structs representing the borrowing information. |
+| extinfo | ILiquidityBorrowingManager.BorrowingInfoExt[] | An array of BorrowingInfoExt structs representing the borrowing information. |
 
 ### getLiquidationBonus
 
@@ -442,7 +442,7 @@ function getLiquidationBonus(address token, uint256 borrowedAmount, uint256 time
 ### getLoansInfo
 
 ```solidity
-function getLoansInfo(bytes32 borrowingKey) external view returns (struct LiquidityManager.LoanInfo[] loans)
+function getLoansInfo(bytes32 borrowingKey) external view returns (struct ILiquidityManager.LoanInfo[] loans)
 ```
 
 Get information about loans associated with a borrowing key
@@ -459,7 +459,7 @@ Get information about loans associated with a borrowing key
 
 | Name | Type | Description |
 |---|---|---|
-| loans | LiquidityManager.LoanInfo[] | An array containing LoanInfo structs representing the loans associated with the borrowing key |
+| loans | ILiquidityManager.LoanInfo[] | An array containing LoanInfo structs representing the loans associated with the borrowing key |
 
 ### getPlatformFeesInfo
 
@@ -589,30 +589,6 @@ function liquidationBonusForToken(address) external view returns (uint256 bonusB
 | bonusBP | uint256 | undefined |
 | minBonusAmount | uint256 | undefined |
 
-### loansInfo
-
-```solidity
-function loansInfo(bytes32, uint256) external view returns (uint128 liquidity, uint256 tokenId)
-```
-
-borrowingKey=&gt;LoanInfo
-
-
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | bytes32 | undefined |
-| _1 | uint256 | undefined |
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| liquidity | uint128 | undefined |
-| tokenId | uint256 | undefined |
-
 ### operator
 
 ```solidity
@@ -678,7 +654,7 @@ function renounceOwnership() external nonpayable
 ### repay
 
 ```solidity
-function repay(LiquidityBorrowingManager.RepayParams params, uint256 deadline) external nonpayable returns (uint256 saleTokenBack, uint256 holdTokenBack)
+function repay(ILiquidityBorrowingManager.RepayParams params, uint256 deadline) external nonpayable returns (uint256 saleTokenOut, uint256 holdTokenOut)
 ```
 
 
@@ -689,15 +665,15 @@ function repay(LiquidityBorrowingManager.RepayParams params, uint256 deadline) e
 
 | Name | Type | Description |
 |---|---|---|
-| params | LiquidityBorrowingManager.RepayParams | undefined |
+| params | ILiquidityBorrowingManager.RepayParams | undefined |
 | deadline | uint256 | undefined |
 
 #### Returns
 
 | Name | Type | Description |
 |---|---|---|
-| saleTokenBack | uint256 | undefined |
-| holdTokenBack | uint256 | undefined |
+| saleTokenOut | uint256 | undefined |
+| holdTokenOut | uint256 | undefined |
 
 ### setSwapCallToWhitelist
 
@@ -716,6 +692,29 @@ function setSwapCallToWhitelist(address swapTarget, bytes4 funcSelector, bool is
 | swapTarget | address | The address of the target contract for the swap call. |
 | funcSelector | bytes4 | The function selector of the swap call. |
 | isAllowed | bool | A boolean indicating whether the swap call is allowed or not. |
+
+### swapIsWhitelisted
+
+```solidity
+function swapIsWhitelisted(address swapTarget, bytes4 selector) external view returns (bool IsWhitelisted)
+```
+
+Checks if a swap call is whitelisted.
+
+*Determines if a given `swapTarget` address and function `selector` are whitelisted for swaps.*
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| swapTarget | address | The address to check if it is a whitelisted destination for a swap call. |
+| selector | bytes4 | The function selector to check if it is whitelisted for calls to the `swapTarget`. |
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| IsWhitelisted | bool | Returns `true` if the `swapTarget` address and `selector` combination is whitelisted, otherwise `false`. |
 
 ### transferOwnership
 
@@ -807,7 +806,7 @@ function updateHoldTokenEntranceFee(address saleToken, address holdToken, uint25
 ### updateSettings
 
 ```solidity
-function updateSettings(enum OwnerSettings.ITEM _item, uint256[] values) external nonpayable
+function updateSettings(enum IOwnerSettings.ITEM _item, uint256[] values) external nonpayable
 ```
 
 This external function is used to update the settings for a particular item. The function requires two parameters: `_item`, which is the item to be updated, and `values`, which is an array of values containing the new settings. Only the owner of the contract has the permission to call this function.
@@ -818,31 +817,8 @@ This external function is used to update the settings for a particular item. The
 
 | Name | Type | Description |
 |---|---|---|
-| _item | enum OwnerSettings.ITEM | The item to update the settings for. |
+| _item | enum IOwnerSettings.ITEM | The item to update the settings for. |
 | values | uint256[] | An array of values containing the new settings. |
-
-### whitelistedCall
-
-```solidity
-function whitelistedCall(address, bytes4) external view returns (bool)
-```
-
-swapTarget   =&gt; (func.selector =&gt; is allowed)
-
-
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | address | undefined |
-| _1 | bytes4 | undefined |
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | bool | undefined |
 
 
 
@@ -1034,7 +1010,7 @@ Indicates that the daily interest rate for holding token(for specific pair) has 
 ### UpdateSettingsByOwner
 
 ```solidity
-event UpdateSettingsByOwner(enum OwnerSettings.ITEM _item, uint256[] values)
+event UpdateSettingsByOwner(enum IOwnerSettings.ITEM _item, uint256[] values)
 ```
 
 
@@ -1045,7 +1021,7 @@ event UpdateSettingsByOwner(enum OwnerSettings.ITEM _item, uint256[] values)
 
 | Name | Type | Description |
 |---|---|---|
-| _item  | enum OwnerSettings.ITEM | undefined |
+| _item  | enum IOwnerSettings.ITEM | undefined |
 | values  | uint256[] | undefined |
 
 

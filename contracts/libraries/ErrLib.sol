@@ -19,8 +19,8 @@ library ErrLib {
         UNEXPECTED_CHANGES, //13
         TOO_BIG_DAILY_RATE, //14
         UNACCEPTABLE_SQRT_PRICE, //15
-        INVALID_SWAP_DATA_INDEX, //16
-        INTERNAL_SWAP_POOL_FEE_REQUIRED //17
+        SWAP_TARGET_ADDRESS_IS_ZERO, //16
+        INTERNAL_SWAP_POOL_REQUIRED //17
     }
 
     error RevertErrorCode(ErrorCode code);

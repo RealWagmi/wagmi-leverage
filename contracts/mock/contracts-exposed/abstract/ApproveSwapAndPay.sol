@@ -3,16 +3,18 @@
 pragma solidity >=0.6.0;
 
 import "../../../../contracts/abstract/ApproveSwapAndPay.sol";
+import "../../../../contracts/libraries/TransferHelper.sol";
+import "../../../../contracts/interfaces/IUniswapV3Pool.sol";
+import "../../../../contracts/interfaces/abstract/IApproveSwapAndPay.sol";
+import "../../../../contracts/vendor0.8/uniswap/SafeCast.sol";
 import "../../../../contracts/libraries/Keys.sol";
+import "../../../../contracts/libraries/ExternalCall.sol";
 import { EnumerableSet } from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
 contract $ApproveSwapAndPay is ApproveSwapAndPay {
     using EnumerableSet for EnumerableSet.Bytes32Set;
-
     bytes32 public constant __hh_exposed_bytecode_marker = "hardhat-exposed";
     EnumerableSet.Bytes32Set self;
-
-    event return$_patchAmountsAndCallSwap(uint256 amountOut);
 
     event return$_v3SwapExactInput(uint256 amountOut);
 
@@ -30,6 +32,14 @@ contract $ApproveSwapAndPay is ApproveSwapAndPay {
 
     function $MAX_SQRT_RATIO() external pure returns (uint160) {
         return MAX_SQRT_RATIO;
+    }
+
+    function $_maxApproveIfNecessary(address token, address spender, uint256 amount) external {
+        super._maxApproveIfNecessary(token, spender, amount);
+    }
+
+    function $_getBalance(address token) external view returns (uint256 balance) {
+        (balance) = super._getBalance(token);
     }
 
     function $_removeKey(bytes32 key) external {
@@ -51,14 +61,6 @@ contract $ApproveSwapAndPay is ApproveSwapAndPay {
         return Keys.computePairKey(saleToken, holdToken);
     }
 
-    function $_maxApproveIfNecessary(address token, address spender, uint256 amount) external {
-        super._maxApproveIfNecessary(token, spender, amount);
-    }
-
-    function $_getBalance(address token) external view returns (uint256 balance) {
-        (balance) = super._getBalance(token);
-    }
-
     function $_getPairBalance(
         address tokenA,
         address tokenB
@@ -66,21 +68,8 @@ contract $ApproveSwapAndPay is ApproveSwapAndPay {
         (balanceA, balanceB) = super._getPairBalance(tokenA, tokenB);
     }
 
-    function $_patchAmountsAndCallSwap(
-        address tokenIn,
-        address tokenOut,
-        SwapParams calldata externalSwap,
-        uint256 amountIn,
-        uint256 amountOutMin
-    ) external returns (uint256 amountOut) {
-        (amountOut) = super._patchAmountsAndCallSwap(
-            tokenIn,
-            tokenOut,
-            externalSwap,
-            amountIn,
-            amountOutMin
-        );
-        emit return$_patchAmountsAndCallSwap(amountOut);
+    function $_callExternalSwap(address tokenIn, SwapParams[] calldata externalSwap) external {
+        super._callExternalSwap(tokenIn, externalSwap);
     }
 
     function $_pay(address token, address payer, address recipient, uint256 value) external {
@@ -94,7 +83,7 @@ contract $ApproveSwapAndPay is ApproveSwapAndPay {
         emit return$_v3SwapExactInput(amountOut);
     }
 
-    function $setSwapCallToWhitelist(
+    function $_setSwapCallToWhitelist(
         address swapTarget,
         bytes4 funcSelector,
         bool isAllowed

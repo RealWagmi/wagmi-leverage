@@ -3,30 +3,33 @@
 pragma solidity >=0.6.0;
 
 import "../../../../contracts/abstract/DailyRateAndCollateral.sol";
+import "../../../../contracts/libraries/Constants.sol";
+import "../../../../contracts/interfaces/abstract/IDailyRateAndCollateral.sol";
 
 contract $DailyRateAndCollateral is DailyRateAndCollateral {
     bytes32 public constant __hh_exposed_bytecode_marker = "hardhat-exposed";
 
-    event return$_updateHoldTokenInfo(uint256 currentDailyRate, TokenInfo holdTokenRateInfo);
+    event return$_updateHoldTokenRateInfo(uint256 ret0, TokenInfo ret1);
 
     constructor() payable {}
+
+    function $_checkEntranceFee(uint256 entranceFeeBP) external pure returns (uint256 ret0) {
+        (ret0) = super._checkEntranceFee(entranceFeeBP);
+    }
 
     function $_getHoldTokenInfo(
         address saleToken,
         address holdToken
-    ) external view returns (TokenInfo memory holdTokenRateInfo) {
-        holdTokenRateInfo = super._getHoldTokenInfo(saleToken, holdToken);
+    ) external view returns (TokenInfo memory ret0) {
+        (ret0) = super._getHoldTokenInfo(saleToken, holdToken);
     }
 
-    function $_updateHoldTokenInfo(
+    function $_updateHoldTokenRateInfo(
         address saleToken,
         address holdToken
-    ) external returns (uint256 currentDailyRate, TokenInfo memory holdTokenRateInfo) {
-        (currentDailyRate, holdTokenRateInfo) = super._updateHoldTokenRateInfo(
-            saleToken,
-            holdToken
-        );
-        emit return$_updateHoldTokenInfo(currentDailyRate, holdTokenRateInfo);
+    ) external returns (uint256 ret0, TokenInfo memory ret1) {
+        (ret0, ret1) = super._updateHoldTokenRateInfo(saleToken, holdToken);
+        emit return$_updateHoldTokenRateInfo(ret0, ret1);
     }
 
     function $_calculateCollateralBalance(

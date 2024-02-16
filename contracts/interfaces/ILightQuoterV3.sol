@@ -1,29 +1,29 @@
-// SPDX-License-Identifier: GPL-2.0-or-later
+// SPDX-License-Identifier: MIT
 pragma solidity 0.8.21;
-
-/// @title Struct for "Zap In" Calculation Parameters
-/// @notice This struct encapsulates the various parameters required for calculating the exact amount of tokens to zap in.
-struct CalculateExactZapInParams {
-    /// @notice The address of the swap pool where liquidity will be added.
-    address swapPool;
-    /// @notice A boolean determining which token will be used to add liquidity (true for token0 or false for token1).
-    bool zeroForIn;
-    /// @notice The square root of the current price in the pool, encoded as a fixed-point number with 96 bits of precision.
-    uint160 sqrtPriceX96;
-    /// @notice The lower bound of the tick range for the position within the pool.
-    int24 tickLower;
-    /// @notice The upper bound of the tick range for the position within the pool.
-    int24 tickUpper;
-    /// @notice The exact amount of liquidity to add to the pool.
-    uint128 liquidityExactAmount;
-    /// @notice The balance of the token that will be used to add liquidity.
-    uint256 tokenInBalance;
-    /// @notice The balance of the other token in the pool, not typically used for adding liquidity directly but necessary for calculations.
-    uint256 tokenOutBalance;
-}
 
 /// @title Light Quoter Interface
 interface ILightQuoterV3 {
+    /// @title Struct for "Zap In" Calculation Parameters
+    /// @notice This struct encapsulates the various parameters required for calculating the exact amount of tokens to zap in.
+    struct CalculateExactZapInParams {
+        /// @notice The address of the swap pool where liquidity will be added.
+        address swapPool;
+        /// @notice A boolean determining which token will be used to add liquidity (true for token0 or false for token1).
+        bool zeroForIn;
+        /// @notice The square root of the current price in the pool, encoded as a fixed-point number with 96 bits of precision.
+        uint160 sqrtPriceX96;
+        /// @notice The lower bound of the tick range for the position within the pool.
+        int24 tickLower;
+        /// @notice The upper bound of the tick range for the position within the pool.
+        int24 tickUpper;
+        /// @notice The exact amount of liquidity to add to the pool.
+        uint128 liquidityExactAmount;
+        /// @notice The balance of the token that will be used to add liquidity.
+        uint256 tokenInBalance;
+        /// @notice The balance of the other token in the pool, not typically used for adding liquidity directly but necessary for calculations.
+        uint256 tokenOutBalance;
+    }
+
     /// @notice Calculates parameters related to "zapping in" to a position with an exact amount of liquidity.
     /// @dev Interacts with an on-chain liquidity pool to precisely estimate the amounts in/out to add liquidity.
     ///      This calculation is performed using iterative methods to ensure the exactness of the resulting values.

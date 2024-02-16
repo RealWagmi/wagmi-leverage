@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: SAL-1.0
 
 /**
- * WAGMI Leverage Protocol v1.0
+ * WAGMI Leverage Protocol v1.1
  * wagmi.com
  */
 
@@ -12,6 +12,7 @@ import "./abstract/LiquidityManager.sol";
 import "./abstract/OwnerSettings.sol";
 import "./abstract/DailyRateAndCollateral.sol";
 import "./libraries/ErrLib.sol";
+import "./interfaces/ILiquidityBorrowingManager.sol";
 import { EnumerableSet } from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
 /**
@@ -20,6 +21,7 @@ import { EnumerableSet } from "@openzeppelin/contracts/utils/structs/EnumerableS
  * It inherits from LiquidityManager, OwnerSettings, DailyRateAndCollateral, and ReentrancyGuard contracts.
  */
 contract LiquidityBorrowingManager is
+    ILiquidityBorrowingManager,
     LiquidityManager,
     OwnerSettings,
     DailyRateAndCollateral,
@@ -28,124 +30,16 @@ contract LiquidityBorrowingManager is
     using { ErrLib.revertError } for bool;
     using EnumerableSet for EnumerableSet.Bytes32Set;
 
-    /// @title BorrowParams
-    /// @notice This struct represents the parameters required for borrowing.
-    struct BorrowParams {
-        /// @notice The pool fee level for the internal swap
-        uint24 internalSwapPoolfee;
-        /// @notice The address of the token that will be sold to obtain the loan currency
-        address saleToken;
-        /// @notice The address of the token that will be held
-        address holdToken;
-        /// @notice The minimum amount of holdToken that must be obtained
-        uint256 minHoldTokenOut;
-        /// @notice The maximum amount of margin deposit that can be provided
-        uint256 maxMarginDeposit;
-        /// @notice The maximum allowable daily rate
-        uint256 maxDailyRate;
-        /// @notice The SwapParams struct representing the external swap parameters
-        SwapParams externalSwap;
-        /// @notice An array of LoanInfo structs representing multiple loans
-        LoanInfo[] loans;
-    }
-    /// @title BorrowingInfo
-    /// @notice This struct represents the borrowing information for a borrower.
-    struct BorrowingInfo {
-        address borrower;
-        address saleToken;
-        address holdToken;
-        /// @notice The amount of fees owed by the creditor
-        uint256 feesOwed;
-        /// @notice The amount borrowed by the borrower
-        uint256 borrowedAmount;
-        /// @notice The amount of liquidation bonus
-        uint256 liquidationBonus;
-        /// @notice The accumulated loan rate per share
-        uint256 accLoanRatePerSeconds;
-        /// @notice The daily rate collateral balance multiplied by COLLATERAL_BALANCE_PRECISION
-        uint256 dailyRateCollateralBalance;
-    }
-    /// @notice This struct used for caching variables inside a function 'borrow'
-    struct BorrowCache {
-        uint256 dailyRateCollateral;
-        uint256 accLoanRatePerSeconds;
-        uint256 borrowedAmount;
-        uint256 holdTokenBalance;
-        uint256 holdTokenEntraceFee;
-    }
-    /// @notice Struct representing the extended borrowing information.
-    struct BorrowingInfoExt {
-        /// @notice The main borrowing information.
-        BorrowingInfo info;
-        /// @notice An array of LoanInfo structs representing multiple loans
-        LoanInfo[] loans;
-        /// @notice The balance of the collateral.
-        int256 collateralBalance;
-        /// @notice The estimated lifetime of the loan.
-        uint256 estimatedLifeTime;
-        /// borrowing Key
-        bytes32 key;
-    }
-
-    /// @title RepayParams
-    /// @notice This struct represents the parameters required for repaying a loan.
-    struct RepayParams {
-        /// @return returnOnlyHoldToken A boolean representing whether the contract returns only the HoldToken
-        bool returnOnlyHoldToken;
-        /// @notice The activation of the emergency liquidity restoration mode (available only to the lender)
-        bool isEmergency;
-        /// @notice The pool fee level for the internal swap
-        uint24 internalSwapPoolfee;
-        /// @notice The external swap parameters for the repayment transaction
-        SwapParams externalSwap;
-        /// @notice The unique borrowing key associated with the loan
-        bytes32 borrowingKey;
-        /// @dev sqrtPriceLimitX96 The Q64.96 sqrt price limit. when liquidity is restored, a hold token is sold therefore,
-        /// If zeroForSaleToken==false, the price cannot be less than this value after the swap.
-        /// If zeroForSaleToken==true, the price cannot be greater than this value after the swap
-        uint160 sqrtPriceLimitX96;
-    }
     /// borrowingKey=>LoanInfo
-    mapping(bytes32 => LoanInfo[]) public loansInfo;
+    mapping(bytes32 => LoanInfo[]) private loansInfo;
     /// borrowingKey=>BorrowingInfo
     mapping(bytes32 => BorrowingInfo) public borrowingsInfo;
     /// NonfungiblePositionManager tokenId => EnumerableSet.Bytes32Set
     mapping(uint256 => EnumerableSet.Bytes32Set) private tokenIdToBorrowingKeys;
     /// borrower => EnumerableSet.Bytes32Set
     mapping(address => EnumerableSet.Bytes32Set) private userBorrowingKeys;
-
     ///  token => FeesAmt
     mapping(address => uint256) private platformsFeesInfo;
-
-    /// Indicates that a borrower has made a new loan
-    event Borrow(
-        address borrower,
-        bytes32 borrowingKey,
-        uint256 borrowedAmount,
-        uint256 borrowingCollateral,
-        uint256 liquidationBonus,
-        uint256 dailyRatePrepayment,
-        uint256 feesDebt,
-        uint256 holdTokenEntraceFee
-    );
-    /// Indicates that a borrower has repaid their loan, optionally with the help of a liquidator
-    event Repay(address borrower, address liquidator, bytes32 borrowingKey);
-    /// Indicates that a loan has been closed due to an emergency situation
-    event EmergencyLoanClosure(address borrower, address lender, bytes32 borrowingKey);
-    /// Indicates that the protocol has collected fee tokens
-    event CollectProtocol(address recipient, address[] tokens, uint256[] amounts);
-    /// Indicates that the lender has collected fee tokens
-    event CollectLoansFees(address recipient, address[] tokens, uint256[] amounts);
-    /// Indicates that the daily interest rate for holding token(for specific pair) has been updated
-    event UpdateHoldTokenDailyRate(address saleToken, address holdToken, uint256 value);
-    /// Indicates that the entrance fee for holding token(for specific pair) has been updated
-    event UpdateHoldTokeEntranceFee(address saleToken, address holdToken, uint256 value);
-    /// Indicates that a borrower has increased their collateral balance for a loan
-    event IncreaseCollateralBalance(address borrower, bytes32 borrowingKey, uint256 collateralAmt);
-
-    event Harvest(bytes32 borrowingKey, uint256 harvestedAmt);
-
-    error TooLittleReceivedError(uint256 minOut, uint256 out);
 
     /// @dev Modifier to check if the current block timestamp is before or equal to the deadline.
     modifier checkDeadline(uint256 deadline) {
@@ -393,6 +287,35 @@ contract LiquidityBorrowingManager is
     }
 
     /**
+     * @dev Calculates the liquidation bonus for a given token, borrowed amount, and times factor.
+     * @param token The address of the token.
+     * @param borrowedAmount The amount of tokens borrowed.
+     * @param times The times factor to apply to the liquidation bonus calculation.
+     * @return liquidationBonus The calculated liquidation bonus.
+     */
+    function getLiquidationBonus(
+        address token,
+        uint256 borrowedAmount,
+        uint256 times
+    ) public view returns (uint256 liquidationBonus) {
+        // Retrieve liquidation bonus for the given token
+        Liquidation memory liq = liquidationBonusForToken[token];
+
+        if (liq.bonusBP == 0) {
+            // If there is no specific bonus for the token
+            // Use default bonus
+            liq.minBonusAmount = Constants.MINIMUM_AMOUNT;
+            liq.bonusBP = dafaultLiquidationBonusBP;
+        }
+        liquidationBonus = (borrowedAmount * liq.bonusBP) / Constants.BP;
+
+        if (liquidationBonus < liq.minBonusAmount) {
+            liquidationBonus = liq.minBonusAmount;
+        }
+        liquidationBonus *= (times > 0 ? times : 1);
+    }
+
+    /**
      * @dev Calculates the collateral amount required for a lifetime in seconds.
      *
      * @param borrowingKey The unique identifier of the borrowing.
@@ -501,6 +424,10 @@ contract LiquidityBorrowingManager is
                 pushCounter
             );
         }
+        if (cache.holdTokenBalance > cache.borrowedAmount) {
+            cache.borrowedAmount = cache.holdTokenBalance;
+        }
+
         // Updating borrowing details
         borrowing.borrowedAmount += cache.borrowedAmount;
         borrowing.liquidationBonus += liquidationBonus;
@@ -508,9 +435,7 @@ contract LiquidityBorrowingManager is
             cache.dailyRateCollateral *
             Constants.COLLATERAL_BALANCE_PRECISION;
         // Checking if borrowing marginDeposit exceeds the maximum allowed
-        uint256 marginDeposit = cache.borrowedAmount > cache.holdTokenBalance
-            ? cache.borrowedAmount - cache.holdTokenBalance
-            : 0;
+        uint256 marginDeposit = cache.borrowedAmount - cache.holdTokenBalance;
         (marginDeposit > params.maxMarginDeposit).revertError(
             ErrLib.ErrorCode.TOO_BIG_MARGIN_DEPOSIT
         );
@@ -643,8 +568,8 @@ contract LiquidityBorrowingManager is
      *  swap slippage allowance.
      * @param deadline The deadline by which the repayment must be made.
      *
-     * @return saleTokenBack The amount of saleToken returned back to the user after repayment.
-     * @return holdTokenBack The amount of holdToken returned back to the user after repayment or emergency withdrawal.
+     * @return saleTokenOut The amount of saleToken returned back to the user after repayment.
+     * @return holdTokenOut The amount of holdToken returned back to the user after repayment or emergency withdrawal.
      */
     function repay(
         RepayParams calldata params,
@@ -653,7 +578,7 @@ contract LiquidityBorrowingManager is
         external
         nonReentrant
         checkDeadline(deadline)
-        returns (uint256 saleTokenBack, uint256 holdTokenBack)
+        returns (uint256 saleTokenOut, uint256 holdTokenOut)
     {
         BorrowingInfo memory borrowing = borrowingsInfo[params.borrowingKey];
         // Check if the borrowing key is valid
@@ -734,9 +659,9 @@ contract LiquidityBorrowingManager is
                 borrowingStorage.feesOwed = borrowing.feesOwed;
                 borrowingStorage.borrowedAmount = borrowing.borrowedAmount;
             }
-            holdTokenBack = removedAmt + feesAmt;
+            holdTokenOut = removedAmt + feesAmt;
             // Transfer removedAmt + feesAmt to msg.sender and emit EmergencyLoanClosure event
-            Vault(VAULT_ADDRESS).transferToken(borrowing.holdToken, msg.sender, holdTokenBack);
+            Vault(VAULT_ADDRESS).transferToken(borrowing.holdToken, msg.sender, holdTokenOut);
             emit EmergencyLoanClosure(borrowing.borrower, msg.sender, params.borrowingKey);
         } else {
             // Deduct borrowedAmount from totalBorrowed
@@ -748,6 +673,11 @@ contract LiquidityBorrowingManager is
                 address(this),
                 borrowing.borrowedAmount + liquidationBonus
             );
+
+            if (params.externalSwap.length != 0) {
+                _callExternalSwap(borrowing.holdToken, params.externalSwap);
+            }
+
             // Restore liquidity using the borrowed amount and pay a daily rate fee
             LoanInfo[] memory loans = loansInfo[params.borrowingKey];
             _maxApproveIfNecessary(
@@ -760,89 +690,57 @@ contract LiquidityBorrowingManager is
                 address(underlyingPositionManager),
                 type(uint128).max
             );
-            // when params.sqrtPriceLimitX96 is set (It is highly recommended for both internal and external swaps)
-            // or returnOnlyHoldToken option is set (in this case the swap is only in the internal pool)
-            //  params.internalSwapPoolfee is required for _frontRunningAttackPrevent and _simulateSwap functions
-            (params.internalSwapPoolfee == 0 &&
-                (params.sqrtPriceLimitX96 != 0 || params.returnOnlyHoldToken)).revertError(
-                    ErrLib.ErrorCode.INTERNAL_SWAP_POOL_FEE_REQUIRED
-                );
 
             _restoreLiquidity(
                 RestoreLiquidityParams({
                     zeroForSaleToken: zeroForSaleToken,
-                    fee: params.internalSwapPoolfee,
-                    sqrtPriceLimitX96: params.sqrtPriceLimitX96,
+                    swapPoolfeeTier: params.internalSwapPoolfee,
                     totalfeesOwed: borrowing.feesOwed,
                     totalBorrowedAmount: borrowing.borrowedAmount
                 }),
-                params.externalSwap,
                 loans
             );
-            // Get the remaining balance of saleToken and holdToken
-            (saleTokenBack, holdTokenBack) = _getPairBalance(
-                borrowing.saleToken,
-                borrowing.holdToken
-            );
+
             // Remove borrowing key from related data structures
             _removeKeysAndClearStorage(borrowing.borrower, params.borrowingKey, loans);
 
-            if (saleTokenBack > 0 && params.returnOnlyHoldToken) {
+            // Get the remaining balance of saleToken and holdToken
+            (saleTokenOut, holdTokenOut) = _getPairBalance(
+                borrowing.saleToken,
+                borrowing.holdToken
+            );
+
+            if (saleTokenOut > 0 && params.returnOnlyHoldToken) {
                 (, uint256 holdTokenAmountOut) = _simulateSwap(
                     zeroForSaleToken,
                     params.internalSwapPoolfee,
                     borrowing.saleToken, // saleToken is tokenIn
                     borrowing.holdToken,
-                    saleTokenBack
+                    saleTokenOut
                 );
                 if (holdTokenAmountOut > 0) {
                     // Call the internal v3SwapExactInput function
-                    holdTokenBack += _v3SwapExactInput(
+                    holdTokenOut += _v3SwapExactInput(
                         v3SwapExactInputParams({
                             fee: params.internalSwapPoolfee,
                             tokenIn: borrowing.saleToken,
                             tokenOut: borrowing.holdToken,
-                            amountIn: saleTokenBack
+                            amountIn: saleTokenOut
                         })
                     );
-                    saleTokenBack = 0;
+                    saleTokenOut = 0;
                 }
             }
+
+            (holdTokenOut < params.minHoldTokenOut || saleTokenOut < params.minSaleTokenOut)
+                .revertError(ErrLib.ErrorCode.PRICE_SLIPPAGE_CHECK);
+
             // Pay a profit to a msg.sender
-            _pay(borrowing.holdToken, address(this), msg.sender, holdTokenBack);
-            _pay(borrowing.saleToken, address(this), msg.sender, saleTokenBack);
+            _pay(borrowing.holdToken, address(this), msg.sender, holdTokenOut);
+            _pay(borrowing.saleToken, address(this), msg.sender, saleTokenOut);
 
             emit Repay(borrowing.borrower, msg.sender, params.borrowingKey);
         }
-    }
-
-    /**
-     * @dev Calculates the liquidation bonus for a given token, borrowed amount, and times factor.
-     * @param token The address of the token.
-     * @param borrowedAmount The amount of tokens borrowed.
-     * @param times The times factor to apply to the liquidation bonus calculation.
-     * @return liquidationBonus The calculated liquidation bonus.
-     */
-    function getLiquidationBonus(
-        address token,
-        uint256 borrowedAmount,
-        uint256 times
-    ) public view returns (uint256 liquidationBonus) {
-        // Retrieve liquidation bonus for the given token
-        Liquidation memory liq = liquidationBonusForToken[token];
-
-        if (liq.bonusBP == 0) {
-            // If there is no specific bonus for the token
-            // Use default bonus
-            liq.minBonusAmount = Constants.MINIMUM_AMOUNT;
-            liq.bonusBP = dafaultLiquidationBonusBP;
-        }
-        liquidationBonus = (borrowedAmount * liq.bonusBP) / Constants.BP;
-
-        if (liquidationBonus < liq.minBonusAmount) {
-            liquidationBonus = liq.minBonusAmount;
-        }
-        liquidationBonus *= (times > 0 ? times : 1);
     }
 
     /**
@@ -1040,6 +938,11 @@ contract LiquidityBorrowingManager is
         if (cache.dailyRateCollateral < Constants.MINIMUM_AMOUNT) {
             cache.dailyRateCollateral = Constants.MINIMUM_AMOUNT;
         }
+
+        if (params.externalSwap.length != 0) {
+            // Call the external swap function
+            _callExternalSwap(params.saleToken, params.externalSwap);
+        }
         uint256 saleTokenBalance;
         // Get the balance of the sale token and hold token in the pair
         (saleTokenBalance, cache.holdTokenBalance) = _getPairBalance(
@@ -1048,26 +951,15 @@ contract LiquidityBorrowingManager is
         );
         // Check if the sale token balance is greater than 0
         if (saleTokenBalance > 0) {
-            if (params.externalSwap.swapTarget != address(0)) {
-                // Call the external swap function and update the hold token balance in the cache
-                cache.holdTokenBalance += _patchAmountsAndCallSwap(
-                    params.saleToken,
-                    params.holdToken,
-                    params.externalSwap,
-                    saleTokenBalance,
-                    0
-                );
-            } else {
-                // Call the internal v3SwapExactInput function and update the hold token balance in the cache
-                cache.holdTokenBalance += _v3SwapExactInput(
-                    v3SwapExactInputParams({
-                        fee: params.internalSwapPoolfee,
-                        tokenIn: params.saleToken,
-                        tokenOut: params.holdToken,
-                        amountIn: saleTokenBalance
-                    })
-                );
-            }
+            // Call the internal v3SwapExactInput function and update the hold token balance in the cache
+            cache.holdTokenBalance += _v3SwapExactInput(
+                v3SwapExactInputParams({
+                    fee: params.internalSwapPoolfee,
+                    tokenIn: params.saleToken,
+                    tokenOut: params.holdToken,
+                    amountIn: saleTokenBalance
+                })
+            );
         }
         // Calculate the hold token entrance fee based on the hold token balance and entrance fee basis points
         cache.holdTokenEntraceFee =

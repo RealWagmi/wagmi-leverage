@@ -12,6 +12,7 @@ import { INonfungiblePositionManager } from "contracts/interfaces/INonfungiblePo
 import { ApproveSwapAndPay } from "contracts/abstract/ApproveSwapAndPay.sol";
 
 import { LiquidityManager } from "contracts/abstract/LiquidityManager.sol";
+import { IApproveSwapAndPay, ILiquidityManager, ILiquidityBorrowingManager } from "contracts/interfaces/ILiquidityBorrowingManager.sol";
 
 import { TickMath } from "../../contracts/vendor0.8/uniswap/TickMath.sol";
 import { LiquidityAmounts } from "../../contracts/vendor0.8/uniswap/LiquidityAmounts.sol";
@@ -46,7 +47,7 @@ contract AmountsRoundingUpForLiquidityTest is Test, HelperContract {
         vm.label(alice, "Alice");
     }
 
-    LiquidityManager.LoanInfo[] loans;
+    ILiquidityManager.LoanInfo[] loans;
 
     function createBorrowParams(
         uint24 internalSwapPoolfee,
@@ -58,30 +59,32 @@ contract AmountsRoundingUpForLiquidityTest is Test, HelperContract {
         uint128 liquidity,
         uint256 _tokenId
     ) public returns (LiquidityBorrowingManager.BorrowParams memory borrow) {
-        bytes memory swapData = "";
-
-        LiquidityManager.LoanInfo memory loanInfo = LiquidityManager.LoanInfo({
+        ILiquidityManager.LoanInfo memory loanInfo = ILiquidityManager.LoanInfo({
             liquidity: liquidity,
             tokenId: _tokenId
         });
 
         loans.push(loanInfo);
 
+        IApproveSwapAndPay.SwapParams[] memory swapParams;
+        // bytes memory swapData = "";
+        //  = new ApproveSwapAndPay.SwapParams[](1);
+        // SwapParams[0] = IApproveSwapAndPay.SwapParams({
+        //     swapTarget: address(0),
+        //     maxGasForCall: 0,
+        //     swapData: swapData
+        // });
+
         LiquidityManager.LoanInfo[] memory loanInfoArrayMemory = loans;
 
-        borrow = LiquidityBorrowingManager.BorrowParams({
+        borrow = ILiquidityBorrowingManager.BorrowParams({
             internalSwapPoolfee: internalSwapPoolfee,
             saleToken: saleToken,
             holdToken: holdToken,
             minHoldTokenOut: minHoldTokenOut,
             maxMarginDeposit: maxMarginDeposit,
             maxDailyRate: maxDailyRate,
-            externalSwap: ApproveSwapAndPay.SwapParams({
-                swapTarget: address(0),
-                swapAmountInDataIndex: 0,
-                maxGasForCall: 0,
-                swapData: swapData
-            }),
+            externalSwap: swapParams,
             loans: loanInfoArrayMemory
         });
     }
@@ -90,28 +93,32 @@ contract AmountsRoundingUpForLiquidityTest is Test, HelperContract {
         uint24 internalSwapPoolfee,
         bytes32 _borrowingKey
     ) public pure returns (LiquidityBorrowingManager.RepayParams memory repay) {
-        bytes memory swapData = "";
+        IApproveSwapAndPay.SwapParams[] memory swapParams;
+        // bytes memory swapData = "";
+        //  = new ApproveSwapAndPay.SwapParams[](1);
+        // SwapParams[0] = IApproveSwapAndPay.SwapParams({
+        //     swapTarget: address(0),
+        //     maxGasForCall: 0,
+        //     swapData: swapData
+        // });
 
-        repay = LiquidityBorrowingManager.RepayParams({
+        repay = ILiquidityBorrowingManager.RepayParams({
             returnOnlyHoldToken: true,
             isEmergency: false,
             internalSwapPoolfee: internalSwapPoolfee, //token1 - WETH
-            externalSwap: ApproveSwapAndPay.SwapParams({
-                swapTarget: address(0),
-                swapAmountInDataIndex: 0,
-                maxGasForCall: 0,
-                swapData: swapData
-            }),
+            externalSwap: swapParams,
             borrowingKey: _borrowingKey,
-            sqrtPriceLimitX96: 0
+            minHoldTokenOut: 0,
+            minSaleTokenOut: 0
         });
     }
 
     function test_AmountsRoundingUpKava() public {
         vm.selectFork(roundingUpTestFork);
+        address lightQuoter = address(new LightQuoterV3());
         LiquidityBorrowingManager borrowingManager = new LiquidityBorrowingManager(
             NONFUNGIBLE_POSITION_MANAGER_ADDRESS,
-            LIGHT_QUOTER_V3,
+            lightQuoter,
             UNISWAP_V3_FACTORY,
             UNISWAP_V3_POOL_INIT_CODE_HASH
         );
@@ -140,6 +147,7 @@ contract AmountsRoundingUpForLiquidityTest is Test, HelperContract {
         bytes32[] memory AliceBorrowingKeys = borrowingManager.getBorrowingKeysForBorrower(
             address(alice)
         );
+        vm.roll(block.number + 10);
 
         LiquidityBorrowingManager.RepayParams memory AliceRepayingParams = createRepayParams(
             uint24(10000),

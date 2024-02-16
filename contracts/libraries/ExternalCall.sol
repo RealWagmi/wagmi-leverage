@@ -3,20 +3,16 @@ pragma solidity 0.8.21;
 
 library ExternalCall {
     /**
-     * @dev Executes a call to the `target` address with the given `data`, gas limit `maxGas`, and optional patching of a swapAmount value.
+     * @dev Executes a call to the `target` address with the given `data`, gas limit `maxGas`.
      * @param target The address of the contract or external function to call.
      * @param data The calldata to include in the call.
      * @param maxGas The maximum amount of gas to be used for the call. If set to 0, it uses the remaining gas.
-     * @param swapAmountInDataIndex The index at which to patch the `swapAmountInDataValue` in the calldata.
-     * @param swapAmountInDataValue The value to be patched at the specified index in the calldata. Can be 0 to skip patching.
      * @return success A boolean indicating whether the call was successful.
      */
-    function _patchAmountAndCall(
+    function _externalCall(
         address target,
         bytes calldata data,
-        uint256 maxGas,
-        uint256 swapAmountInDataIndex,
-        uint256 swapAmountInDataValue
+        uint256 maxGas
     ) internal returns (bool success) {
         if (maxGas == 0) {
             maxGas = gasleft();
@@ -24,9 +20,6 @@ library ExternalCall {
         assembly ("memory-safe") {
             let ptr := mload(0x40)
             calldatacopy(ptr, data.offset, data.length)
-            if gt(swapAmountInDataValue, 0) {
-                mstore(add(add(ptr, 0x24), mul(swapAmountInDataIndex, 0x20)), swapAmountInDataValue)
-            }
             success := call(
                 maxGas,
                 target,

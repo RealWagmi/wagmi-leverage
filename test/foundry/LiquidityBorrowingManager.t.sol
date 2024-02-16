@@ -9,7 +9,7 @@ import { LightQuoterV3 } from "contracts/LightQuoterV3.sol";
 import { AggregatorMock } from "contracts/mock/AggregatorMock.sol";
 import { HelperContract } from "../testsHelpers/HelperContract.sol";
 import { INonfungiblePositionManager } from "contracts/interfaces/INonfungiblePositionManager.sol";
-
+import { IApproveSwapAndPay, ILiquidityManager, ILiquidityBorrowingManager } from "contracts/interfaces/ILiquidityBorrowingManager.sol";
 import { ApproveSwapAndPay } from "contracts/abstract/ApproveSwapAndPay.sol";
 
 import { LiquidityManager } from "contracts/abstract/LiquidityManager.sol";
@@ -163,15 +163,13 @@ contract ContractTest is Test, HelperContract {
         );
     }
 
-    LiquidityManager.LoanInfo[] loans;
+    ILiquidityManager.LoanInfo[] loans;
 
     function createBorrowParams(
         uint256 _tokenId,
         uint128 liquidity
     ) public returns (LiquidityBorrowingManager.BorrowParams memory borrow) {
-        bytes memory swapData = "";
-
-        LiquidityManager.LoanInfo memory loanInfo = LiquidityManager.LoanInfo({
+        ILiquidityManager.LoanInfo memory loanInfo = ILiquidityManager.LoanInfo({
             liquidity: liquidity,
             tokenId: _tokenId //5500 = 1319241402 500 = 119931036 10 = 2398620
         });
@@ -179,20 +177,23 @@ contract ContractTest is Test, HelperContract {
         loans.push(loanInfo);
 
         LiquidityManager.LoanInfo[] memory loanInfoArrayMemory = loans;
+        IApproveSwapAndPay.SwapParams[] memory swapParams;
+        //  bytes memory swapData = "";
+        // new ApproveSwapAndPay.SwapParams[](1);
+        // swapParams[0] = IApproveSwapAndPay.SwapParams({
+        //     swapTarget: address(0),
+        //     maxGasForCall: 0,
+        //     swapData: swapData
+        // });
 
-        borrow = LiquidityBorrowingManager.BorrowParams({
+        borrow = ILiquidityBorrowingManager.BorrowParams({
             internalSwapPoolfee: 500,
             saleToken: address(WBTC), //token1 - WETH
             holdToken: address(WETH), //token0 - WBTC
             minHoldTokenOut: 1,
             maxMarginDeposit: 1e18,
             maxDailyRate: 0,
-            externalSwap: ApproveSwapAndPay.SwapParams({
-                swapTarget: address(0),
-                swapAmountInDataIndex: 0,
-                maxGasForCall: 0,
-                swapData: swapData
-            }),
+            externalSwap: swapParams,
             loans: loanInfoArrayMemory
         });
         borrow.maxDailyRate = (borrowingManager.getHoldTokenInfo(address(WBTC), address(WETH)))
@@ -219,20 +220,23 @@ contract ContractTest is Test, HelperContract {
     function createRepayParams(
         bytes32 _borrowingKey
     ) public pure returns (LiquidityBorrowingManager.RepayParams memory repay) {
-        bytes memory swapData = "";
+        IApproveSwapAndPay.SwapParams[] memory swapParams;
+        // bytes memory swapData = "";
+        // = new ApproveSwapAndPay.SwapParams[](1);
+        // SwapParams[0] = IApproveSwapAndPay.SwapParams({
+        //     swapTarget: address(0),
+        //     maxGasForCall: 0,
+        //     swapData: swapData
+        // });
 
-        repay = LiquidityBorrowingManager.RepayParams({
+        repay = ILiquidityBorrowingManager.RepayParams({
             returnOnlyHoldToken: true,
             isEmergency: false,
             internalSwapPoolfee: 500, //token1 - WETH
-            externalSwap: ApproveSwapAndPay.SwapParams({
-                swapTarget: address(0),
-                swapAmountInDataIndex: 0,
-                maxGasForCall: 0,
-                swapData: swapData
-            }),
+            externalSwap: swapParams,
             borrowingKey: _borrowingKey,
-            sqrtPriceLimitX96: 0
+            minHoldTokenOut: 0,
+            minSaleTokenOut: 0
         });
     }
 

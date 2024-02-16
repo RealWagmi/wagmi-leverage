@@ -35,9 +35,10 @@ import {
 } from "../typechain-types";
 
 import {
-    ApproveSwapAndPay,
-    DailyRateAndCollateral,
-    LiquidityManager,
+    IApproveSwapAndPay,
+    IDailyRateAndCollateral,
+    ILiquidityManager,
+    ILiquidityBorrowingManager
 } from "../typechain-types/contracts/LiquidityBorrowingManager";
 
 import { BigNumber, parseFixed, formatFixed } from "@ethersproject/bignumber";
@@ -321,22 +322,16 @@ describe("WagmiLeverageTests", () => {
             }
         ];
 
-        const swapParams: ApproveSwapAndPay.SwapParamsStruct = {
-            swapTarget: constants.AddressZero,
-            swapAmountInDataIndex: 0,
-            maxGasForCall: 0,
-            swapData: swapData,
-        };
 
 
-        let borrowParams: LiquidityBorrowingManager.BorrowParamsStruct = {
+        let borrowParams: ILiquidityBorrowingManager.BorrowParamsStruct = {
             internalSwapPoolfee: 500,
             saleToken: WETH_ADDRESS,
             holdToken: WBTC_ADDRESS,
             minHoldTokenOut: amountWBTC,
             maxMarginDeposit: maxMarginDepositWBTC,
             maxDailyRate: 0,
-            externalSwap: swapParams,
+            externalSwap: [],
             loans: loans,
         };
 
@@ -370,13 +365,17 @@ describe("WagmiLeverageTests", () => {
         //amounts of liquidity should be concatenated
         expect(bobloans[0].liquidity).to.equal(nftpos[3].liquidity.div(6).add(nftpos[3].liquidity.div(6)));
         expect(await borrowingManager.getLenderCreditsCount(nftpos[3].tokenId)).to.be.equal(1);
+
+
+
         let repayParams = {
             returnOnlyHoldToken: false,
             isEmergency: false,
             internalSwapPoolfee: 500,
-            externalSwap: swapParams,
+            externalSwap: [],
             borrowingKey: borrowingKey,
-            sqrtPriceLimitX96: 0
+            minHoldTokenOut: BigNumber.from(0),
+            minSaleTokenOut: BigNumber.from(0)
         };
 
         const prevBalanceLender = await WBTC.balanceOf(alice.address);
@@ -398,7 +397,10 @@ describe("WagmiLeverageTests", () => {
         expect(dailyCollateralBalance).to.be.gt(0);
         expect(liquidationBonus).to.be.gt(0);
         //console.log("dailyCollateral", dailyCollateral.toString());
-        const [saleTokenBack, holdTokenBack] = await borrowingManager.connect(bob).callStatic.repay(repayParams, deadline);
+        const [saleTokenOut, holdTokenOut] = await borrowingManager.connect(bob).callStatic.repay(repayParams, deadline);
+
+        repayParams.minHoldTokenOut = holdTokenOut.mul(990).div(1000);// 1% slippage
+
         await time.setNextBlockTimestamp(await time.latest());
         //BOB repay his loan but loose his dailyCollateral even tho it hasn't been a day
         await borrowingManager.connect(bob).repay(repayParams, deadline);
@@ -436,16 +438,17 @@ describe("WagmiLeverageTests", () => {
             returnOnlyHoldToken: true,//now we want to return only the holdToken
             isEmergency: false,
             internalSwapPoolfee: 500,
-            externalSwap: swapParams,
+            externalSwap: [],
             borrowingKey: borrowingKey,
-            sqrtPriceLimitX96: 0
+            minHoldTokenOut: BigNumber.from(0),
+            minSaleTokenOut: BigNumber.from(0)
         };
 
         await time.setNextBlockTimestamp(await time.latest());
         await borrowingManager.connect(bob).repay(repayParams, deadline);
         newBobBalance = await WBTC.balanceOf(bob.address);
 
-        let [, amountOut] = await lightQuoter.quoteExactInputSingle(false, WBTC_WETH_500_POOL_ADDRESS, 0, saleTokenBack);
+        let [, amountOut] = await lightQuoter.quoteExactInputSingle(false, WBTC_WETH_500_POOL_ADDRESS, 0, saleTokenOut);
 
         expectedMinimumBobHoldTokenBalance = prevBobBalance.add(liquidationBonus).add(dailyCollateralBalance.sub(feeCompensationUpToMin)).add(amountOut);//with remaining marginDeposit in holdToken
         expect(newBobBalance).to.be.within(expectedMinimumBobHoldTokenBalance.sub(2), expectedMinimumBobHoldTokenBalance.add(2));
@@ -468,145 +471,6 @@ describe("WagmiLeverageTests", () => {
 
     });
 
-    it("The _frontRunningAttackPrevent should work", async () => {
-        await snapshot_global.restore();
-
-        let amountWBTC = ethers.utils.parseUnits("0.05", 8); //token0
-        let amountSwapWBTC = ethers.utils.parseUnits("10", 8);
-        await hackDonor(
-            DONOR_ADDRESS,
-            [alice.address],
-            [{ tokenAddress: WBTC_ADDRESS, amount: amountSwapWBTC }]
-        );
-        const deadline = (await time.latest()) + 60;
-        const minLeverageDesired = 50;
-        const maxMarginDepositWBTC = amountWBTC.div(minLeverageDesired);
-
-
-        const loans = [
-            {
-                liquidity: nftpos[5].liquidity,
-                tokenId: nftpos[5].tokenId,
-            },
-        ];
-
-        let swapParams: ApproveSwapAndPay.SwapParamsStruct = {
-            swapTarget: constants.AddressZero,
-            swapAmountInDataIndex: 0,
-            maxGasForCall: 0,
-            swapData: swapData,
-        };
-
-        const maxDailyRate = (await borrowingManager.getHoldTokenInfo(WETH_ADDRESS, WBTC_ADDRESS))[0];
-
-        let params = {
-            internalSwapPoolfee: 500,
-            saleToken: WETH_ADDRESS,
-            holdToken: WBTC_ADDRESS,
-            minHoldTokenOut: amountWBTC,
-            maxMarginDeposit: maxMarginDepositWBTC,
-            maxDailyRate: maxDailyRate,
-            externalSwap: swapParams,
-            loans: loans,
-        };
-
-        await borrowingManager.connect(bob).borrow(params, deadline);
-
-        const borrowingKey = (await borrowingManager.getBorrowingKeysForBorrower(bob.address))[0];
-
-        await maxApprove(alice, router.address, [WBTC_ADDRESS]);
-
-        let swapping: ISwapRouter.ExactInputSingleParamsStruct = {
-            tokenIn: WBTC_ADDRESS,
-            tokenOut: WETH_ADDRESS,
-            fee: 500,
-            recipient: alice.address,
-            deadline: deadline,
-            amountIn: amountSwapWBTC,
-            amountOutMinimum: 0,
-            sqrtPriceLimitX96: 0
-        };
-        let snapshot: SnapshotRestorer = await takeSnapshot();
-        let SqrtPriceLimitX96 = await getSqrtPriceLimitX96(pool500_WBTC_WETH, WETH_ADDRESS, WBTC_ADDRESS, "0.01");// 0.01%
-        await router.connect(alice).exactInputSingle(swapping);
-
-        let paramsRep: LiquidityBorrowingManager.RepayParamsStruct = {
-            returnOnlyHoldToken: true,
-            isEmergency: false,
-            internalSwapPoolfee: 500,
-            externalSwap: swapParams,
-            borrowingKey: borrowingKey,
-            sqrtPriceLimitX96: SqrtPriceLimitX96
-        };
-        await expect(borrowingManager.connect(bob).repay(paramsRep, deadline)).to.be.reverted;
-        await snapshot.restore();
-        SqrtPriceLimitX96 = await getSqrtPriceLimitX96(pool500_WBTC_WETH, WETH_ADDRESS, WBTC_ADDRESS, "0.5");// 0.5%
-        await router.connect(alice).exactInputSingle(swapping);
-
-        paramsRep = {
-            returnOnlyHoldToken: true,
-            isEmergency: false,
-            internalSwapPoolfee: 500,
-            externalSwap: swapParams,
-            borrowingKey: borrowingKey,
-            sqrtPriceLimitX96: SqrtPriceLimitX96
-        };
-        expect(await borrowingManager.connect(bob).repay(paramsRep, deadline)).to.be.ok;
-
-        await snapshot.restore();
-        await router.connect(alice).exactInputSingle(swapping);
-
-        let swap_params = ethers.utils.defaultAbiCoder.encode(
-            ["address", "address", "uint256", "uint256"],
-            [WBTC_ADDRESS, WETH_ADDRESS, 0, 0]
-        );
-        swapData = swapIface.encodeFunctionData("swap", [swap_params]);
-        swapParams = {
-            swapTarget: aggregatorMock.address,
-            swapAmountInDataIndex: 3,
-            maxGasForCall: 0,
-            swapData: swapData,
-        };
-        paramsRep = {
-            returnOnlyHoldToken: true,
-            isEmergency: false,
-            internalSwapPoolfee: 500,
-            externalSwap: swapParams,
-            borrowingKey: borrowingKey,
-            sqrtPriceLimitX96: SqrtPriceLimitX96
-        };
-
-        expect(await borrowingManager.connect(bob).repay(paramsRep, deadline)).to.be.ok;
-        await snapshot.restore();
-        SqrtPriceLimitX96 = await getSqrtPriceLimitX96(pool500_WBTC_WETH, WETH_ADDRESS, WBTC_ADDRESS, "0.5");// 0.5%
-        await router.connect(alice).exactInputSingle(swapping);
-
-        swap_params = ethers.utils.defaultAbiCoder.encode(
-            ["address", "address", "uint256", "uint256"],
-            [WBTC_ADDRESS, WETH_ADDRESS, 0, 0]
-        );
-        const badswap = new ethers.utils.Interface(["function badswap(bytes calldata wrappedCallData)"]);
-        swapData = badswap.encodeFunctionData("badswap", [swap_params]);
-        await borrowingManager.connect(owner).setSwapCallToWhitelist(aggregatorMock.address, "0x72065364", true);
-        swapParams = {
-            swapTarget: aggregatorMock.address,
-            swapAmountInDataIndex: 3,
-            maxGasForCall: 0,
-            swapData: swapData,
-        };
-        paramsRep = {
-            returnOnlyHoldToken: true,
-            isEmergency: false,
-            internalSwapPoolfee: 500,
-            externalSwap: swapParams,
-            borrowingKey: borrowingKey,
-            sqrtPriceLimitX96: SqrtPriceLimitX96
-        };
-        //SwapSlippageCheckError(expectedOut: 882900549318654829, receivedOut: 8829005493186548)
-        await expect(borrowingManager.connect(bob).repay(paramsRep, deadline)).to.be.reverted;
-
-    });
-
 
     it("LEFT_OUTRANGE_TOKEN_1 borrowing liquidity (long position WBTC zeroForSaleToken = false)  will be successful", async () => {
         await snapshot_global.restore();
@@ -622,23 +486,17 @@ describe("WagmiLeverageTests", () => {
             },
         ];
 
-        const swapParams: ApproveSwapAndPay.SwapParamsStruct = {
-            swapTarget: constants.AddressZero,
-            swapAmountInDataIndex: 0,
-            maxGasForCall: 0,
-            swapData: swapData,
-        };
 
         const maxDailyRate = (await borrowingManager.getHoldTokenInfo(WETH_ADDRESS, WBTC_ADDRESS))[0];
 
-        let params: LiquidityBorrowingManager.BorrowParamsStruct = {
+        let params: ILiquidityBorrowingManager.BorrowParamsStruct = {
             internalSwapPoolfee: 500,
             saleToken: WETH_ADDRESS,
             holdToken: WBTC_ADDRESS,
             minHoldTokenOut: amountWBTC.mul(2), //<=TooLittleReceivedError
             maxMarginDeposit: maxMarginDepositWBTC,
             maxDailyRate: maxDailyRate,
-            externalSwap: swapParams,
+            externalSwap: [],
             loans: loans,
         };
 
@@ -651,7 +509,7 @@ describe("WagmiLeverageTests", () => {
             minHoldTokenOut: amountWBTC,
             maxMarginDeposit: maxMarginDepositWBTC,
             maxDailyRate: maxDailyRate,
-            externalSwap: swapParams,
+            externalSwap: [],
             loans: loans,
         };
 
@@ -671,23 +529,18 @@ describe("WagmiLeverageTests", () => {
             },
         ];
 
-        const swapParams: ApproveSwapAndPay.SwapParamsStruct = {
-            swapTarget: constants.AddressZero,
-            swapAmountInDataIndex: 0,
-            maxGasForCall: 0,
-            swapData: swapData,
-        };
+
 
         const maxDailyRate = (await borrowingManager.getHoldTokenInfo(WETH_ADDRESS, WBTC_ADDRESS))[0];
 
-        const params: LiquidityBorrowingManager.BorrowParamsStruct = {
+        const params: ILiquidityBorrowingManager.BorrowParamsStruct = {
             internalSwapPoolfee: 500,
             saleToken: WETH_ADDRESS,
             holdToken: WBTC_ADDRESS,
             minHoldTokenOut: amountWBTC,
             maxMarginDeposit: maxMarginDepositWBTC,
             maxDailyRate: maxDailyRate,
-            externalSwap: swapParams,
+            externalSwap: [],
             loans: loans,
         };
 
@@ -713,28 +566,23 @@ describe("WagmiLeverageTests", () => {
             },
         ];
 
-        const swapParams: ApproveSwapAndPay.SwapParamsStruct = {
-            swapTarget: constants.AddressZero,
-            swapAmountInDataIndex: 0,
-            maxGasForCall: 0,
-            swapData: swapData,
-        };
+
 
         const maxDailyRate = (await borrowingManager.getHoldTokenInfo(WETH_ADDRESS, WBTC_ADDRESS))[0];
 
-        const params: LiquidityBorrowingManager.BorrowParamsStruct = {
+        const params: ILiquidityBorrowingManager.BorrowParamsStruct = {
             internalSwapPoolfee: 500,
             saleToken: WETH_ADDRESS,
             holdToken: WBTC_ADDRESS,
             minHoldTokenOut: amountWBTC,
             maxMarginDeposit: maxMarginDepositWBTC,
             maxDailyRate: maxDailyRate,
-            externalSwap: swapParams,
+            externalSwap: [],
             loans: loans,
         };
 
         let snapshot: SnapshotRestorer = await takeSnapshot();
-        let debt: LiquidityBorrowingManager.BorrowingInfoExtStructOutput = (
+        let debt: ILiquidityBorrowingManager.BorrowingInfoExtStructOutput = (
             await borrowingManager.getBorrowerDebtsInfo(bob.address)
         )[0];
         //let collateralDebt = debt.collateralBalance.div(COLLATERAL_BALANCE_PRECISION);
@@ -750,20 +598,16 @@ describe("WagmiLeverageTests", () => {
     it("repay borrowing and restore liquidity (long position WBTC zeroForSaleToken = false) will be successful", async () => {
         const borrowingKey = (await borrowingManager.getBorrowingKeysForBorrower(bob.address))[0];
         const deadline = (await time.latest()) + 60;
-        const swapParams: ApproveSwapAndPay.SwapParamsStruct = {
-            swapTarget: constants.AddressZero,
-            swapAmountInDataIndex: 0,
-            maxGasForCall: 0,
-            swapData: swapData,
-        };
+
 
         let params = {
             returnOnlyHoldToken: true,
             isEmergency: false,
             internalSwapPoolfee: 500,
-            externalSwap: swapParams,
+            externalSwap: [],
             borrowingKey: borrowingKey,
-            sqrtPriceLimitX96: 0
+            minHoldTokenOut: BigNumber.from(0),
+            minSaleTokenOut: BigNumber.from(0)
         };
         await borrowingManager.connect(bob).repay(params, deadline);
         const rateInfo = await borrowingManager.getHoldTokenInfo(WETH_ADDRESS, WBTC_ADDRESS);
@@ -786,24 +630,19 @@ describe("WagmiLeverageTests", () => {
             },
         ];
 
-        const swapParams: ApproveSwapAndPay.SwapParamsStruct = {
-            swapTarget: constants.AddressZero,
-            swapAmountInDataIndex: 0,
-            maxGasForCall: 0,
-            swapData: swapData,
-        };
+
 
         const maxDailyRate = (await borrowingManager.getHoldTokenInfo(WBTC_ADDRESS, WETH_ADDRESS))[0];
 
 
-        let params: LiquidityBorrowingManager.BorrowParamsStruct = {
+        let params: ILiquidityBorrowingManager.BorrowParamsStruct = {
             internalSwapPoolfee: 500,
             saleToken: WBTC_ADDRESS,
             holdToken: WETH_ADDRESS,
             minHoldTokenOut: amountWETH.mul(2), //<=TooLittleReceivedError
             maxMarginDeposit: maxMarginDeposit,
             maxDailyRate: maxDailyRate,
-            externalSwap: swapParams,
+            externalSwap: [],
             loans: loans,
         };
 
@@ -816,7 +655,7 @@ describe("WagmiLeverageTests", () => {
             minHoldTokenOut: amountWETH,
             maxMarginDeposit: maxMarginDeposit,
             maxDailyRate: maxDailyRate,
-            externalSwap: swapParams,
+            externalSwap: [],
             loans: loans,
         };
 
@@ -836,23 +675,16 @@ describe("WagmiLeverageTests", () => {
             },
         ];
 
-        const swapParams: ApproveSwapAndPay.SwapParamsStruct = {
-            swapTarget: constants.AddressZero,
-            swapAmountInDataIndex: 0,
-            maxGasForCall: 0,
-            swapData: swapData,
-        };
-
         const maxDailyRate = (await borrowingManager.getHoldTokenInfo(WBTC_ADDRESS, WETH_ADDRESS))[0];
 
-        const params: LiquidityBorrowingManager.BorrowParamsStruct = {
+        const params: ILiquidityBorrowingManager.BorrowParamsStruct = {
             internalSwapPoolfee: 500,
             saleToken: WBTC_ADDRESS,
             holdToken: WETH_ADDRESS,
             minHoldTokenOut: amountWETH,
             maxMarginDeposit: maxMarginDeposit,
             maxDailyRate: maxDailyRate,
-            externalSwap: swapParams,
+            externalSwap: [],
             loans: loans,
         };
         let snapshot: SnapshotRestorer = await takeSnapshot();
@@ -876,28 +708,23 @@ describe("WagmiLeverageTests", () => {
             },
         ];
 
-        const swapParams: ApproveSwapAndPay.SwapParamsStruct = {
-            swapTarget: constants.AddressZero,
-            swapAmountInDataIndex: 0,
-            maxGasForCall: 0,
-            swapData: swapData,
-        };
+
 
         const maxDailyRate = (await borrowingManager.getHoldTokenInfo(WBTC_ADDRESS, WETH_ADDRESS))[0];
 
-        const params: LiquidityBorrowingManager.BorrowParamsStruct = {
+        const params: ILiquidityBorrowingManager.BorrowParamsStruct = {
             internalSwapPoolfee: 500,
             saleToken: WBTC_ADDRESS,
             holdToken: WETH_ADDRESS,
             minHoldTokenOut: amountWETH,
             maxMarginDeposit: maxMarginDeposit,
             maxDailyRate: maxDailyRate,
-            externalSwap: swapParams,
+            externalSwap: [],
             loans: loans,
         };
 
         let snapshot: SnapshotRestorer = await takeSnapshot();
-        let debt: LiquidityBorrowingManager.BorrowingInfoExtStructOutput = (
+        let debt: ILiquidityBorrowingManager.BorrowingInfoExtStructOutput = (
             await borrowingManager.getBorrowerDebtsInfo(bob.address)
         )[0];
         //let collateralDebt = debt.collateralBalance.div(COLLATERAL_BALANCE_PRECISION);
@@ -913,20 +740,16 @@ describe("WagmiLeverageTests", () => {
     it("repay borrowing and restore liquidity (long position WETH zeroForSaleToken = true) will be successful", async () => {
         const borrowingKey = (await borrowingManager.getBorrowingKeysForBorrower(bob.address))[0];
         const deadline = (await time.latest()) + 60;
-        const swapParams: ApproveSwapAndPay.SwapParamsStruct = {
-            swapTarget: constants.AddressZero,
-            swapAmountInDataIndex: 0,
-            maxGasForCall: 0,
-            swapData: swapData,
-        };
+
 
         let params = {
             returnOnlyHoldToken: true,
             isEmergency: false,
             internalSwapPoolfee: 500,
-            externalSwap: swapParams,
+            externalSwap: [],
             borrowingKey: borrowingKey,
-            sqrtPriceLimitX96: 0
+            minHoldTokenOut: BigNumber.from(0),
+            minSaleTokenOut: BigNumber.from(0)
         };
         await borrowingManager.connect(bob).repay(params, deadline);
         const rateInfo = await borrowingManager.getHoldTokenInfo(WBTC_ADDRESS, WETH_ADDRESS);
@@ -949,23 +772,17 @@ describe("WagmiLeverageTests", () => {
             },
         ];
 
-        const swapParams: ApproveSwapAndPay.SwapParamsStruct = {
-            swapTarget: constants.AddressZero,
-            swapAmountInDataIndex: 0,
-            maxGasForCall: 0,
-            swapData: swapData,
-        };
 
         const maxDailyRate = (await borrowingManager.getHoldTokenInfo(USDT_ADDRESS, WETH_ADDRESS))[0];
 
-        let params: LiquidityBorrowingManager.BorrowParamsStruct = {
+        let params: ILiquidityBorrowingManager.BorrowParamsStruct = {
             internalSwapPoolfee: 500,
             saleToken: USDT_ADDRESS,
             holdToken: WETH_ADDRESS,
             minHoldTokenOut: amountWETH.mul(2), //<=TooLittleReceivedError
             maxMarginDeposit: maxMarginDeposit,
             maxDailyRate: maxDailyRate,
-            externalSwap: swapParams,
+            externalSwap: [],
             loans: loans,
         };
 
@@ -978,7 +795,7 @@ describe("WagmiLeverageTests", () => {
             minHoldTokenOut: amountWETH,
             maxMarginDeposit: maxMarginDeposit,
             maxDailyRate: maxDailyRate,
-            externalSwap: swapParams,
+            externalSwap: [],
             loans: loans,
         };
 
@@ -998,23 +815,18 @@ describe("WagmiLeverageTests", () => {
             },
         ];
 
-        const swapParams: ApproveSwapAndPay.SwapParamsStruct = {
-            swapTarget: constants.AddressZero,
-            swapAmountInDataIndex: 0,
-            maxGasForCall: 0,
-            swapData: swapData,
-        };
+
 
         const maxDailyRate = (await borrowingManager.getHoldTokenInfo(USDT_ADDRESS, WETH_ADDRESS))[0];
 
-        const params: LiquidityBorrowingManager.BorrowParamsStruct = {
+        const params: ILiquidityBorrowingManager.BorrowParamsStruct = {
             internalSwapPoolfee: 500,
             saleToken: USDT_ADDRESS,
             holdToken: WETH_ADDRESS,
             minHoldTokenOut: amountWETH,
             maxMarginDeposit: maxMarginDeposit,
             maxDailyRate: maxDailyRate,
-            externalSwap: swapParams,
+            externalSwap: [],
             loans: loans,
         };
 
@@ -1035,28 +847,22 @@ describe("WagmiLeverageTests", () => {
             },
         ];
 
-        const swapParams: ApproveSwapAndPay.SwapParamsStruct = {
-            swapTarget: constants.AddressZero,
-            swapAmountInDataIndex: 0,
-            maxGasForCall: 0,
-            swapData: swapData,
-        };
 
         const maxDailyRate = (await borrowingManager.getHoldTokenInfo(USDT_ADDRESS, WETH_ADDRESS))[0];
 
-        const params: LiquidityBorrowingManager.BorrowParamsStruct = {
+        const params: ILiquidityBorrowingManager.BorrowParamsStruct = {
             internalSwapPoolfee: 500,
             saleToken: USDT_ADDRESS,
             holdToken: WETH_ADDRESS,
             minHoldTokenOut: amountWETH,
             maxMarginDeposit: maxMarginDeposit,
             maxDailyRate: maxDailyRate,
-            externalSwap: swapParams,
+            externalSwap: [],
             loans: loans,
         };
 
         let snapshot: SnapshotRestorer = await takeSnapshot();
-        let debt: LiquidityBorrowingManager.BorrowingInfoExtStructOutput = (
+        let debt: ILiquidityBorrowingManager.BorrowingInfoExtStructOutput = (
             await borrowingManager.getBorrowerDebtsInfo(bob.address)
         )[0];
         //let collateralDebt = debt.collateralBalance.div(COLLATERAL_BALANCE_PRECISION);
@@ -1072,20 +878,16 @@ describe("WagmiLeverageTests", () => {
     it("repay borrowing and restore liquidity will be successful", async () => {
         const borrowingKey = (await borrowingManager.getBorrowingKeysForBorrower(bob.address))[0];
         const deadline = (await time.latest()) + 60;
-        const swapParams: ApproveSwapAndPay.SwapParamsStruct = {
-            swapTarget: constants.AddressZero,
-            swapAmountInDataIndex: 0,
-            maxGasForCall: 0,
-            swapData: swapData,
-        };
+
 
         let params = {
             returnOnlyHoldToken: true,
             isEmergency: false,
             internalSwapPoolfee: 500,
-            externalSwap: swapParams,
+            externalSwap: [],
             borrowingKey: borrowingKey,
-            sqrtPriceLimitX96: 0
+            minHoldTokenOut: BigNumber.from(0),
+            minSaleTokenOut: BigNumber.from(0)
         };
         await borrowingManager.connect(bob).repay(params, deadline);
         const rateInfo = await borrowingManager.getHoldTokenInfo(USDT_ADDRESS, WETH_ADDRESS);
@@ -1105,9 +907,8 @@ describe("WagmiLeverageTests", () => {
         );
         swapData = swapIface.encodeFunctionData("swap", [swap_params]);
 
-        let swapParams: ApproveSwapAndPay.SwapParamsStruct = {
+        let swapParams: IApproveSwapAndPay.SwapParamsStruct = {
             swapTarget: aggregatorMock.address,
-            swapAmountInDataIndex: 3,
             maxGasForCall: 0,
             swapData: swapData,
         };
@@ -1136,7 +937,7 @@ describe("WagmiLeverageTests", () => {
             minHoldTokenOut: BigNumber.from(1), //amountWBTC,
             maxMarginDeposit: maxMarginDepositWBTC,
             maxDailyRate: maxDailyRate,
-            externalSwap: swapParams,
+            externalSwap: [swapParams],
             loans: loans,
         };
 
@@ -1155,9 +956,8 @@ describe("WagmiLeverageTests", () => {
         );
         swapData = swapIface.encodeFunctionData("swap", [swap_params]);
 
-        let swapParams: ApproveSwapAndPay.SwapParamsStruct = {
+        let swapParams: IApproveSwapAndPay.SwapParamsStruct = {
             swapTarget: aggregatorMock.address,
-            swapAmountInDataIndex: 3,
             maxGasForCall: 0,
             swapData: swapData,
         };
@@ -1179,14 +979,14 @@ describe("WagmiLeverageTests", () => {
 
         const maxDailyRate = (await borrowingManager.getHoldTokenInfo(WETH_ADDRESS, WBTC_ADDRESS))[0];
 
-        let params: LiquidityBorrowingManager.BorrowParamsStruct = {
+        let params: ILiquidityBorrowingManager.BorrowParamsStruct = {
             internalSwapPoolfee: 500,
             saleToken: WETH_ADDRESS,
             holdToken: WBTC_ADDRESS,
             minHoldTokenOut: amountWBTC,
             maxMarginDeposit: maxMarginDepositWBTC,
             maxDailyRate: maxDailyRate,
-            externalSwap: swapParams,
+            externalSwap: [swapParams],
             loans: loans,
         };
 
@@ -1201,15 +1001,16 @@ describe("WagmiLeverageTests", () => {
         const maxMarginDeposit = amountWETH.div(minLeverageDesired);
         const maxMarginDepositWBTC = amountWBTC.div(minLeverageDesired);
 
+        let amountIn = ethers.utils.parseUnits("0.5", 18);//amountWETH
+
         let swap_params = ethers.utils.defaultAbiCoder.encode(
             ["address", "address", "uint256", "uint256"],
-            [WETH_ADDRESS, WBTC_ADDRESS, 0, 0]
+            [WETH_ADDRESS, WBTC_ADDRESS, amountIn, 0]
         );
         swapData = swapIface.encodeFunctionData("swap", [swap_params]);
 
-        let swapParams: ApproveSwapAndPay.SwapParamsStruct = {
+        let swapParams: IApproveSwapAndPay.SwapParamsStruct = {
             swapTarget: aggregatorMock.address,
-            swapAmountInDataIndex: 3,
             maxGasForCall: 0,
             swapData: swapData,
         };
@@ -1238,7 +1039,7 @@ describe("WagmiLeverageTests", () => {
             minHoldTokenOut: amountWBTC,
             maxMarginDeposit: maxMarginDepositWBTC,
             maxDailyRate: maxDailyRate,
-            externalSwap: swapParams,
+            externalSwap: [swapParams],
             loans: loans,
         };
         await borrowingManager.connect(bob).borrow(params, deadline);
@@ -1249,16 +1050,15 @@ describe("WagmiLeverageTests", () => {
         expect(collateralBalance).to.be.equal(
             ethers.utils.parseUnits(debt.info.borrowedAmount.mul(10).div(10000).add(roundUpvalue).toString(), 18)
         ); // 0.1% borrowedAmount
-
+        amountIn = ethers.utils.parseUnits("10", 6);//amount usdt
         swap_params = ethers.utils.defaultAbiCoder.encode(
             ["address", "address", "uint256", "uint256"],
-            [USDT_ADDRESS, WETH_ADDRESS, 0, 0]
+            [USDT_ADDRESS, WETH_ADDRESS, amountIn, 0]
         );
         swapData = swapIface.encodeFunctionData("swap", [swap_params]);
 
         swapParams = {
             swapTarget: aggregatorMock.address,
-            swapAmountInDataIndex: 3,
             maxGasForCall: 0,
             swapData: swapData,
         };
@@ -1287,7 +1087,7 @@ describe("WagmiLeverageTests", () => {
             minHoldTokenOut: amountWETH,
             maxMarginDeposit: maxMarginDeposit,
             maxDailyRate: maxDailyRate,
-            externalSwap: swapParams,
+            externalSwap: [swapParams],
             loans: loans,
         };
 
@@ -1330,37 +1130,25 @@ describe("WagmiLeverageTests", () => {
     });
 
     it("emergency repay will be successful for PosManNFT owner if the collateral is depleted", async () => {
-        let debt: LiquidityBorrowingManager.BorrowingInfoExtStructOutput[] =
+        let debt: ILiquidityBorrowingManager.BorrowingInfoExtStructOutput[] =
             await borrowingManager.getBorrowerDebtsInfo(bob.address);
         await time.increase(debt[1].estimatedLifeTime.toNumber() + 1);
 
         let borrowingKey = (await borrowingManager.getBorrowingKeysForBorrower(bob.address))[1];
         let deadline = (await time.latest()) + 60;
 
-        let swap_params = ethers.utils.defaultAbiCoder.encode(
-            ["address", "address", "uint256", "uint256"],
-            [constants.AddressZero, constants.AddressZero, 0, 0]
-        );
-        swapData = swapIface.encodeFunctionData("swap", [swap_params]);
-
-        let swapParams: ApproveSwapAndPay.SwapParamsStruct = {
-            swapTarget: constants.AddressZero,
-            swapAmountInDataIndex: 0,
-            maxGasForCall: 0,
-            swapData: swapData,
-        };
-
-        let params: LiquidityBorrowingManager.RepayParamsStruct = {
+        let params: ILiquidityBorrowingManager.RepayParamsStruct = {
             returnOnlyHoldToken: true,
             isEmergency: true, //emergency
             internalSwapPoolfee: 0,
-            externalSwap: swapParams,
+            externalSwap: [],
             borrowingKey: borrowingKey,
-            sqrtPriceLimitX96: 0,
+            minHoldTokenOut: BigNumber.from(0),
+            minSaleTokenOut: BigNumber.from(0)
         };
 
         //console.log(debt);
-        let loans: LiquidityManager.LoanInfoStructOutput[] = await borrowingManager.getLoansInfo(borrowingKey);
+        let loans: ILiquidityManager.LoanInfoStructOutput[] = await borrowingManager.getLoansInfo(borrowingKey);
         expect(loans.length).to.equal(3);
         //console.log(loans);
         await expect(borrowingManager.connect(alice).repay(params, deadline))
@@ -1416,26 +1204,28 @@ describe("WagmiLeverageTests", () => {
         let borrowingKey = (await borrowingManager.getBorrowingKeysForBorrower(bob.address))[1];
         let deadline = (await time.latest()) + 60;
 
+        let amountIn = ethers.utils.parseUnits("0.01", 18);
+
         let swap_params = ethers.utils.defaultAbiCoder.encode(
             ["address", "address", "uint256", "uint256"],
-            [WETH_ADDRESS, USDT_ADDRESS, 0, 0]
+            [WETH_ADDRESS, USDT_ADDRESS, amountIn, 0]
         );
         swapData = swapIface.encodeFunctionData("swap", [swap_params]);
 
-        let swapParams: ApproveSwapAndPay.SwapParamsStruct = {
+        let swapParams: IApproveSwapAndPay.SwapParamsStruct = {
             swapTarget: aggregatorMock.address,
-            swapAmountInDataIndex: 3,
             maxGasForCall: 0,
             swapData: swapData,
         };
 
-        let params: LiquidityBorrowingManager.RepayParamsStruct = {
+        let params: ILiquidityBorrowingManager.RepayParamsStruct = {
             returnOnlyHoldToken: true,
             isEmergency: false,
             internalSwapPoolfee: 500,
-            externalSwap: swapParams,
+            externalSwap: [swapParams],
             borrowingKey: borrowingKey,
-            sqrtPriceLimitX96: 0
+            minHoldTokenOut: BigNumber.from(0),
+            minSaleTokenOut: BigNumber.from(0)
         };
 
         await borrowingManager.connect(alice).repay(params, deadline);
@@ -1445,20 +1235,15 @@ describe("WagmiLeverageTests", () => {
 
         // WBTC_WETH
         borrowingKey = (await borrowingManager.getBorrowingKeysForBorrower(bob.address))[0];
-        // internal swap
-        swapParams = {
-            swapTarget: constants.AddressZero,
-            swapAmountInDataIndex: 0,
-            maxGasForCall: 0,
-            swapData: "0x",
-        };
+
         params = {
             returnOnlyHoldToken: true,
             isEmergency: false,
             internalSwapPoolfee: 500,
-            externalSwap: swapParams,
+            externalSwap: [],
             borrowingKey: borrowingKey,
-            sqrtPriceLimitX96: 0
+            minHoldTokenOut: BigNumber.from(0),
+            minSaleTokenOut: BigNumber.from(0)
         };
         await expect(borrowingManager.connect(alice).repay(params, deadline)).to.be.reverted; // too old
         deadline = (await time.latest()) + 60;
@@ -1537,7 +1322,7 @@ describe("WagmiLeverageTests", () => {
         const { balance, estimatedLifeTime } = await borrowingManager.checkDailyRateCollateral(borrowingKey);
         expect(balance).to.be.gt(0);
         expect(estimatedLifeTime).to.be.gt(86000);
-        let extinfo: LiquidityBorrowingManager.BorrowingInfoExtStructOutput[] =
+        let extinfo: ILiquidityBorrowingManager.BorrowingInfoExtStructOutput[] =
             await borrowingManager.getLenderCreditsInfo(nftpos[0].tokenId);
         expect(extinfo[0].key).to.be.equal(borrowingKey);
         expect(await borrowingManager.getLenderCreditsCount(nftpos[0].tokenId)).to.be.equal(1);
@@ -1554,7 +1339,7 @@ describe("WagmiLeverageTests", () => {
         extinfo = await borrowingManager.getBorrowerDebtsInfo(bob.address);
         expect(extinfo[1].key).to.be.equal(borrowingKey);
 
-        const loansInfo: LiquidityManager.LoanInfoStructOutput[] = await borrowingManager.getLoansInfo(borrowingKey);
+        const loansInfo: ILiquidityManager.LoanInfoStructOutput[] = await borrowingManager.getLoansInfo(borrowingKey);
         expect(loansInfo.length).to.be.equal(3);
         expect(loansInfo[0].tokenId).to.be.equal(nftpos[0].tokenId);
     });
@@ -1563,29 +1348,31 @@ describe("WagmiLeverageTests", () => {
         const borrowingKey = (await borrowingManager.getBorrowingKeysForBorrower(bob.address))[1];
         const deadline = (await time.latest()) + 60;
 
+        let amountIn = ethers.utils.parseUnits("0.1", 18);
+
         const swap_params = ethers.utils.defaultAbiCoder.encode(
             ["address", "address", "uint256", "uint256"],
-            [WETH_ADDRESS, USDT_ADDRESS, 0, 0]
+            [WETH_ADDRESS, USDT_ADDRESS, amountIn, 0]
         );
         const nonWhitelistedSwapIface = new ethers.utils.Interface([
             "function nonWhitelistedSwap(bytes calldata wrappedCallData)",
         ]);
         swapData = nonWhitelistedSwapIface.encodeFunctionData("nonWhitelistedSwap", [swap_params]);
 
-        const swapParams: ApproveSwapAndPay.SwapParamsStruct = {
+        const swapParams: IApproveSwapAndPay.SwapParamsStruct = {
             swapTarget: aggregatorMock.address,
-            swapAmountInDataIndex: 3,
             maxGasForCall: 0,
             swapData: swapData,
         };
 
-        const params: LiquidityBorrowingManager.RepayParamsStruct = {
+        const params: ILiquidityBorrowingManager.RepayParamsStruct = {
             returnOnlyHoldToken: true,
             isEmergency: false,
             internalSwapPoolfee: 500,
-            externalSwap: swapParams,
+            externalSwap: [swapParams],
             borrowingKey: borrowingKey,
-            sqrtPriceLimitX96: 0
+            minHoldTokenOut: BigNumber.from(0),
+            minSaleTokenOut: BigNumber.from(0)
         };
         await expect(borrowingManager.connect(bob).repay(params, deadline)).to.be.reverted;
     });
@@ -1594,26 +1381,28 @@ describe("WagmiLeverageTests", () => {
         let borrowingKey = (await borrowingManager.getBorrowingKeysForBorrower(bob.address))[1];
         const deadline = (await time.latest()) + 60;
 
+        let amountIn = ethers.utils.parseUnits("0.01", 18);
+
         let swap_params = ethers.utils.defaultAbiCoder.encode(
             ["address", "address", "uint256", "uint256"],
-            [WETH_ADDRESS, USDT_ADDRESS, 0, 0]
+            [WETH_ADDRESS, USDT_ADDRESS, amountIn, 0]
         );
         swapData = swapIface.encodeFunctionData("swap", [swap_params]);
 
-        let swapParams: ApproveSwapAndPay.SwapParamsStruct = {
+        let swapParams: IApproveSwapAndPay.SwapParamsStruct = {
             swapTarget: aggregatorMock.address,
-            swapAmountInDataIndex: 3,
             maxGasForCall: 0,
             swapData: swapData,
         };
 
-        let params: LiquidityBorrowingManager.RepayParamsStruct = {
+        let params: ILiquidityBorrowingManager.RepayParamsStruct = {
             returnOnlyHoldToken: true,
             isEmergency: false,
             internalSwapPoolfee: 500,
-            externalSwap: swapParams,
+            externalSwap: [swapParams],
             borrowingKey: borrowingKey,
-            sqrtPriceLimitX96: 0
+            minHoldTokenOut: BigNumber.from(0),
+            minSaleTokenOut: BigNumber.from(0)
         };
         // borrower only
         await expect(borrowingManager.connect(alice).repay(params, deadline)).to.be.reverted;
@@ -1624,15 +1413,15 @@ describe("WagmiLeverageTests", () => {
         // WBTC_WETH
         borrowingKey = (await borrowingManager.getBorrowingKeysForBorrower(bob.address))[0];
         // external swap
+        amountIn = ethers.utils.parseUnits("0.001", 8);
         swap_params = ethers.utils.defaultAbiCoder.encode(
             ["address", "address", "uint256", "uint256"],
-            [WBTC_ADDRESS, WETH_ADDRESS, 0, 0]
+            [WBTC_ADDRESS, WETH_ADDRESS, amountIn, 0]
         );
         swapData = swapIface.encodeFunctionData("swap", [swap_params]);
 
         swapParams = {
             swapTarget: aggregatorMock.address,
-            swapAmountInDataIndex: 3,
             maxGasForCall: 0,
             swapData: swapData,
         };
@@ -1641,9 +1430,10 @@ describe("WagmiLeverageTests", () => {
             returnOnlyHoldToken: true,
             isEmergency: false,
             internalSwapPoolfee: 500,
-            externalSwap: swapParams,
+            externalSwap: [swapParams],
             borrowingKey: borrowingKey,
-            sqrtPriceLimitX96: 0
+            minHoldTokenOut: BigNumber.from(0),
+            minSaleTokenOut: BigNumber.from(0)
         };
         await expect(borrowingManager.connect(alice).repay(params, deadline)).to.be.reverted;
         await borrowingManager.connect(bob).repay(params, deadline);
@@ -1684,6 +1474,8 @@ describe("WagmiLeverageTests", () => {
         const amountUSDT = ethers.utils.parseUnits("100", 6);
         const $ApproveSwapAndPay = await ethers.getContractFactory("$ApproveSwapAndPay");
         const $approveSwapAndPay = await $ApproveSwapAndPay.deploy(UNISWAP_V3_FACTORY, UNISWAP_V3_POOL_INIT_CODE_HASH);
+        await $approveSwapAndPay.deployed();
+
         await maxApprove(owner, $approveSwapAndPay.address, [USDT_ADDRESS]);
         await $approveSwapAndPay.$_pay(USDT_ADDRESS, owner.address, $approveSwapAndPay.address, amountUSDT);
         const usdtBalance = await $approveSwapAndPay.$_getBalance(USDT_ADDRESS);
@@ -1698,25 +1490,26 @@ describe("WagmiLeverageTests", () => {
         await $approveSwapAndPay.$_v3SwapExactInput(v3SwapExactInputParams);
 
         await $approveSwapAndPay.$_pay(USDT_ADDRESS, owner.address, $approveSwapAndPay.address, amountUSDT);
-
+        let amountIn = ethers.utils.parseUnits("1", 6);
         let swap_params = ethers.utils.defaultAbiCoder.encode(
             ["address", "address", "uint256", "uint256"],
-            [USDT_ADDRESS, WETH_ADDRESS, 0, 0]
+            [USDT_ADDRESS, WETH_ADDRESS, amountIn, 0]
         );
         swapData = swapIface.encodeFunctionData("swap", [swap_params]);
 
-        let swapParams: ApproveSwapAndPay.SwapParamsStruct = {
+        let swapParams: IApproveSwapAndPay.SwapParamsStruct = {
             swapTarget: aggregatorMock.address,
-            swapAmountInDataIndex: 3,
             maxGasForCall: 0,
             swapData: swapData,
         };
 
         await expect(
-            $approveSwapAndPay.$_patchAmountsAndCallSwap(USDT_ADDRESS, WETH_ADDRESS, swapParams, amountUSDT, 0)
+            $approveSwapAndPay.$_callExternalSwap(USDT_ADDRESS, [swapParams])
         ).to.be.reverted; //swap is not white-listed
-        await $approveSwapAndPay.$setSwapCallToWhitelist(aggregatorMock.address, "0x627dd56a", true);
-        await $approveSwapAndPay.$_patchAmountsAndCallSwap(USDT_ADDRESS, WETH_ADDRESS, swapParams, amountUSDT, 0);
+
+        await $approveSwapAndPay.$_setSwapCallToWhitelist(aggregatorMock.address, "0x627dd56a", true);
+
+        await $approveSwapAndPay.$_callExternalSwap(USDT_ADDRESS, [swapParams]);
 
         await $approveSwapAndPay.$_pay(USDT_ADDRESS, owner.address, $approveSwapAndPay.address, amountUSDT);
         // without patching
@@ -1728,11 +1521,10 @@ describe("WagmiLeverageTests", () => {
 
         swapParams = {
             swapTarget: aggregatorMock.address,
-            swapAmountInDataIndex: 3,
             maxGasForCall: 1000000,
             swapData: swapData,
         };
-        await $approveSwapAndPay.$_patchAmountsAndCallSwap(USDT_ADDRESS, WETH_ADDRESS, swapParams, 0, 0);
+        await $approveSwapAndPay.$_callExternalSwap(USDT_ADDRESS, [swapParams]);
         await $approveSwapAndPay.$_maxApproveIfNecessary(USDT_ADDRESS, aggregatorMock.address, constants.MaxUint256);
 
         let factoryMockERC20FailApprove = await ethers.getContractFactory("MockERC20FailApprove");
@@ -1763,7 +1555,7 @@ describe("WagmiLeverageTests", () => {
             )
         ).to.be.reverted; //failed to approve
 
-        let key0 = $approveSwapAndPay.$_computePairKey(USDT_ADDRESS, WETH_ADDRESS);
+        let key0 = await $approveSwapAndPay.$_computePairKey(USDT_ADDRESS, WETH_ADDRESS);
         await $approveSwapAndPay.$_addKeyIfNotExists(key0);
         expect(await $approveSwapAndPay.$_addKeyIfNotExists(key0)).to.be.ok;
         let key1 = $approveSwapAndPay.$_computePairKey(WETH_ADDRESS, USDT_ADDRESS);

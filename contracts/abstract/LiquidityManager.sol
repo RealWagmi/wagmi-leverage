@@ -2,72 +2,18 @@
 pragma solidity 0.8.21;
 import "../vendor0.8/uniswap/LiquidityAmounts.sol";
 import "../vendor0.8/uniswap/TickMath.sol";
-import "../interfaces/INonfungiblePositionManager.sol";
-import { CalculateExactZapInParams, ILightQuoterV3 } from "../interfaces/ILightQuoterV3.sol";
 import "./ApproveSwapAndPay.sol";
 import "../Vault.sol";
 import { Constants } from "../libraries/Constants.sol";
 import { ErrLib } from "../libraries/ErrLib.sol";
 import { AmountsLiquidity } from "../libraries/AmountsLiquidity.sol";
+import "../interfaces/abstract/ILiquidityManager.sol";
 
 // import "hardhat/console.sol";
 
-abstract contract LiquidityManager is ApproveSwapAndPay {
+abstract contract LiquidityManager is ApproveSwapAndPay, ILiquidityManager {
     using { ErrLib.revertError } for bool;
-    /**
-     * @notice Represents information about a loan.
-     * @dev This struct is used to store liquidity and tokenId for a loan.
-     * @param liquidity The amount of liquidity for the loan represented by a uint128 value.
-     * @param tokenId The token ID associated with the loan represented by a uint256 value.
-     */
-    struct LoanInfo {
-        uint128 liquidity;
-        uint256 tokenId;
-    }
 
-    struct Amounts {
-        uint256 amount0;
-        uint256 amount1;
-    }
-    /**
-     * @notice Contains parameters for restoring liquidity.
-     * @dev This struct is used to store various parameters required for restoring liquidity.
-     * @param zeroForSaleToken A boolean value indicating whether the token for sale is the 0th token or not.
-     * @param fee The fee associated with the internal swap pool is represented by a uint24 value.
-     * @param slippageBP1000 The slippage in basis points (BP) represented by a uint256 value.
-     * @param totalfeesOwed The total fees owed represented by a uint256 value.
-     * @param totalBorrowedAmount The total borrowed amount represented by a uint256 value.
-     */
-    struct RestoreLiquidityParams {
-        bool zeroForSaleToken;
-        uint24 fee;
-        uint160 sqrtPriceLimitX96;
-        uint256 totalfeesOwed;
-        uint256 totalBorrowedAmount;
-    }
-    /**
-     * @title NFT Position Cache Data Structure
-     * @notice This struct holds the cache data necessary for restoring liquidity to an NFT position.
-     * @dev Stores essential parameters for an NFT representing a position in a Uniswap-like pool.
-     * @param tickLower The lower bound of the liquidity position's price range, represented as an int24.
-     * @param tickUpper The upper bound of the liquidity position's price range, represented as an int24.
-     * @param fee The fee tier of the Uniswap pool in which this liquidity will be restored, represented as a uint24.
-     * @param liquidity The amount of NFT Position liquidity.
-     * @param saleToken The ERC-20 sale token.
-     * @param holdToken The ERC-20 hold token.
-     * @param operator The address of the operator who is permitted to restore liquidity and manage this position.
-     * @param holdTokenDebt The outstanding debt of the hold token that needs to be repaid when liquidity is restored, represented as a uint256.
-     */
-    struct NftPositionCache {
-        int24 tickLower;
-        int24 tickUpper;
-        uint24 fee;
-        uint128 liquidity;
-        address saleToken;
-        address holdToken;
-        address operator;
-        uint256 holdTokenDebt;
-    }
     /**
      * @notice The address of the vault contract.
      */
@@ -271,7 +217,7 @@ abstract contract LiquidityManager is ApproveSwapAndPay {
 
         (, sqrtPriceX96After, amountIn, , amounts.amount0, amounts.amount1) = lightQuoterV3
             .calculateExactZapIn(
-                CalculateExactZapInParams({
+                ILightQuoterV3.CalculateExactZapInParams({
                     swapPool: pool,
                     zeroForIn: zeroForIn,
                     sqrtPriceX96: currentSqrtPriceX96,
@@ -285,43 +231,12 @@ abstract contract LiquidityManager is ApproveSwapAndPay {
     }
 
     /**
-     * @dev This function is used to prevent front-running during a swap.
-     *
-     * We do not check slippage during a swap as we need to restore liquidity anyway despite the losses,
-     * so we only check the initial price state in the pool to prevent price manipulation.
-     *
-     * When liquidity is restored, a hold token is sold therefore,
-     * - If `zeroForSaleToken` is `false`, the current `sqrtPrice` cannot be less than `sqrtPriceLimitX96`.
-     * - If `zeroForSaleToken` is `true`, the current `sqrtPrice` cannot be greater than `sqrtPriceLimitX96`.
-     *
-     * @param zeroForSaleToken A boolean indicating whether the sale token is zero or not.
-     * @param fee The fee for the swap.
-     * @param sqrtPriceLimitX96 The square root price limit for the swap.
-     * @param saleToken The address of the token being sold.
-     * @param holdToken The address of the token being held.
-     */
-    function _frontRunningAttackPrevent(
-        bool zeroForSaleToken,
-        uint24 fee,
-        uint160 sqrtPriceLimitX96,
-        address saleToken,
-        address holdToken
-    ) internal view {
-        uint160 sqrtPriceX96 = _getCurrentSqrtPriceX96(zeroForSaleToken, saleToken, holdToken, fee);
-        (zeroForSaleToken ? sqrtPriceX96 > sqrtPriceLimitX96 : sqrtPriceX96 < sqrtPriceLimitX96)
-            .revertError(ErrLib.ErrorCode.UNACCEPTABLE_SQRT_PRICE);
-    }
-
-    /**
      * @dev Restores liquidity from loans.
      * @param params The RestoreLiquidityParams struct containing restoration parameters.
-     * @param externalSwap The SwapParams struct containing external swap details.
      * @param loans An array of LoanInfo struct instances containing loan information.
      */
     function _restoreLiquidity(
-        // Create a cache struct to store temporary data
         RestoreLiquidityParams memory params,
-        SwapParams calldata externalSwap,
         LoanInfo[] memory loans
     ) internal {
         NftPositionCache memory cache;
@@ -355,60 +270,26 @@ abstract contract LiquidityManager is ApproveSwapAndPay {
                 );
 
                 if (holdTokenAmountIn > 0) {
-                    if (params.sqrtPriceLimitX96 != 0) {
-                        _frontRunningAttackPrevent(
-                            params.zeroForSaleToken,
-                            params.fee,
-                            params.sqrtPriceLimitX96,
-                            cache.saleToken,
-                            cache.holdToken
+                    //  The internal swap in the same pool in which liquidity is restored.
+                    if (params.swapPoolfeeTier == cache.fee) {
+                        (sqrtPriceX96, holdTokenAmountIn, amounts) = _calculateAmountsToSwap(
+                            !params.zeroForSaleToken,
+                            sqrtPriceX96,
+                            loan.liquidity,
+                            cache,
+                            saleTokenBalance
                         );
                     }
-                    // Perform external swap if external swap target is provided
-                    if (externalSwap.swapTarget != address(0)) {
-                        uint256 saleTokenAmountOut;
-                        if (params.sqrtPriceLimitX96 != 0) {
-                            (, saleTokenAmountOut) = _simulateSwap(
-                                !params.zeroForSaleToken, // holdToken is tokenIn
-                                params.fee,
-                                cache.holdToken,
-                                cache.saleToken,
-                                holdTokenAmountIn
-                            );
-                        }
-                        _patchAmountsAndCallSwap(
-                            cache.holdToken,
-                            cache.saleToken,
-                            externalSwap,
-                            holdTokenAmountIn,
-                            // The minimum amount out should not be less than with an internal pool swap.
-                            // checking only once during the first swap when params.sqrtPriceLimitX96 != 0
-                            saleTokenAmountOut
-                        );
-                    } else {
-                        //  The internal swap in the same pool in which liquidity is restored.
-                        if (params.fee == cache.fee) {
-                            (sqrtPriceX96, holdTokenAmountIn, amounts) = _calculateAmountsToSwap(
-                                !params.zeroForSaleToken,
-                                sqrtPriceX96,
-                                loan.liquidity,
-                                cache,
-                                saleTokenBalance
-                            );
-                        }
 
-                        // Perform v3 swap exact input and update sqrtPriceX96
-                        _v3SwapExactInput(
-                            v3SwapExactInputParams({
-                                fee: params.fee,
-                                tokenIn: cache.holdToken,
-                                tokenOut: cache.saleToken,
-                                amountIn: holdTokenAmountIn
-                            })
-                        );
-                    }
-                    // the price manipulation check is carried out only once
-                    params.sqrtPriceLimitX96 = 0;
+                    // Perform v3 swap exact input and update sqrtPriceX96
+                    _v3SwapExactInput(
+                        v3SwapExactInputParams({
+                            fee: params.swapPoolfeeTier,
+                            tokenIn: cache.holdToken,
+                            tokenOut: cache.saleToken,
+                            amountIn: holdTokenAmountIn
+                        })
+                    );
                 }
 
                 // Increase liquidity and transfer liquidity owner reward

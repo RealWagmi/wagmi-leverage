@@ -21,7 +21,7 @@ import {
     AggregatorMock,
 } from "../../typechain-types";
 
-import { ApproveSwapAndPay } from "../../typechain-types/contracts/LiquidityBorrowingManager";
+import { IApproveSwapAndPay } from "../../typechain-types/contracts/LiquidityBorrowingManager";
 import { BigNumber, BigNumberish } from "@ethersproject/bignumber";
 const { constants } = ethers;
 
