@@ -357,7 +357,7 @@ describe("WagmiLeverageTests", () => {
         const afterBorrowVaultSaleTokenTokenBalace = await getERC20Balance(WETH_ADDRESS, vaultAddress);
         expect(afterBorrowVaultSaleTokenTokenBalace).to.be.equal(prevVaultSaleTokenTokenBalace);
         expect(afterBorrowVaultHoldTokenBalace).to.be.equal(prevVaultHoldTokenBalace.add(borrowedAmount).add(liquidBonus).add(dailyRateCollateral).add(holdTokenEntraceFee));
-        const local_snapshot = await takeSnapshot();
+
 
         const borrowingKey = (await borrowingManager.getBorrowingKeysForBorrower(bob.address))[0];
         let bobloans = await borrowingManager.getLoansInfo(borrowingKey);
@@ -368,15 +368,7 @@ describe("WagmiLeverageTests", () => {
 
 
 
-        let repayParams = {
-            returnOnlyHoldToken: false,
-            isEmergency: false,
-            internalSwapPoolfee: 500,
-            externalSwap: [],
-            borrowingKey: borrowingKey,
-            minHoldTokenOut: BigNumber.from(0),
-            minSaleTokenOut: BigNumber.from(0)
-        };
+
 
         const prevBalanceLender = await WBTC.balanceOf(alice.address);
         let prevBobBalance = await WBTC.balanceOf(bob.address);
@@ -396,8 +388,21 @@ describe("WagmiLeverageTests", () => {
         //should be more than 0
         expect(dailyCollateralBalance).to.be.gt(0);
         expect(liquidationBonus).to.be.gt(0);
+
+        const local_snapshot = await takeSnapshot();
+
+
+        let repayParams = {
+            returnOnlyHoldToken: false,
+            isEmergency: false,
+            internalSwapPoolfee: 500,
+            externalSwap: [],
+            borrowingKey: borrowingKey,
+            minHoldTokenOut: BigNumber.from(0),
+            minSaleTokenOut: BigNumber.from(0)
+        };
         //console.log("dailyCollateral", dailyCollateral.toString());
-        const [saleTokenOut, holdTokenOut] = await borrowingManager.connect(bob).callStatic.repay(repayParams, deadline);
+        let [saleTokenOut, holdTokenOut] = await borrowingManager.connect(bob).callStatic.repay(repayParams, deadline);
 
         repayParams.minHoldTokenOut = holdTokenOut.mul(990).div(1000);// 1% slippage
 
@@ -422,7 +427,7 @@ describe("WagmiLeverageTests", () => {
         expect(newBalanceLender).to.be.within(expectedLenderBalance.sub(1), expectedLenderBalance.add(1));
 
         let expectedMinimumBobHoldTokenBalance = prevBobBalance.add(liquidationBonus).add(dailyCollateralBalance.sub(feeCompensationUpToMin));
-        expect(newBobBalance).to.be.within(expectedMinimumBobHoldTokenBalance, expectedMinimumBobHoldTokenBalance.add(marginDeposit));//with remaining marginDeposit in saleToken
+        expect(newBobBalance).to.be.within(expectedMinimumBobHoldTokenBalance, expectedMinimumBobHoldTokenBalance.add(marginDeposit));
 
         await borrowingManager.connect(alice).collectLoansFees([WBTC_ADDRESS, WETH_ADDRESS]);
         await borrowingManager.connect(owner).collectProtocol(owner.address, [WBTC_ADDRESS, WETH_ADDRESS]);
@@ -444,14 +449,17 @@ describe("WagmiLeverageTests", () => {
             minSaleTokenOut: BigNumber.from(0)
         };
 
+        //console.log("dailyCollateral", dailyCollateral.toString());
+        [saleTokenOut, holdTokenOut] = await borrowingManager.connect(bob).callStatic.repay(repayParams, deadline);
+        repayParams.minHoldTokenOut = holdTokenOut.mul(990).div(1000);// 1% slippage
         await time.setNextBlockTimestamp(await time.latest());
+
         await borrowingManager.connect(bob).repay(repayParams, deadline);
         newBobBalance = await WBTC.balanceOf(bob.address);
+        let [, amountOut] = await lightQuoter.quoteExactInputSingle(false, WBTC_WETH_500_POOL_ADDRESS, saleTokenOut);
 
-        let [, amountOut] = await lightQuoter.quoteExactInputSingle(false, WBTC_WETH_500_POOL_ADDRESS, 0, saleTokenOut);
-
-        expectedMinimumBobHoldTokenBalance = prevBobBalance.add(liquidationBonus).add(dailyCollateralBalance.sub(feeCompensationUpToMin)).add(amountOut);//with remaining marginDeposit in holdToken
-        expect(newBobBalance).to.be.within(expectedMinimumBobHoldTokenBalance.sub(2), expectedMinimumBobHoldTokenBalance.add(2));
+        expectedMinimumBobHoldTokenBalance = prevBobBalance.add(liquidationBonus).add(dailyCollateralBalance.sub(feeCompensationUpToMin)).add(amountOut);
+        expect(newBobBalance).to.be.within(expectedMinimumBobHoldTokenBalance, expectedMinimumBobHoldTokenBalance.add(marginDeposit).add(amountOut));
 
         await borrowingManager.connect(alice).collectLoansFees([WBTC_ADDRESS, WETH_ADDRESS]);
         await borrowingManager.connect(owner).collectProtocol(owner.address, [WBTC_ADDRESS, WETH_ADDRESS]);

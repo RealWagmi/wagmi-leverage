@@ -27,7 +27,7 @@ describe("LightQuoterV3", function () {
 
 
     // WETH -> USDT
-    let [sqrtPriceX96After, amountOut] = await lightQuoter.quoteExactInputSingle(true, WETH_USDT_500_POOL_ADDRESS, 0, ethers.utils.parseUnits("10", 18));
+    let [sqrtPriceX96After, amountOut] = await lightQuoter.quoteExactInputSingle(true, WETH_USDT_500_POOL_ADDRESS, ethers.utils.parseUnits("10", 18));
 
     let paramsIQuoterV2: IQuoterV2.QuoteExactInputSingleParamsStruct = {
       tokenIn: WETH_ADDRESS,
@@ -43,7 +43,7 @@ describe("LightQuoterV3", function () {
     expect(amountOut).to.equal(amountOutIQuoterV2);
 
 
-    [sqrtPriceX96After, amountOut] = await lightQuoter.quoteExactInputSingle(false, WETH_USDT_500_POOL_ADDRESS, 0, ethers.utils.parseUnits("1000", 6));
+    [sqrtPriceX96After, amountOut] = await lightQuoter.quoteExactInputSingle(false, WETH_USDT_500_POOL_ADDRESS, ethers.utils.parseUnits("1000", 6));
 
     paramsIQuoterV2 = {
       tokenIn: USDT_ADDRESS,//token1
@@ -57,6 +57,43 @@ describe("LightQuoterV3", function () {
 
     expect(sqrtPriceX96After).to.equal(sqrtPriceX96AfterIQuoterV2);
     expect(amountOut).to.equal(amountOutIQuoterV2);
+
+    let amountIn;
+
+    [sqrtPriceX96After, amountIn] = await lightQuoter.quoteExactOutputSingle(false, WETH_USDT_500_POOL_ADDRESS, ethers.utils.parseUnits("10", 18));
+
+
+    let paramsIQuoterV2Output: IQuoterV2.QuoteExactOutputSingleParamsStruct = {
+      tokenIn: USDT_ADDRESS,//token1
+      tokenOut: WETH_ADDRESS,//token0
+      fee: 500,
+      amount: ethers.utils.parseUnits("10", 18),
+      sqrtPriceLimitX96: 0
+    };
+
+    let amountInIQuoterV2;
+
+    [amountInIQuoterV2, sqrtPriceX96AfterIQuoterV2, ,] = await quoter.callStatic.quoteExactOutputSingle(paramsIQuoterV2Output);
+
+    expect(sqrtPriceX96After).to.equal(sqrtPriceX96AfterIQuoterV2);
+    expect(amountIn).to.equal(amountInIQuoterV2);
+
+    [sqrtPriceX96After, amountIn] = await lightQuoter.quoteExactOutputSingle(true, WETH_USDT_500_POOL_ADDRESS, ethers.utils.parseUnits("1000", 6));
+
+
+    paramsIQuoterV2Output = {
+      tokenIn: WETH_ADDRESS,//token0
+      tokenOut: USDT_ADDRESS,//token1
+      fee: 500,
+      amount: ethers.utils.parseUnits("1000", 6),
+      sqrtPriceLimitX96: 0
+    };
+
+    [amountInIQuoterV2, sqrtPriceX96AfterIQuoterV2, ,] = await quoter.callStatic.quoteExactOutputSingle(paramsIQuoterV2Output);
+
+    expect(sqrtPriceX96After).to.equal(sqrtPriceX96AfterIQuoterV2);
+    expect(amountIn).to.equal(amountInIQuoterV2);
+
 
 
   });

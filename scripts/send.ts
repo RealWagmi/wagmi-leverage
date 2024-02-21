@@ -7,8 +7,8 @@ async function sleep(ms: number) {
 const config = {
     borrowingManagerAddress: {
         ["kava"]: {
-            ["wagmi"]: "0xfB0114e6eeC8B2740f5fDc71F62dA1De11a8678D",
-            ["kinetix"]: "0xdbcbc01b8ba67da94c7C62153a221ffa988feC9D"
+            ["wagmi"]: "0x7bCDC07587f597339735C3D518a054007b73898b",
+            ["kinetix"]: "0xb4b3628C4Da9b6C6564D4E14277fFa8b3aE50BD6"
         },
 
         ["arbitrum"]:
@@ -19,7 +19,7 @@ const config = {
 
         ["metis"]:
         {
-            ["wagmi"]: "0x05D73f76689e4844581a9DB03f82960cBf3C4D2b"
+            ["wagmi"]: "0x1bbcE9Fc68E47Cd3E4B6bC3BE64E271bcDb3edf1"
         },
 
     }
@@ -28,7 +28,7 @@ const config = {
 
 async function main() {
     //const [deployer] = await ethers.getSigners();
-    let dexname = "";
+    let dexname = "wagmi";
 
     const network = hardhat.network.name as keyof typeof config.borrowingManagerAddress;
 
@@ -41,12 +41,13 @@ async function main() {
 
     const LiquidityBorrowingManager = await ethers.getContractFactory("LiquidityBorrowingManager");
     const borrowingManager = LiquidityBorrowingManager.attach(borrowingManagerAddress);
-
-    // await borrowingManager.updateSettings(2, [user]);
+    // const operator = "";
+    // await borrowingManager.updateSettings(2, [operator]);
     // await sleep(5000);
     // await borrowingManager.setSwapCallToWhitelist("0x8B741B0D79BE80E135C880F7583d427B4D41F015", "0x04e45aaf", true);//exactInputSingle
     // await sleep(5000);
     // await borrowingManager.setSwapCallToWhitelist("0x8B741B0D79BE80E135C880F7583d427B4D41F015", "0xb858183f", true);//exactInput
+    // await sleep(5000);
     // //Open Ocean Exchange Proxy
     // await borrowingManager.setSwapCallToWhitelist("0x6352a56caadC4F1E25CD6c75970Fa768A3304e64", "0x90411a32", true);//swap
     // ====================================================

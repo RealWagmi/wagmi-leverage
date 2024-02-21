@@ -7,8 +7,8 @@ async function sleep(ms: number) {
 const config = {
     borrowingManagerAddress: {
         ["kava"]: {
-            ["wagmi"]: "0xfB0114e6eeC8B2740f5fDc71F62dA1De11a8678D",
-            ["kinetix"]: "0xdbcbc01b8ba67da94c7C62153a221ffa988feC9D"
+            ["wagmi"]: "0x7bCDC07587f597339735C3D518a054007b73898b",
+            ["kinetix"]: "0xb4b3628C4Da9b6C6564D4E14277fFa8b3aE50BD6"
         },
 
         ["arbitrum"]:
@@ -19,7 +19,7 @@ const config = {
 
         ["metis"]:
         {
-            ["wagmi"]: "0x05D73f76689e4844581a9DB03f82960cBf3C4D2b"
+            ["wagmi"]: "0x3De5E32e21a1656d04F3145552735DdB4F4a4A2C"
         },
 
     }
@@ -29,7 +29,7 @@ const config = {
 async function main() {
     //const [deployer] = await ethers.getSigners();
     const dexnames = ["wagmi", "kinetix"];
-    const user = "0x3c1Cb7D4c0ce0dc72eDc7Ea06acC866e62a8f1d8";// George's address
+    const user = "";
 
 
     const network = hardhat.network.name as keyof typeof config.borrowingManagerAddress;

@@ -9,8 +9,6 @@ import { ErrLib } from "../libraries/ErrLib.sol";
 import { AmountsLiquidity } from "../libraries/AmountsLiquidity.sol";
 import "../interfaces/abstract/ILiquidityManager.sol";
 
-// import "hardhat/console.sol";
-
 abstract contract LiquidityManager is ApproveSwapAndPay, ILiquidityManager {
     using { ErrLib.revertError } for bool;
 
@@ -201,7 +199,6 @@ abstract contract LiquidityManager is ApproveSwapAndPay, ILiquidityManager {
         (sqrtPriceX96After, amountOut) = lightQuoterV3.quoteExactInputSingle(
             zeroForIn,
             pool,
-            0, //sqrtPriceLimitX96
             amountIn
         );
     }
@@ -215,7 +212,7 @@ abstract contract LiquidityManager is ApproveSwapAndPay, ILiquidityManager {
     ) private view returns (uint160 sqrtPriceX96After, uint256 amountIn, Amounts memory amounts) {
         address pool = computePoolAddress(cache.holdToken, cache.saleToken, cache.fee);
 
-        (, sqrtPriceX96After, amountIn, , amounts.amount0, amounts.amount1) = lightQuoterV3
+        (sqrtPriceX96After, amountIn, , amounts.amount0, amounts.amount1) = lightQuoterV3
             .calculateExactZapIn(
                 ILightQuoterV3.CalculateExactZapInParams({
                     swapPool: pool,

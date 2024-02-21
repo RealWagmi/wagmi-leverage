@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: SAL-1.0
 
 /**
- * WAGMI Leverage Protocol v1.1
+ * WAGMI Leverage Protocol v1.2
  * wagmi.com
  */
 

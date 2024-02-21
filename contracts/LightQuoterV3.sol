@@ -4,18 +4,13 @@ pragma solidity 0.8.21;
 import "./interfaces/ILightQuoterV3.sol";
 import { IUniswapV3Pool } from "./interfaces/IUniswapV3Pool.sol";
 import { SafeCast } from "./vendor0.8/uniswap/SafeCast.sol";
-import { Tick } from "./vendor0.8/uniswap/Tick.sol";
-import { TickBitmap } from "./vendor0.8/uniswap/TickBitmap.sol";
 import { TickMath } from "./vendor0.8/uniswap/TickMath.sol";
 import { SwapMath } from "./vendor0.8/uniswap/SwapMath.sol";
 import { BitMath } from "./vendor0.8/uniswap/BitMath.sol";
 import { AmountsLiquidity } from "./libraries/AmountsLiquidity.sol";
 
-// import "hardhat/console.sol";
-
 contract LightQuoterV3 is ILightQuoterV3 {
     using SafeCast for uint256;
-    using SafeCast for int256;
 
     uint256 public constant MAX_ITER = 10;
 
@@ -65,11 +60,21 @@ contract LightQuoterV3 is ILightQuoterV3 {
     function quoteExactInputSingle(
         bool zeroForIn,
         address swapPool,
-        uint160 sqrtPriceLimitX96,
         uint256 amountIn
     ) external view returns (uint160 sqrtPriceX96After, uint256 amountOut) {
-        SwapCache memory cache = _prepareSwapCashe(zeroForIn, swapPool, sqrtPriceLimitX96);
-        return _calcsSwap(amountIn.toInt256(), cache);
+        SwapCache memory cache = _prepareSwapCache(zeroForIn, swapPool);
+        (sqrtPriceX96After, , amountOut) = _simulateSwap(true, amountIn.toInt256(), cache);
+    }
+
+    function quoteExactOutputSingle(
+        bool zeroForIn,
+        address swapPool,
+        uint256 amountOut
+    ) external view returns (uint160 sqrtPriceX96After, uint256 amountIn) {
+        SwapCache memory cache = _prepareSwapCache(zeroForIn, swapPool);
+        uint256 out;
+        (sqrtPriceX96After, amountIn, out) = _simulateSwap(false, -amountOut.toInt256(), cache);
+        require(out == amountOut, "LtQV3:liquidity is too low");
     }
 
     function calculateExactZapIn(
@@ -78,44 +83,56 @@ contract LightQuoterV3 is ILightQuoterV3 {
         external
         view
         returns (
-            uint256 i,
             uint160 sqrtPriceX96After,
             uint256 swapAmountIn,
             uint256 swapAmountOut,
-            uint256 maxnAmountIn,
-            uint256 minAmountOut
+            uint256 calcAmountIn,
+            uint256 calcAmountOut
         )
     {
         uint160 sqrtRatioAX96 = TickMath.getSqrtRatioAtTick(params.tickLower);
         uint160 sqrtRatioBX96 = TickMath.getSqrtRatioAtTick(params.tickUpper);
-        SwapCache memory cache;
-
-        uint256 amountOut;
 
         uint256 amountInNext;
-        (amountInNext, maxnAmountIn, minAmountOut) = _getHoldTokenAmountIn(
+        (amountInNext, calcAmountIn, calcAmountOut) = _calculateAmounts(
             sqrtRatioAX96,
             sqrtRatioBX96,
-            params
+            params,
+            0
         );
 
-        if (amountInNext != 0 && params.tokenOutBalance < minAmountOut) {
-            (cache) = _prepareSwapCashe(params.zeroForIn, params.swapPool, 0);
+        if (params.tokenOutBalance < calcAmountOut) {
+            require(amountInNext > 0, "LtQV3:tokenIn balance is too low");
+            SwapCache memory cache = _prepareSwapCache(params.zeroForIn, params.swapPool);
+            uint256 amountOut;
+            uint256 amountIn;
+            (params.sqrtPriceX96, amountIn, amountOut) = _simulateSwap(
+                false,
+                -calcAmountOut.toInt256(),
+                cache
+            );
 
-            for (i; i < MAX_ITER; ) {
-                uint256 amountIn = amountInNext;
-                (params.sqrtPriceX96, amountOut) = _calcsSwap(amountIn.toInt256(), cache);
+            if (amountIn > amountInNext) {
+                amountIn = amountInNext;
+            }
+            for (uint256 i; i < MAX_ITER; ) {
+                (params.sqrtPriceX96, amountIn, amountOut) = _simulateSwap(
+                    true,
+                    amountIn.toInt256(),
+                    cache
+                );
 
-                (amountInNext, maxnAmountIn, minAmountOut) = _getHoldTokenAmountIn(
+                (amountInNext, calcAmountIn, calcAmountOut) = _calculateAmounts(
                     sqrtRatioAX96,
                     sqrtRatioBX96,
-                    params
+                    params,
+                    amountInNext
                 );
 
                 if (
-                    i > 0 &&
-                    amountOut + params.tokenOutBalance >= minAmountOut &&
-                    maxnAmountIn <= params.tokenInBalance - amountIn
+                    amountIn > 0 &&
+                    amountOut + params.tokenOutBalance >= calcAmountOut &&
+                    calcAmountIn <= params.tokenInBalance - amountIn
                 ) {
                     sqrtPriceX96After = params.sqrtPriceX96;
                     swapAmountIn = amountIn;
@@ -123,25 +140,27 @@ contract LightQuoterV3 is ILightQuoterV3 {
                     break;
                 }
 
+                amountIn = amountInNext;
+
                 unchecked {
                     ++i;
                 }
             }
+
+            require(swapAmountIn > 0, "LtQV3:zapIn failed");
         }
-        require(swapAmountIn > 0 || i == 0, "CALCULATE_ZAP_OUT_FAILED");
+        // returns as token0, token1
         if (!params.zeroForIn) {
-            (maxnAmountIn, minAmountOut) = (minAmountOut, maxnAmountIn);
+            (calcAmountIn, calcAmountOut) = (calcAmountOut, calcAmountIn);
         }
     }
 
-    function _getHoldTokenAmountIn(
+    function _calculateAmounts(
         uint160 sqrtRatioAX96,
         uint160 sqrtRatioBX96,
-        CalculateExactZapInParams memory params
-    ) private pure returns (uint256 holdTokenAmountIn, uint256 maxnAmountIn, uint256 minAmountOut) {
-        // Call getAmountsForLiquidity function from LiquidityAmounts library
-        // to get the amounts of token0 and token1 for a given liquidity position
-
+        CalculateExactZapInParams memory params,
+        uint256 previousAmountInNext
+    ) private pure returns (uint256 amountInNext, uint256 calcAmountIn, uint256 calcAmountOut) {
         (uint256 amount0, uint256 amount1) = AmountsLiquidity.getAmountsRoundingUpForLiquidity(
             params.sqrtPriceX96,
             sqrtRatioAX96,
@@ -149,34 +168,20 @@ contract LightQuoterV3 is ILightQuoterV3 {
             params.liquidityExactAmount
         );
 
-        // Calculate the holdTokenAmountIn based on the zeroForSaleToken flag
-        (holdTokenAmountIn, maxnAmountIn, minAmountOut) = params.zeroForIn
+        (amountInNext, calcAmountIn, calcAmountOut) = params.zeroForIn
             ? (params.tokenInBalance - amount0, amount0, amount1)
             : (params.tokenInBalance - amount1, amount1, amount0);
+        if (amountInNext == 0) {
+            amountInNext = previousAmountInNext / 2;
+        }
     }
 
-    function _prepareSwapCashe(
+    function _prepareSwapCache(
         bool zeroForOne,
-        address swapPool,
-        uint160 sqrtPriceLimitX96
+        address swapPool
     ) private view returns (SwapCache memory cache) {
         (uint160 sqrtPriceX96, int24 tick, , , , uint8 feeProtocol, ) = IUniswapV3Pool(swapPool)
             .slot0();
-
-        if (sqrtPriceLimitX96 != 0) {
-            require(
-                zeroForOne
-                    ? sqrtPriceLimitX96 < sqrtPriceX96 &&
-                        sqrtPriceLimitX96 > TickMath.MIN_SQRT_RATIO
-                    : sqrtPriceLimitX96 > sqrtPriceX96 &&
-                        sqrtPriceLimitX96 < TickMath.MAX_SQRT_RATIO,
-                "SQRT_PRICE_LIMIT_EXCEEDS_BOUNDS"
-            );
-        } else {
-            sqrtPriceLimitX96 = zeroForOne
-                ? TickMath.MIN_SQRT_RATIO + 1
-                : TickMath.MAX_SQRT_RATIO - 1;
-        }
 
         cache = SwapCache({
             zeroForOne: zeroForOne,
@@ -186,18 +191,21 @@ contract LightQuoterV3 is ILightQuoterV3 {
             tickSpacing: IUniswapV3Pool(swapPool).tickSpacing(),
             tick: tick,
             sqrtPriceX96: sqrtPriceX96,
-            sqrtPriceX96Limit: sqrtPriceLimitX96,
+            sqrtPriceX96Limit: zeroForOne
+                ? TickMath.MIN_SQRT_RATIO + 1
+                : TickMath.MAX_SQRT_RATIO - 1,
             swapPool: swapPool
         });
     }
 
-    function _calcsSwap(
-        int256 amountIn,
+    function _simulateSwap(
+        bool exactInput,
+        int256 amountSpecified,
         SwapCache memory cache
-    ) private view returns (uint160, uint256) {
-        require(amountIn != 0, "CALCULATE_SWAP_AMOUNT_IN_ZERO");
+    ) private view returns (uint160, uint256, uint256) {
+        require(amountSpecified != 0, "LtQV3:amountSpecified is 0");
         SwapState memory state = SwapState({
-            amountSpecifiedRemaining: amountIn,
+            amountSpecifiedRemaining: amountSpecified,
             amountCalculated: 0,
             sqrtPriceX96: cache.sqrtPriceX96,
             tick: cache.tick,
@@ -244,11 +252,18 @@ contract LightQuoterV3 is ILightQuoterV3 {
                     cache.fee
                 );
 
-            // safe because we test that amountSpecified > amountIn + feeAmount in SwapMath
-            unchecked {
-                state.amountSpecifiedRemaining -= (step.amountIn + step.feeAmount).toInt256();
+            if (exactInput) {
+                // safe because we test that amountSpecified > amountIn + feeAmount in SwapMath
+                unchecked {
+                    state.amountSpecifiedRemaining -= (step.amountIn + step.feeAmount).toInt256();
+                }
+                state.amountCalculated -= step.amountOut.toInt256();
+            } else {
+                unchecked {
+                    state.amountSpecifiedRemaining += step.amountOut.toInt256();
+                }
+                state.amountCalculated += (step.amountIn + step.feeAmount).toInt256();
             }
-            state.amountCalculated -= step.amountOut.toInt256();
 
             // if the protocol fee is on, calculate how much is owed, decrement feeAmount, and increment protocolFee
             if (cache.feeProtocol > 0) {
@@ -287,7 +302,21 @@ contract LightQuoterV3 is ILightQuoterV3 {
                 state.tick = TickMath.getTickAtSqrtRatio(state.sqrtPriceX96);
             }
         }
-        return (state.sqrtPriceX96, uint256(-state.amountCalculated));
+
+        unchecked {
+            return
+                exactInput
+                    ? (
+                        state.sqrtPriceX96,
+                        uint256(amountSpecified - state.amountSpecifiedRemaining),
+                        uint256(-state.amountCalculated)
+                    )
+                    : (
+                        state.sqrtPriceX96,
+                        uint256(state.amountCalculated),
+                        uint256(-(amountSpecified - state.amountSpecifiedRemaining))
+                    );
+        }
     }
 
     function _position(int24 tick) private pure returns (int16 wordPos, uint8 bitPos) {

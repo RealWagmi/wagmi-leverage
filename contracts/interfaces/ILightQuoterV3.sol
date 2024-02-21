@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.21;
+pragma solidity ^0.8.0;
 
 /// @title Light Quoter Interface
 interface ILightQuoterV3 {
@@ -32,7 +32,6 @@ interface ILightQuoterV3 {
     ///      The number of iterations to reach an accurate result is bounded by a maximum value.
     /// @param params A `CalculateExactZapInParams` struct containing all necessary parameters to perform the calculations.
     ///               This may include details about the liquidity pool, desired position, slippage tolerance, etc.
-    /// @return iterations The total number of iterations executed to converge on the precise calculation.
     /// @return sqrtPriceX96After The square root of the price after adding liquidity, adjusted by scaling factor 2^96.
     /// @return swapAmountIn The exact total amount of input tokens required to complete the zap in operation.
     /// @return swapAmountOut The output token amount after swap.
@@ -45,7 +44,6 @@ interface ILightQuoterV3 {
         external
         view
         returns (
-            uint256 iterations,
             uint160 sqrtPriceX96After,
             uint256 swapAmountIn,
             uint256 swapAmountOut,
@@ -54,20 +52,34 @@ interface ILightQuoterV3 {
         );
 
     /**
-     * @notice Quotes the output amount for a given input amount in a single token swap operation.
-     * @dev This function prepares a cache object through `_prepareSwapCashe`
-     *      and performs the calculation of the swap via `_calcsSwap`.
-     * @param zeroForIn A boolean indicating whether the input token is the 0th token (true) or not (false).
-     * @param swapPool Address of the swap pool contract used for the trade.
-     * @param sqrtPriceLimitX96 The square root price limit for the swap, scaled by 2^96.
-     * @param amountIn Amount of input tokens to be swapped.
-     * @return sqrtPriceX96After The square root price after the swap, scaled by 2^96.
-     * @return amountOut The amount of output tokens that will be received from the swap.
+     * @notice Quotes the output amount for a given input amount in a single token swap operation on Uniswap V3.
+     * @dev This function simulates the swap and returns the estimated output amount. It does not execute the trade itself.
+     * @param zeroForIn A boolean indicating the direction of the swap:
+     * true for swapping the 0th token (token0) to the 1st token (token1), false for token1 to token0.
+     * @param swapPool The address of the Uniswap V3 pool contract through which the swap will be simulated.
+     * @param amountIn The amount of input tokens that one would like to swap.
+     * @return sqrtPriceX96After The square root of the price after the swap, scaled by 2^96. This is the price between the two tokens in the pool post-simulation.
+     * @return amountOut The amount of output tokens that can be expected to receive in the swap based on the current state of the pool.
      */
     function quoteExactInputSingle(
         bool zeroForIn,
         address swapPool,
-        uint160 sqrtPriceLimitX96,
         uint256 amountIn
     ) external view returns (uint160 sqrtPriceX96After, uint256 amountOut);
+
+    /**
+     * @notice Quotes the amount of input tokens required to arrive at a specified output token amount for a single pool swap.
+     * @dev This function performs a read-only operation to compute the necessary input amount and does not execute an actual swap.
+     *      It is useful for obtaining quotes prior to performing transactions.
+     * @param zeroForIn A boolean that indicates the direction of the trade, true if swapping zero for in-token, false otherwise.
+     * @param swapPool The address of the swap pool contract where the trade will take place.
+     * @param amountOut The desired amount of output tokens.
+     * @return sqrtPriceX96After The square root price (encoded as a 96-bit fixed point number) after the swap would occur.
+     * @return amountIn The amount of input tokens required for the swap to achieve the desired `amountOut`.
+     */
+    function quoteExactOutputSingle(
+        bool zeroForIn,
+        address swapPool,
+        uint256 amountOut
+    ) external view returns (uint160 sqrtPriceX96After, uint256 amountIn);
 }
