@@ -424,8 +424,18 @@ contract LiquidityBorrowingManager is
                 pushCounter
             );
         }
+        uint256 marginDeposit;
+        // positive slippage
         if (cache.holdTokenBalance > cache.borrowedAmount) {
-            cache.borrowedAmount = cache.holdTokenBalance;
+            // Thus, we stimulate the platform to look for the best conditions for swapping on external aggregators.
+            platformsFeesInfo[params.holdToken] +=
+                (cache.holdTokenBalance - cache.borrowedAmount) *
+                Constants.COLLATERAL_BALANCE_PRECISION;
+        } else {
+            marginDeposit = cache.borrowedAmount - cache.holdTokenBalance;
+            (marginDeposit > params.maxMarginDeposit).revertError(
+                ErrLib.ErrorCode.TOO_BIG_MARGIN_DEPOSIT
+            );
         }
 
         // Updating borrowing details
@@ -434,11 +444,6 @@ contract LiquidityBorrowingManager is
         borrowing.dailyRateCollateralBalance +=
             cache.dailyRateCollateral *
             Constants.COLLATERAL_BALANCE_PRECISION;
-        // Checking if borrowing marginDeposit exceeds the maximum allowed
-        uint256 marginDeposit = cache.borrowedAmount - cache.holdTokenBalance;
-        (marginDeposit > params.maxMarginDeposit).revertError(
-            ErrLib.ErrorCode.TOO_BIG_MARGIN_DEPOSIT
-        );
         //
         cache.holdTokenEntraceFee =
             cache.holdTokenEntraceFee /

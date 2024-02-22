@@ -205,26 +205,23 @@ abstract contract LiquidityManager is ApproveSwapAndPay, ILiquidityManager {
 
     function _calculateAmountsToSwap(
         bool zeroForIn,
-        uint160 currentSqrtPriceX96,
         uint128 liquidity,
         NftPositionCache memory cache,
         uint256 tokenOutBalance
-    ) private view returns (uint160 sqrtPriceX96After, uint256 amountIn, Amounts memory amounts) {
+    ) private view returns (uint256 amountIn, Amounts memory amounts) {
         address pool = computePoolAddress(cache.holdToken, cache.saleToken, cache.fee);
 
-        (sqrtPriceX96After, amountIn, , amounts.amount0, amounts.amount1) = lightQuoterV3
-            .calculateExactZapIn(
-                ILightQuoterV3.CalculateExactZapInParams({
-                    swapPool: pool,
-                    zeroForIn: zeroForIn,
-                    sqrtPriceX96: currentSqrtPriceX96,
-                    tickLower: cache.tickLower,
-                    tickUpper: cache.tickUpper,
-                    liquidityExactAmount: liquidity,
-                    tokenInBalance: cache.holdTokenDebt,
-                    tokenOutBalance: tokenOutBalance
-                })
-            );
+        (, amountIn, , amounts.amount0, amounts.amount1) = lightQuoterV3.calculateExactZapIn(
+            ILightQuoterV3.CalculateExactZapInParams({
+                swapPool: pool,
+                zeroForIn: zeroForIn,
+                tickLower: cache.tickLower,
+                tickUpper: cache.tickUpper,
+                liquidityExactAmount: liquidity,
+                tokenInBalance: cache.holdTokenDebt,
+                tokenOutBalance: tokenOutBalance
+            })
+        );
     }
 
     /**
@@ -269,9 +266,8 @@ abstract contract LiquidityManager is ApproveSwapAndPay, ILiquidityManager {
                 if (holdTokenAmountIn > 0) {
                     //  The internal swap in the same pool in which liquidity is restored.
                     if (params.swapPoolfeeTier == cache.fee) {
-                        (sqrtPriceX96, holdTokenAmountIn, amounts) = _calculateAmountsToSwap(
+                        (holdTokenAmountIn, amounts) = _calculateAmountsToSwap(
                             !params.zeroForSaleToken,
-                            sqrtPriceX96,
                             loan.liquidity,
                             cache,
                             saleTokenBalance

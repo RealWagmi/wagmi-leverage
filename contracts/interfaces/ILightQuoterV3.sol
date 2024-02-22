@@ -10,8 +10,6 @@ interface ILightQuoterV3 {
         address swapPool;
         /// @notice A boolean determining which token will be used to add liquidity (true for token0 or false for token1).
         bool zeroForIn;
-        /// @notice The square root of the current price in the pool, encoded as a fixed-point number with 96 bits of precision.
-        uint160 sqrtPriceX96;
         /// @notice The lower bound of the tick range for the position within the pool.
         int24 tickLower;
         /// @notice The upper bound of the tick range for the position within the pool.

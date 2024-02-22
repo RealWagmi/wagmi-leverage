@@ -29,21 +29,21 @@ This function is used to repay a loan.The position is closed either by the trade
 
 | Network | ChainId | Contract | Address |
 |------| ------- | -----| -----|
-| Kava | 2222 | LightQuoterV3 | [0x444Cce074Fc856B11048D992C789c0e316D7f418](https://kavascan.com/address/0x444Cce074Fc856B11048D992C789c0e316D7f418) |
-| METIS | 1088 | LightQuoterV3 | [0x16CAd8fbD9878D1fF86A12Eb4A275c7F53B5788e](https://explorer.metis.io/address/0x16CAd8fbD9878D1fF86A12Eb4A275c7F53B5788e) |
+| Kava | 2222 | LightQuoterV3 | [0x7E23BEcf8d50E49D366c7A46f3F188187c098463](https://kavascan.com/address/0x7E23BEcf8d50E49D366c7A46f3F188187c098463) |
+| METIS | 1088 | LightQuoterV3 | [0xF3a53859420a597f0aa20F3A227d0dCfE0825fdd](https://explorer.metis.io/address/0xF3a53859420a597f0aa20F3A227d0dCfE0825fdd) |
 
 ##
 
 | V3 | Network | ChainId | Contract | Address |
 |------|------| ------- | -----| -----|
-| Wagmi | Kava | 2222 | LiquidityBorrowingManager | [0x7bCDC07587f597339735C3D518a054007b73898b](https://kavascan.com/address/0x7bCDC07587f597339735C3D518a054007b73898b) |
-| Wagmi | Kava | 2222 | Vault| [0xA5d79225347036a50AF0D270DB554A12291D53E8](https://kavascan.com/address/0xA5d79225347036a50AF0D270DB554A12291D53E8) |
+| Wagmi | Kava | 2222 | LiquidityBorrowingManager | [0x17A2349B3530F3b6082116D2B223edd5862bC3ac](https://kavascan.com/address/0x17A2349B3530F3b6082116D2B223edd5862bC3ac) |
+| Wagmi | Kava | 2222 | Vault| [0xacE500f4373Ff7dc4FBa17B6274d02DdAFBA409c](https://kavascan.com/address/0xacE500f4373Ff7dc4FBa17B6274d02DdAFBA409c) |
 | Wagmi | Kava | 2222 | PositionEffectivityChart| [0xAa40097C55245AA7a87D248E7e8FF902b3a1D6Ab](https://kavascan.com/address/0xAa40097C55245AA7a87D248E7e8FF902b3a1D6Ab) |
-| Kinetix | Kava | 2222 | LiquidityBorrowingManager | [0xb4b3628C4Da9b6C6564D4E14277fFa8b3aE50BD6](https://kavascan.com/address/0xb4b3628C4Da9b6C6564D4E14277fFa8b3aE50BD6) |
-| Kinetix | Kava | 2222 | Vault| [0x6925640cd93515060F9051D45ECA9CA829316739](https://kavascan.com/address/0x6925640cd93515060F9051D45ECA9CA829316739) |
+| Kinetix | Kava | 2222 | LiquidityBorrowingManager | [0x43b2fcD81b8dC2A94Cf1eF645EDac763400551a1](https://kavascan.com/address/0x43b2fcD81b8dC2A94Cf1eF645EDac763400551a1) |
+| Kinetix | Kava | 2222 | Vault| [0x1AEA6B02B1EcdBD2a6D00E0583855e32756C5786](https://kavascan.com/address/0x1AEA6B02B1EcdBD2a6D00E0583855e32756C5786) |
 | Kinetix | Kava | 2222 | PositionEffectivityChart| [0x35e79BCe31eF892c24Da7D7C8EFB1d47dB37cA57](https://kavascan.com/address/0x35e79BCe31eF892c24Da7D7C8EFB1d47dB37cA57) |
-| Wagmi | METIS | 1088 | LiquidityBorrowingManager | [0x3De5E32e21a1656d04F3145552735DdB4F4a4A2C](https://explorer.metis.io/address/0x3De5E32e21a1656d04F3145552735DdB4F4a4A2C) |
-| Wagmi | METIS | 1088 | Vault| [0x4cf59cC7Cc4C62e780C482d3ff5c6e227e88efc6](https://explorer.metis.io/address/0x4cf59cC7Cc4C62e780C482d3ff5c6e227e88efc6) |
+| Wagmi | METIS | 1088 | LiquidityBorrowingManager | [0x07614aDBe4188EAf1dD90Eb49cA964307bB2E985](https://explorer.metis.io/address/0x07614aDBe4188EAf1dD90Eb49cA964307bB2E985) |
+| Wagmi | METIS | 1088 | Vault| [0x6F1FE2a6598b99b87e10B5cE33c14173eAAd7469](https://explorer.metis.io/address/0x6F1FE2a6598b99b87e10B5cE33c14173eAAd7469) |
 | Wagmi | METIS | 1088 | PositionEffectivityChart| [0x242c5fAaAa8A5fe49a66698fff7bCAb85cF3cF17](https://explorer.metis.io/address/0x242c5fAaAa8A5fe49a66698fff7bCAb85cF3cF17) |
 
 ##

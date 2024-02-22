@@ -1,28 +1,8 @@
 import hardhat, { ethers } from "hardhat";
+import config from "./config";
 
 async function sleep(ms: number) {
     return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-const config = {
-    borrowingManagerAddress: {
-        ["kava"]: {
-            ["wagmi"]: "0x7bCDC07587f597339735C3D518a054007b73898b",
-            ["kinetix"]: "0xb4b3628C4Da9b6C6564D4E14277fFa8b3aE50BD6"
-        },
-
-        ["arbitrum"]:
-        {
-            ["uniswap"]: "0x44f4E18B1D4D8c0517a5163a4a6f33534d50d71e",
-            ["sushiswap"]: "0x663bAAC9D162b23aB324b46707CE3dE353405663"
-        },
-
-        ["metis"]:
-        {
-            ["wagmi"]: "0x3De5E32e21a1656d04F3145552735DdB4F4a4A2C"
-        },
-
-    }
 }
 
 

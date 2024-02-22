@@ -57,6 +57,14 @@ contract LightQuoterV3 is ILightQuoterV3 {
         uint256 feeAmount;
     }
 
+    error LtQV3ZapInFailed(
+        uint256 amountInNext,
+        uint256 calcAmountIn,
+        uint256 calcAmountOut,
+        uint256 tokenInBalance,
+        uint256 tokenOutBalance
+    );
+
     function quoteExactInputSingle(
         bool zeroForIn,
         address swapPool,
@@ -92,9 +100,11 @@ contract LightQuoterV3 is ILightQuoterV3 {
     {
         uint160 sqrtRatioAX96 = TickMath.getSqrtRatioAtTick(params.tickLower);
         uint160 sqrtRatioBX96 = TickMath.getSqrtRatioAtTick(params.tickUpper);
+        SwapCache memory cache = _prepareSwapCache(params.zeroForIn, params.swapPool);
 
         uint256 amountInNext;
         (amountInNext, calcAmountIn, calcAmountOut) = _calculateAmounts(
+            cache.sqrtPriceX96,
             sqrtRatioAX96,
             sqrtRatioBX96,
             params,
@@ -103,10 +113,9 @@ contract LightQuoterV3 is ILightQuoterV3 {
 
         if (params.tokenOutBalance < calcAmountOut) {
             require(amountInNext > 0, "LtQV3:tokenIn balance is too low");
-            SwapCache memory cache = _prepareSwapCache(params.zeroForIn, params.swapPool);
             uint256 amountOut;
             uint256 amountIn;
-            (params.sqrtPriceX96, amountIn, amountOut) = _simulateSwap(
+            (sqrtPriceX96After, amountIn, amountOut) = _simulateSwap(
                 false,
                 -calcAmountOut.toInt256(),
                 cache
@@ -116,13 +125,14 @@ contract LightQuoterV3 is ILightQuoterV3 {
                 amountIn = amountInNext;
             }
             for (uint256 i; i < MAX_ITER; ) {
-                (params.sqrtPriceX96, amountIn, amountOut) = _simulateSwap(
+                (sqrtPriceX96After, amountIn, amountOut) = _simulateSwap(
                     true,
                     amountIn.toInt256(),
                     cache
                 );
 
                 (amountInNext, calcAmountIn, calcAmountOut) = _calculateAmounts(
+                    sqrtPriceX96After,
                     sqrtRatioAX96,
                     sqrtRatioBX96,
                     params,
@@ -134,7 +144,6 @@ contract LightQuoterV3 is ILightQuoterV3 {
                     amountOut + params.tokenOutBalance >= calcAmountOut &&
                     calcAmountIn <= params.tokenInBalance - amountIn
                 ) {
-                    sqrtPriceX96After = params.sqrtPriceX96;
                     swapAmountIn = amountIn;
                     swapAmountOut = amountOut;
                     break;
@@ -146,8 +155,22 @@ contract LightQuoterV3 is ILightQuoterV3 {
                     ++i;
                 }
             }
-
-            require(swapAmountIn > 0, "LtQV3:zapIn failed");
+            if (swapAmountIn == 0) {
+                (amountInNext, calcAmountIn, calcAmountOut) = _calculateAmounts(
+                    cache.sqrtPriceX96,
+                    sqrtRatioAX96,
+                    sqrtRatioBX96,
+                    params,
+                    0
+                );
+                revert LtQV3ZapInFailed(
+                    amountInNext,
+                    calcAmountIn,
+                    calcAmountOut,
+                    params.tokenInBalance,
+                    params.tokenOutBalance
+                );
+            }
         }
         // returns as token0, token1
         if (!params.zeroForIn) {
@@ -156,13 +179,14 @@ contract LightQuoterV3 is ILightQuoterV3 {
     }
 
     function _calculateAmounts(
+        uint160 sqrtPriceX96,
         uint160 sqrtRatioAX96,
         uint160 sqrtRatioBX96,
         CalculateExactZapInParams memory params,
         uint256 previousAmountInNext
     ) private pure returns (uint256 amountInNext, uint256 calcAmountIn, uint256 calcAmountOut) {
         (uint256 amount0, uint256 amount1) = AmountsLiquidity.getAmountsRoundingUpForLiquidity(
-            params.sqrtPriceX96,
+            sqrtPriceX96,
             sqrtRatioAX96,
             sqrtRatioBX96,
             params.liquidityExactAmount
