@@ -38,13 +38,13 @@ This function is used to repay a loan.The position is closed either by the trade
 |------|------| ------- | -----| -----|
 | Wagmi | Kava | 2222 | LiquidityBorrowingManager | [0x17A2349B3530F3b6082116D2B223edd5862bC3ac](https://kavascan.com/address/0x17A2349B3530F3b6082116D2B223edd5862bC3ac) |
 | Wagmi | Kava | 2222 | Vault| [0xacE500f4373Ff7dc4FBa17B6274d02DdAFBA409c](https://kavascan.com/address/0xacE500f4373Ff7dc4FBa17B6274d02DdAFBA409c) |
-| Wagmi | Kava | 2222 | PositionEffectivityChart| [0xAa40097C55245AA7a87D248E7e8FF902b3a1D6Ab](https://kavascan.com/address/0xAa40097C55245AA7a87D248E7e8FF902b3a1D6Ab) |
+| Wagmi | Kava | 2222 | PositionEffectivityChart| [0x22Ba3aA25D415725bD6F5BB175f3E9AA6cAdcd7D](https://kavascan.com/address/0x22Ba3aA25D415725bD6F5BB175f3E9AA6cAdcd7D) |
 | Kinetix | Kava | 2222 | LiquidityBorrowingManager | [0x43b2fcD81b8dC2A94Cf1eF645EDac763400551a1](https://kavascan.com/address/0x43b2fcD81b8dC2A94Cf1eF645EDac763400551a1) |
 | Kinetix | Kava | 2222 | Vault| [0x1AEA6B02B1EcdBD2a6D00E0583855e32756C5786](https://kavascan.com/address/0x1AEA6B02B1EcdBD2a6D00E0583855e32756C5786) |
-| Kinetix | Kava | 2222 | PositionEffectivityChart| [0x35e79BCe31eF892c24Da7D7C8EFB1d47dB37cA57](https://kavascan.com/address/0x35e79BCe31eF892c24Da7D7C8EFB1d47dB37cA57) |
+| Kinetix | Kava | 2222 | PositionEffectivityChart| [0xd0c616D4Ec4373297f2E2Cb142d15d62613F7dA4](https://kavascan.com/address/0xd0c616D4Ec4373297f2E2Cb142d15d62613F7dA4) |
 | Wagmi | METIS | 1088 | LiquidityBorrowingManager | [0x07614aDBe4188EAf1dD90Eb49cA964307bB2E985](https://explorer.metis.io/address/0x07614aDBe4188EAf1dD90Eb49cA964307bB2E985) |
 | Wagmi | METIS | 1088 | Vault| [0x6F1FE2a6598b99b87e10B5cE33c14173eAAd7469](https://explorer.metis.io/address/0x6F1FE2a6598b99b87e10B5cE33c14173eAAd7469) |
-| Wagmi | METIS | 1088 | PositionEffectivityChart| [0x242c5fAaAa8A5fe49a66698fff7bCAb85cF3cF17](https://explorer.metis.io/address/0x242c5fAaAa8A5fe49a66698fff7bCAb85cF3cF17) |
+| Wagmi | METIS | 1088 | PositionEffectivityChart| [0x896C78157b96C5566D0Fe8FcCfB3C1D9e229a7cA](https://explorer.metis.io/address/0x896C78157b96C5566D0Fe8FcCfB3C1D9e229a7cA) |
 
 ##
 

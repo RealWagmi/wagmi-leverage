@@ -8,6 +8,8 @@ import { FullMath, LiquidityAmounts } from "./vendor0.8/uniswap/LiquidityAmounts
 import "./interfaces/INonfungiblePositionManager.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
+// import "hardhat/console.sol";
+
 contract PositionEffectivityChart {
     struct LoanInfo {
         uint128 liquidity;
@@ -92,7 +94,7 @@ contract PositionEffectivityChart {
         loansChartData = new LoansData[](loans.length);
         CalcCashe memory calcCashe;
         uint128 oneHoldToken;
-        uint160 weightedAverageEntraceSqrtPriceX96;
+        uint256 weightedAverageEntraceSqrtPriceX96;
         {
             calcCashe.minSqrtPriceX96 = MAX_SQRT_RATIO;
             calcCashe.maxSqrtPriceX96 = MIN_SQRT_RATIO;
@@ -103,9 +105,11 @@ contract PositionEffectivityChart {
                 if (i == 0) {
                     oneHoldToken = uint128(10 ** IERC20Metadata(caches[0].holdToken).decimals());
                 }
+
                 if (caches[i].lowerSqrtPriceX96 < calcCashe.minSqrtPriceX96) {
                     calcCashe.minSqrtPriceX96 = caches[i].lowerSqrtPriceX96;
                 }
+
                 if (caches[i].upperSqrtPriceX96 > calcCashe.maxSqrtPriceX96) {
                     calcCashe.maxSqrtPriceX96 = caches[i].upperSqrtPriceX96;
                 }
@@ -113,15 +117,18 @@ contract PositionEffectivityChart {
                 if (caches[i].entrySqrtPriceX96 < calcCashe.minSqrtPriceX96) {
                     calcCashe.minSqrtPriceX96 = caches[i].entrySqrtPriceX96;
                 }
+
                 if (caches[i].entrySqrtPriceX96 > calcCashe.maxSqrtPriceX96) {
                     calcCashe.maxSqrtPriceX96 = caches[i].entrySqrtPriceX96;
                 }
-
                 calcCashe.holdTokenDebtSum += caches[i].holdTokenDebt;
                 calcCashe.marginDepoSum += caches[i].marginDepo;
-                weightedAverageEntraceSqrtPriceX96 +=
-                    caches[i].entrySqrtPriceX96 *
-                    uint160(caches[i].holdTokenDebt);
+
+                weightedAverageEntraceSqrtPriceX96 += FullMath.mulDiv(
+                    caches[i].entrySqrtPriceX96,
+                    caches[i].holdTokenDebt,
+                    1 << 64
+                );
 
                 loansChartData[i].amount = caches[i].holdTokenDebt;
                 loansChartData[i].minPrice = _getAmountOut(
@@ -129,16 +136,21 @@ contract PositionEffectivityChart {
                     caches[i].lowerSqrtPriceX96,
                     oneHoldToken
                 );
+
                 loansChartData[i].maxPrice = _getAmountOut(
                     !zeroForSaleToken,
                     caches[i].upperSqrtPriceX96,
                     oneHoldToken
                 );
                 unchecked {
-                    i++;
+                    ++i;
                 }
             }
-            weightedAverageEntraceSqrtPriceX96 /= uint160(calcCashe.holdTokenDebtSum);
+            weightedAverageEntraceSqrtPriceX96 = FullMath.mulDiv(
+                weightedAverageEntraceSqrtPriceX96,
+                1 << 64,
+                calcCashe.holdTokenDebtSum
+            );
         }
 
         uint160 step = uint160(
@@ -179,17 +191,17 @@ contract PositionEffectivityChart {
                 chart[i].y += int256(holdTokenAmount) - int256(caches[j].marginDepo);
 
                 unchecked {
-                    j++;
+                    ++j;
                 }
             }
             unchecked {
-                i++;
+                ++i;
             }
         }
 
         aggressiveModeProfitLine[0].x = _getAmountOut(
             !zeroForSaleToken,
-            weightedAverageEntraceSqrtPriceX96,
+            uint160(weightedAverageEntraceSqrtPriceX96),
             oneHoldToken
         );
         aggressiveModeProfitLine[1].x = chart[pointsNumber - 1].x;
