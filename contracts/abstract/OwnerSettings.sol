@@ -16,9 +16,9 @@ abstract contract OwnerSettings is Ownable, IOwnerSettings {
     uint256 public platformFeesBP = 2000;
     /**
      * @dev Default liquidation bonus in basis points.
-     * 69 BP represents a 0.69% bonus per extracted liquidity.
+     * 69 BP represents a 1.5% bonus per extracted liquidity.
      */
-    uint256 public dafaultLiquidationBonusBP = 69;
+    uint256 public dafaultLiquidationBonusBP = 150;
     /**
      * @dev Mapping to store liquidation bonuses for each token address.
      * The keys are token addresses and values are instances of the `Liquidation` struct.
