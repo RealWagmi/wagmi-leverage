@@ -717,6 +717,7 @@ contract LiquidityBorrowingManager is
 
             if (saleTokenOut > 0 && params.returnOnlyHoldToken) {
                 (, uint256 holdTokenAmountOut) = _simulateSwap(
+                    true, // exactInput
                     zeroForSaleToken,
                     params.internalSwapPoolfee,
                     borrowing.saleToken, // saleToken is tokenIn

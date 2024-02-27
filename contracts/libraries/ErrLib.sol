@@ -20,7 +20,9 @@ library ErrLib {
         TOO_BIG_DAILY_RATE, //14
         UNACCEPTABLE_SQRT_PRICE, //15
         SWAP_TARGET_ADDRESS_IS_ZERO, //16
-        INTERNAL_SWAP_POOL_REQUIRED //17
+        INTERNAL_SWAP_POOL_REQUIRED, //17,
+        SWAP_PRICE_IS_TOO_BAD, //18
+        INVALID_EXTERNAL_SWAP //19
     }
 
     error RevertErrorCode(ErrorCode code);

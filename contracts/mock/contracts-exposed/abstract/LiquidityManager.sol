@@ -62,6 +62,7 @@ contract $LiquidityManager is LiquidityManager {
     }
 
     function $_simulateSwap(
+        bool exactIn,
         bool zeroForIn,
         uint24 fee,
         address tokenIn,
@@ -69,6 +70,7 @@ contract $LiquidityManager is LiquidityManager {
         uint256 amountIn
     ) external view returns (uint160 sqrtPriceX96After, uint256 amountOut) {
         (sqrtPriceX96After, amountOut) = super._simulateSwap(
+            exactIn,
             zeroForIn,
             fee,
             tokenIn,
