@@ -13,8 +13,6 @@ import "../../../../contracts/interfaces/abstract/IApproveSwapAndPay.sol";
 contract $LiquidityManager is LiquidityManager {
     bytes32 public constant __hh_exposed_bytecode_marker = "hardhat-exposed";
 
-    event return$_extractLiquidity(uint256 borrowedAmount);
-
     event return$_v3SwapExactInput(uint256 amountOut);
 
     constructor(
@@ -49,16 +47,6 @@ contract $LiquidityManager is LiquidityManager {
         int24 tickUpper
     ) external pure returns (uint128 minLiquidity) {
         (minLiquidity) = super._getMinLiquidityAmt(tickLower, tickUpper);
-    }
-
-    function $_extractLiquidity(
-        bool zeroForSaleToken,
-        address saleToken,
-        address holdToken,
-        LoanInfo[] calldata loans
-    ) external returns (uint256 borrowedAmount) {
-        (borrowedAmount) = super._extractLiquidity(zeroForSaleToken, saleToken, holdToken, loans);
-        emit return$_extractLiquidity(borrowedAmount);
     }
 
     function $_simulateSwap(

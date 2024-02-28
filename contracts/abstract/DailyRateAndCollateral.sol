@@ -7,13 +7,13 @@ import "../interfaces/abstract/IDailyRateAndCollateral.sol";
 
 abstract contract DailyRateAndCollateral is IDailyRateAndCollateral {
     /// pairKey => TokenInfo
-    mapping(bytes32 => TokenInfo) public holdTokenInfo;
+    mapping(bytes32 => TokenInfo) internal holdTokenInfo;
 
     function _checkEntranceFee(uint256 entranceFeeBP) internal pure returns (uint256) {
         if (entranceFeeBP == 0) {
             entranceFeeBP = Constants.DEFAULT_ENTRANCE_FEE_BPS;
-        } else if (entranceFeeBP == 1) {
-            // To disable entry fees, set it to one
+        } else if (entranceFeeBP == Constants.MAX_ENTRANCE_FEE_BPS + 1) {
+            // To disable entry fees, set it to MAX_ENTRANCE_FEE_BPS + 1
             entranceFeeBP = 0;
         }
         return entranceFeeBP;

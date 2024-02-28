@@ -134,8 +134,13 @@ abstract contract LiquidityManager is ApproveSwapAndPay, ILiquidityManager {
         bool zeroForSaleToken,
         address saleToken,
         address holdToken,
+        uint256 entranceFeeBps,
+        uint256 platformFeesBPs,
         LoanInfo[] memory loans
-    ) internal returns (uint256 borrowedAmount) {
+    )
+        internal
+        returns (uint256 borrowedAmount, uint256 holdTokenEntraceFee, uint256 holdTokenPlatformFees)
+    {
         NftPositionCache memory cache;
 
         for (uint256 i; i < loans.length; ) {
@@ -147,8 +152,13 @@ abstract contract LiquidityManager is ApproveSwapAndPay, ILiquidityManager {
             if (cache.operator != address(this)) {
                 revert NotApproved(loan.tokenId);
             }
+            address creditor = _getOwnerOf(loan.tokenId);
             // Check token validity
-            if (cache.saleToken != saleToken || cache.holdToken != holdToken) {
+            if (
+                cache.saleToken != saleToken ||
+                cache.holdToken != holdToken ||
+                creditor == address(0)
+            ) {
                 revert InvalidTokens(loan.tokenId);
             }
 
@@ -161,6 +171,18 @@ abstract contract LiquidityManager is ApproveSwapAndPay, ILiquidityManager {
                     minLiquidityAmt,
                     loan.liquidity
                 );
+            }
+            if (entranceFeeBps > 0) {
+                uint256 entranceFeeAmt = FullMath.mulDivRoundingUp(
+                    cache.holdTokenDebt,
+                    entranceFeeBps,
+                    Constants.BP
+                );
+                holdTokenEntraceFee += entranceFeeAmt;
+                entranceFeeAmt *= Constants.COLLATERAL_BALANCE_PRECISION;
+                uint256 platformFeesAmt = (entranceFeeAmt * platformFeesBPs) / Constants.BP;
+                holdTokenPlatformFees += platformFeesAmt;
+                loansFeesInfo[creditor][cache.holdToken] += (entranceFeeAmt - platformFeesAmt);
             }
 
             // Calculate borrowed amount

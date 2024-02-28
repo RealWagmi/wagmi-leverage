@@ -17,17 +17,4 @@ interface IDailyRateAndCollateral {
         uint256 totalBorrowed;
         uint256 entranceFeeBP;
     }
-
-    function holdTokenInfo(
-        bytes32
-    )
-        external
-        view
-        returns (
-            uint32 latestUpTimestamp,
-            uint256 accLoanRatePerSeconds,
-            uint256 currentDailyRate,
-            uint256 totalBorrowed,
-            uint256 entranceFeeBP
-        );
 }

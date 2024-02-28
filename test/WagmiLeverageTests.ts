@@ -336,8 +336,6 @@ describe("WagmiLeverageTests", () => {
         };
 
         borrowParams.maxDailyRate = (await borrowingManager.getHoldTokenInfo(borrowParams.saleToken, borrowParams.holdToken))[0];
-
-        await borrowingManager.connect(owner).updateHoldTokenEntranceFee(WETH_ADDRESS, WBTC_ADDRESS, 2); //disabled
         const prevVaultHoldTokenBalace = await getERC20Balance(WBTC_ADDRESS, vaultAddress);
         const prevVaultSaleTokenTokenBalace = await getERC20Balance(WETH_ADDRESS, vaultAddress);
         const [
@@ -367,30 +365,24 @@ describe("WagmiLeverageTests", () => {
         expect(await borrowingManager.getLenderCreditsCount(nftpos[3].tokenId)).to.be.equal(1);
 
 
-
-
-
-        const prevBalanceLender = await WBTC.balanceOf(alice.address);
+        const lenderFees = (await borrowingManager.getFeesInfo(alice.address, [WBTC_ADDRESS]))[0];
         let prevBobBalance = await WBTC.balanceOf(bob.address);
         // check platform fees
         const afterBorrowPlatformsFees = (await borrowingManager.getPlatformFeesInfo([WBTC_ADDRESS]))[0];
         const platformEntrance = holdTokenEntraceFee.mul(2000).div(10000);// +20%
-        expect(afterBorrowPlatformsFees).to.be.within(platformEntrance.sub(1), platformEntrance);
+        expect(afterBorrowPlatformsFees.div(COLLATERAL_BALANCE_PRECISION)).to.be.within(platformEntrance.sub(1), platformEntrance);
 
-        // check fees owed
         const borrowingsInfo = await borrowingManager.borrowingsInfo(borrowingKey);
-        const feesOwed = borrowingsInfo.feesOwed.div(COLLATERAL_BALANCE_PRECISION);
-        expect(holdTokenEntraceFee.sub(afterBorrowPlatformsFees)).to.be.within(feesOwed, feesOwed.add(1));
-
-        const dailyCollateralBalance = borrowingsInfo.dailyRateCollateralBalance.div(COLLATERAL_BALANCE_PRECISION);
+        const dailyCollateralBalance = borrowingsInfo.dailyRateCollateralBalance;
         const liquidationBonus = borrowingsInfo.liquidationBonus;
         expect(liquidationBonus).to.be.equal(liquidBonus);
         //should be more than 0
-        expect(dailyCollateralBalance).to.be.gt(0);
         expect(liquidationBonus).to.be.gt(0);
+        const borrowingsDebtsInfo = (await borrowingManager.getBorrowerDebtsInfo(bob.address))[0];
+        const collateralBalance = borrowingsDebtsInfo.collateralBalance;
 
         const local_snapshot = await takeSnapshot();
-
+        await time.increase(10);
 
         let repayParams = {
             returnOnlyHoldToken: false,
@@ -405,28 +397,26 @@ describe("WagmiLeverageTests", () => {
         let [saleTokenOut, holdTokenOut] = await borrowingManager.connect(bob).callStatic.repay(repayParams, deadline);
 
         repayParams.minHoldTokenOut = holdTokenOut.mul(990).div(1000);// 1% slippage
-
+        let borrowingsDebtsInfoNew = (await borrowingManager.getBorrowerDebtsInfo(bob.address))[0];
+        let collateralBalanceNew = borrowingsDebtsInfoNew.collateralBalance;
+        //console.log("=>dailyCollateralBalanceNew", dailyCollateralBalanceNew.toString());
+        let fees = collateralBalance.sub(collateralBalanceNew);
+        let platformfees = fees.mul(2000).div(10000);
+        let lenderfees = fees.mul(8000).div(10000);
         await time.setNextBlockTimestamp(await time.latest());
         //BOB repay his loan but loose his dailyCollateral even tho it hasn't been a day
         await borrowingManager.connect(bob).repay(repayParams, deadline);
         let newBobBalance = await WBTC.balanceOf(bob.address);// bob is trader
 
-
         // check platform fees after repay
-        const newPlatformsFees = (await borrowingManager.getPlatformFeesInfo([WBTC_ADDRESS]))[0];
-        const feeCompensationUpToMin = BigNumber.from(1000).sub(borrowingsInfo.feesOwed.div(COLLATERAL_BALANCE_PRECISION));
-        const platformsFeesIncludedfeeCompensation = afterBorrowPlatformsFees.add(feeCompensationUpToMin.mul(2000).div(10000));// 20%
-        expect(newPlatformsFees).to.be.within(platformsFeesIncludedfeeCompensation.sub(1), platformsFeesIncludedfeeCompensation.add(1));
-        // collect fees
-        await borrowingManager.connect(alice).collectLoansFees([WBTC_ADDRESS]);
-        let newBalanceLender = await WBTC.balanceOf(alice.address);
-        // 80% + feesOwed
-        const lendersFeesIncludedfeeCompensation = feeCompensationUpToMin.mul(8000).div(10000).add(borrowingsInfo.feesOwed.div(COLLATERAL_BALANCE_PRECISION));
 
-        const expectedLenderBalance = prevBalanceLender.add(lendersFeesIncludedfeeCompensation);
-        expect(newBalanceLender).to.be.within(expectedLenderBalance.sub(1), expectedLenderBalance.add(1));
+        let newLenderFees = (await borrowingManager.getFeesInfo(alice.address, [WBTC_ADDRESS]))[0];
+        let newPlatformsFees = (await borrowingManager.getPlatformFeesInfo([WBTC_ADDRESS]))[0];
 
-        let expectedMinimumBobHoldTokenBalance = prevBobBalance.add(liquidationBonus).add(dailyCollateralBalance.sub(feeCompensationUpToMin));
+        expect(newPlatformsFees).to.be.within(afterBorrowPlatformsFees.add(platformfees).sub(1), afterBorrowPlatformsFees.add(platformfees).add(1));
+        expect(newLenderFees).to.be.within(lenderFees.add(lenderfees).sub(1), lenderFees.add(lenderfees).add(1));
+
+        let expectedMinimumBobHoldTokenBalance = prevBobBalance.add(liquidationBonus).add((collateralBalanceNew).sub(fees).div(COLLATERAL_BALANCE_PRECISION));
         expect(newBobBalance).to.be.within(expectedMinimumBobHoldTokenBalance, expectedMinimumBobHoldTokenBalance.add(marginDeposit));
 
         await borrowingManager.connect(alice).collectLoansFees([WBTC_ADDRESS, WETH_ADDRESS]);
@@ -438,6 +428,9 @@ describe("WagmiLeverageTests", () => {
         expect(afterCollectVaultHoldTokenBalace).to.be.gte(prevVaultHoldTokenBalace);
 
         await local_snapshot.restore();
+        await time.increase(10);
+        await borrowingManager.connect(owner).updateHoldTokenEntranceFee(WETH_ADDRESS, WBTC_ADDRESS, 1001); //disabled
+        await borrowingManager.connect(bob).borrow(borrowParams, (await time.latest()) + 60);
 
         repayParams = {
             returnOnlyHoldToken: true,//now we want to return only the holdToken
@@ -452,13 +445,25 @@ describe("WagmiLeverageTests", () => {
         //console.log("dailyCollateral", dailyCollateral.toString());
         [saleTokenOut, holdTokenOut] = await borrowingManager.connect(bob).callStatic.repay(repayParams, deadline);
         repayParams.minHoldTokenOut = holdTokenOut.mul(990).div(1000);// 1% slippage
+        borrowingsDebtsInfoNew = (await borrowingManager.getBorrowerDebtsInfo(bob.address))[0];
+        collateralBalanceNew = borrowingsDebtsInfoNew.collateralBalance;
+        //console.log("=>dailyCollateralBalanceNew", dailyCollateralBalanceNew.toString());
+        fees = collateralBalance.mul(2).sub(collateralBalanceNew);// 2xborrow
+        platformfees = fees.mul(2000).div(10000);
+        lenderfees = fees.mul(8000).div(10000);
         await time.setNextBlockTimestamp(await time.latest());
-
+        //BOB repay his loan but loose his dailyCollateral even tho it hasn't been a day
         await borrowingManager.connect(bob).repay(repayParams, deadline);
         newBobBalance = await WBTC.balanceOf(bob.address);
         let [, amountOut] = await lightQuoter.quoteExactInputSingle(false, WBTC_WETH_500_POOL_ADDRESS, saleTokenOut);
 
-        expectedMinimumBobHoldTokenBalance = prevBobBalance.add(liquidationBonus).add(dailyCollateralBalance.sub(feeCompensationUpToMin)).add(amountOut);
+        newLenderFees = (await borrowingManager.getFeesInfo(alice.address, [WBTC_ADDRESS]))[0];
+        newPlatformsFees = (await borrowingManager.getPlatformFeesInfo([WBTC_ADDRESS]))[0];
+
+        expect(newPlatformsFees).to.be.within(afterBorrowPlatformsFees.add(platformfees).sub(1), afterBorrowPlatformsFees.add(platformfees).add(1));
+        expect(newLenderFees).to.be.within(lenderFees.add(lenderfees).sub(1), lenderFees.add(lenderfees).add(1));
+
+        expectedMinimumBobHoldTokenBalance = prevBobBalance.add(liquidationBonus).add((collateralBalanceNew).sub(fees).div(COLLATERAL_BALANCE_PRECISION)).add(amountOut);
         expect(newBobBalance).to.be.within(expectedMinimumBobHoldTokenBalance, expectedMinimumBobHoldTokenBalance.add(marginDeposit).add(amountOut));
 
         await borrowingManager.connect(alice).collectLoansFees([WBTC_ADDRESS, WETH_ADDRESS]);
@@ -597,7 +602,7 @@ describe("WagmiLeverageTests", () => {
         await time.increase(debt.estimatedLifeTime.toNumber() + 10);
         debt = (await borrowingManager.getBorrowerDebtsInfo(bob.address))[0];
         expect(debt.collateralBalance).to.be.lt(0);
-        await borrowingManager.connect(bob).borrow(params, (await time.latest()) + 60);
+        await expect(borrowingManager.connect(bob).borrow(params, (await time.latest()) + 60)).to.be.reverted;// under liquidation
         snapshot.restore();
         await borrowingManager.connect(bob).borrow(params, deadline);
         await time.increase(10000);
@@ -739,7 +744,7 @@ describe("WagmiLeverageTests", () => {
         await time.increase(debt.estimatedLifeTime.toNumber() + 10);
         debt = (await borrowingManager.getBorrowerDebtsInfo(bob.address))[0];
         expect(debt.collateralBalance).to.be.lt(0);
-        await borrowingManager.connect(bob).borrow(params, (await time.latest()) + 60);
+        await expect(borrowingManager.connect(bob).borrow(params, (await time.latest()) + 60)).to.be.reverted;// under liquidation
         snapshot.restore();
         await borrowingManager.connect(bob).borrow(params, deadline);
         await time.increase(10000);
@@ -877,7 +882,7 @@ describe("WagmiLeverageTests", () => {
         await time.increase(debt.estimatedLifeTime.toNumber() + 10);
         debt = (await borrowingManager.getBorrowerDebtsInfo(bob.address))[0];
         expect(debt.collateralBalance).to.be.lt(0);
-        await borrowingManager.connect(bob).borrow(params, (await time.latest()) + 60);
+        await expect(borrowingManager.connect(bob).borrow(params, (await time.latest()) + 60)).to.be.reverted;// under liquidation
         snapshot.restore();
         await borrowingManager.connect(bob).borrow(params, deadline);
         await time.increase(10000);
@@ -1051,7 +1056,9 @@ describe("WagmiLeverageTests", () => {
             loans: loans,
         };
         await borrowingManager.connect(bob).borrow(params, deadline);
+        await time.setNextBlockTimestamp(await time.latest());
         let debt = (await borrowingManager.getBorrowerDebtsInfo(bob.address))[0];
+
         expect(debt.estimatedLifeTime).to.be.gte(86400); // >= 1 day for tokens with a small decemals
         let roundUpvalue = debt.info.borrowedAmount.mul(10).mod(10000).gt(0) ? 1 : 0;
         let collateralBalance = debt.collateralBalance;
@@ -1314,15 +1321,21 @@ describe("WagmiLeverageTests", () => {
         let feesHoldTokenAliceincome = ((await borrowingManager.getFeesInfo(alice.address, [USDT_ADDRESS, WETH_ADDRESS]))[1]).sub(feesHoldTokenAlice);
         let feesHoldTokenOwnerincome = ((await borrowingManager.getFeesInfo(owner.address, [USDT_ADDRESS, WETH_ADDRESS]))[1]).sub(feesHoldTokenOwner);
 
-        let totalIncome = feesHoldTokenBobincome.add(feesHoldTokenAliceincome).add(feesHoldTokenOwnerincome);
+        let totalIncome = feesHoldTokenBobincome.add(feesHoldTokenAliceincome).add(feesHoldTokenOwnerincome).div(COLLATERAL_BALANCE_PRECISION);
         expect(totalIncome).to.be.within(totalIncomeTest, totalIncomeTest.add(3));
 
 
         debt = (await borrowingManager.getBorrowerDebtsInfo(bob.address))[1];
-        expect(debt.info.feesOwed).to.be.lt(BigNumber.from(5));//dust
         expect(debt.info.dailyRateCollateralBalance).to.be.equal(debt.collateralBalance);
+        feesHoldTokenAliceincome = ((await borrowingManager.getFeesInfo(alice.address, [USDT_ADDRESS, WETH_ADDRESS]))[1]);
+        feesHoldTokenBobincome = ((await borrowingManager.getFeesInfo(bob.address, [USDT_ADDRESS, WETH_ADDRESS]))[1]);
         await time.setNextBlockTimestamp(await time.latest());
-        await expect(borrowingManager.connect(alice).harvest(debt.key)).to.be.reverted;
+        await borrowingManager.connect(alice).harvest(debt.key);
+        debt = (await borrowingManager.getBorrowerDebtsInfo(bob.address))[1];
+
+        expect(debt.info.dailyRateCollateralBalance).to.be.equal(debt.collateralBalance);
+        expect((await borrowingManager.getFeesInfo(bob.address, [USDT_ADDRESS, WETH_ADDRESS]))[1]).to.be.equal(feesHoldTokenBobincome);
+        expect((await borrowingManager.getFeesInfo(alice.address, [USDT_ADDRESS, WETH_ADDRESS]))[1]).to.be.equal(feesHoldTokenAliceincome);
     });
 
     it("get-functions should be call successful", async () => {
@@ -1473,7 +1486,7 @@ describe("WagmiLeverageTests", () => {
             .reverted;
         await borrowingManager.connect(owner).collectProtocol(alice.address, [USDT_ADDRESS, WETH_ADDRESS]);
         const aliceBalanceAfter = await getERC20Balance(WETH_ADDRESS, alice.address);
-        expect(aliceBalanceAfter).to.be.equal(aliceBalanceBefore.add(fees[1]));
+        expect(aliceBalanceAfter).to.be.equal(aliceBalanceBefore.add(fees[1].div(COLLATERAL_BALANCE_PRECISION)));
         fees = await borrowingManager.getPlatformFeesInfo([USDT_ADDRESS, WETH_ADDRESS]);
         expect(fees[1]).to.be.equal(0);
     });

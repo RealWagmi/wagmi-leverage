@@ -37,8 +37,6 @@ interface ILiquidityBorrowingManager is
         address borrower;
         address saleToken;
         address holdToken;
-        /// @notice The amount of fees owed by the creditor
-        uint256 feesOwed;
         /// @notice The amount borrowed by the borrower
         uint256 borrowedAmount;
         /// @notice The amount of liquidation bonus
@@ -50,11 +48,11 @@ interface ILiquidityBorrowingManager is
     }
     /// @notice This struct used for caching variables inside a function 'borrow'
     struct BorrowCache {
+        bytes32 borrowingKey;
+        uint256 holdTokenEntraceFee;
         uint256 dailyRateCollateral;
-        uint256 accLoanRatePerSeconds;
         uint256 borrowedAmount;
         uint256 holdTokenBalance;
-        uint256 holdTokenEntraceFee;
     }
     /// @notice Struct representing the extended borrowing information.
     struct BorrowingInfoExt {
@@ -97,7 +95,6 @@ interface ILiquidityBorrowingManager is
         uint256 borrowingCollateral,
         uint256 liquidationBonus,
         uint256 dailyRatePrepayment,
-        uint256 feesDebt,
         uint256 holdTokenEntraceFee
     );
     /// Indicates that a borrower has repaid their loan, optionally with the help of a liquidator
@@ -130,7 +127,6 @@ interface ILiquidityBorrowingManager is
             address borrower,
             address saleToken,
             address holdToken,
-            uint256 feesOwed,
             uint256 borrowedAmount,
             uint256 liquidationBonus,
             uint256 accLoanRatePerSeconds,

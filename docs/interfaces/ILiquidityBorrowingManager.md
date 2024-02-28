@@ -57,7 +57,7 @@ function borrow(ILiquidityBorrowingManager.BorrowParams params, uint256 deadline
 ### borrowingsInfo
 
 ```solidity
-function borrowingsInfo(bytes32 borrowingKey) external view returns (address borrower, address saleToken, address holdToken, uint256 feesOwed, uint256 borrowedAmount, uint256 liquidationBonus, uint256 accLoanRatePerSeconds, uint256 dailyRateCollateralBalance)
+function borrowingsInfo(bytes32 borrowingKey) external view returns (address borrower, address saleToken, address holdToken, uint256 borrowedAmount, uint256 liquidationBonus, uint256 accLoanRatePerSeconds, uint256 dailyRateCollateralBalance)
 ```
 
 
@@ -77,7 +77,6 @@ function borrowingsInfo(bytes32 borrowingKey) external view returns (address bor
 | borrower | address | undefined |
 | saleToken | address | undefined |
 | holdToken | address | undefined |
-| feesOwed | uint256 | undefined |
 | borrowedAmount | uint256 | undefined |
 | liquidationBonus | uint256 | undefined |
 | accLoanRatePerSeconds | uint256 | undefined |
@@ -471,32 +470,6 @@ function harvest(bytes32 borrowingKey) external nonpayable returns (uint256 harv
 |---|---|---|
 | harvestedAmt | uint256 | undefined |
 
-### holdTokenInfo
-
-```solidity
-function holdTokenInfo(bytes32) external view returns (uint32 latestUpTimestamp, uint256 accLoanRatePerSeconds, uint256 currentDailyRate, uint256 totalBorrowed, uint256 entranceFeeBP)
-```
-
-
-
-
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | bytes32 | undefined |
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| latestUpTimestamp | uint32 | undefined |
-| accLoanRatePerSeconds | uint256 | undefined |
-| currentDailyRate | uint256 | undefined |
-| totalBorrowed | uint256 | undefined |
-| entranceFeeBP | uint256 | undefined |
-
 ### increaseCollateralBalance
 
 ```solidity
@@ -731,7 +704,7 @@ function updateSettings(enum IOwnerSettings.ITEM _item, uint256[] values) extern
 ### Borrow
 
 ```solidity
-event Borrow(address borrower, bytes32 borrowingKey, uint256 borrowedAmount, uint256 borrowingCollateral, uint256 liquidationBonus, uint256 dailyRatePrepayment, uint256 feesDebt, uint256 holdTokenEntraceFee)
+event Borrow(address borrower, bytes32 borrowingKey, uint256 borrowedAmount, uint256 borrowingCollateral, uint256 liquidationBonus, uint256 dailyRatePrepayment, uint256 holdTokenEntraceFee)
 ```
 
 Indicates that a borrower has made a new loan
@@ -748,7 +721,6 @@ Indicates that a borrower has made a new loan
 | borrowingCollateral  | uint256 | undefined |
 | liquidationBonus  | uint256 | undefined |
 | dailyRatePrepayment  | uint256 | undefined |
-| feesDebt  | uint256 | undefined |
 | holdTokenEntraceFee  | uint256 | undefined |
 
 ### CollectLoansFees
