@@ -7,7 +7,7 @@ export default {
         },
         ["metis"]:
         {
-            ["wagmi"]: "0x07614aDBe4188EAf1dD90Eb49cA964307bB2E985"
+            ["wagmi"]: "0x215C0E817a3C11F622E774560f0638b0e94aeC27"
         },
 
     }
