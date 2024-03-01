@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: SAL-1.0
-pragma solidity 0.8.21;
+pragma solidity 0.8.23;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { TransferHelper } from "../libraries/TransferHelper.sol";
