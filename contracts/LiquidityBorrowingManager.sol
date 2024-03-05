@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: SAL-1.0
 
 /**
- * WAGMI Leverage Protocol v1.4
+ * WAGMI Leverage Protocol v1.5
  * wagmi.com
  */
 
-pragma solidity 0.8.21;
+pragma solidity 0.8.23;
 
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "./abstract/LiquidityManager.sol";

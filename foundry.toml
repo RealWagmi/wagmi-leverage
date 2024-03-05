@@ -1,5 +1,6 @@
 [profile.default]
 cache_path = 'forge-cache'
+evm_version = 'paris'
 libs = ["node_modules", "lib"]
 optimizer = true
 optimizer_runs = 999
@@ -8,7 +9,8 @@ remappings = [
   "forge-std/=lib/forge-std/src/",
   "ds-test/=lib/forge-std/lib/ds-test/src/",
 ]
-
+#solc_version = '0.8.23'
+auto_detect_solc = true
 src = "contracts"
 test = 'test/foundry'
 via_ir = true

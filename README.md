@@ -29,16 +29,15 @@ This function is used to repay a loan.The position is closed either by the trade
 
 | Network | ChainId | Contract | Address |
 |------| ------- | -----| -----|
-| Kava | 2222 | LightQuoterV3 | [0x7E23BEcf8d50E49D366c7A46f3F188187c098463](https://kavascan.com/address/0x7E23BEcf8d50E49D366c7A46f3F188187c098463) |
-| METIS | 1088 | LightQuoterV3 | [0xF3a53859420a597f0aa20F3A227d0dCfE0825fdd](https://explorer.metis.io/address/0xF3a53859420a597f0aa20F3A227d0dCfE0825fdd) |
+| METIS | 1088 | LightQuoterV3 | [0x5A9fd95e3f865d416bb77b49d1Cca8109FcAbfE5](https://explorer.metis.io/address/0x5A9fd95e3f865d416bb77b49d1Cca8109FcAbfE5) |
 
 ##
 
 | V3 | Network | ChainId | Contract | Address |
 |------|------| ------- | -----| -----|
-| Wagmi | METIS | 1088 | LiquidityBorrowingManager | [0x215C0E817a3C11F622E774560f0638b0e94aeC27](https://explorer.metis.io/address/0x215C0E817a3C11F622E774560f0638b0e94aeC27) |
-| Wagmi | METIS | 1088 | Vault| [0xe1c3d7925c310B6d5aCDe2Dd291cE3665C19fDcB](https://explorer.metis.io/address/0xe1c3d7925c310B6d5aCDe2Dd291cE3665C19fDcB) |
-| Wagmi | METIS | 1088 | PositionEffectivityChart| [0x896C78157b96C5566D0Fe8FcCfB3C1D9e229a7cA](https://explorer.metis.io/address/0x896C78157b96C5566D0Fe8FcCfB3C1D9e229a7cA) |
+| Wagmi | METIS | 1088 | LiquidityBorrowingManager | [0x20fa274D00fF4917A13cD464FDbB200475B6EaBd](https://explorer.metis.io/address/0x20fa274D00fF4917A13cD464FDbB200475B6EaBd) |
+| Wagmi | METIS | 1088 | Vault| [0x5e0e38F49c89D2535D12459a3Cab40dB6D2f7fC9](https://explorer.metis.io/address/0x5e0e38F49c89D2535D12459a3Cab40dB6D2f7fC9) |
+| Wagmi | METIS | 1088 | PositionEffectivityChart| [0x80F43230778F402E99d530e4e35FA423d72020c3](https://explorer.metis.io/address/0x80F43230778F402E99d530e4e35FA423d72020c3) |
 
 ##
 

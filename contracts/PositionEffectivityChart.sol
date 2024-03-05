@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
-pragma solidity 0.8.21;
+pragma solidity 0.8.23;
 
 import { IUniswapV3Pool } from "./interfaces/IUniswapV3Pool.sol";
 import { TickMath } from "./vendor0.8/uniswap/TickMath.sol";

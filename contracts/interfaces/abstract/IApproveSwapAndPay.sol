@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.21;
+pragma solidity 0.8.23;
 
 interface IApproveSwapAndPay {
     /// @notice Struct representing the parameters for a Uniswap V3 exact input swap.

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.21;
+pragma solidity 0.8.23;
 import "./abstract/IApproveSwapAndPay.sol";
 import "./abstract/ILiquidityManager.sol";
 import "./abstract/IDailyRateAndCollateral.sol";

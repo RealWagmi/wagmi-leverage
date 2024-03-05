@@ -3,7 +3,7 @@
     "rules": {
         "compiler-version": [
             "error",
-            "0.8.21"
+            "0.8.23"
         ]
     }
 }

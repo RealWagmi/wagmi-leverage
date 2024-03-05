@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 // https://github.com/Uniswap/v3-periphery/blob/main/contracts/libraries/TransferHelper.sol
-pragma solidity 0.8.21;
+pragma solidity 0.8.23;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 

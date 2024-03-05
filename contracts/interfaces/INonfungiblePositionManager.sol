@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
-pragma solidity 0.8.21;
+pragma solidity 0.8.23;
 
 interface INonfungiblePositionManager {
     /// @notice Returns the position information associated with a given token ID.

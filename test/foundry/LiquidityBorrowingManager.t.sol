@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.10;
+pragma solidity 0.8.23;
 
 import "forge-std/Test.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -292,5 +292,47 @@ contract ContractTest is Test, HelperContract {
         borrowingManager.borrow(BobBorrowingParams, block.timestamp + 60);
 
         vm.stopPrank();
+    }
+
+    function testBorrowExtended() public {
+        uint128 minLiqAmt = _minimumLiquidityAmt(253_320, 264_600);
+
+        address vault = borrowingManager.VAULT_ADDRESS();
+        console.log("initial WETH blance bob", WETH.balanceOf(bob));
+        console.log("initial WBTC blance bob", WBTC.balanceOf(bob));
+        console.log("initial WETH blance vault", WETH.balanceOf(vault));
+        console.log("initial WBTC blance vault", WBTC.balanceOf(vault));
+        (, , , , , , , uint128 liquidity, , , , ) = INonfungiblePositionManager(
+            NONFUNGIBLE_POSITION_MANAGER_ADDRESS
+        ).positions(tokenId);
+        console.log("initial lender liquidity", liquidity);
+
+        vm.startPrank(bob);
+        borrowingManager.borrow(createBorrowParams(tokenId, minLiqAmt), block.timestamp + 1);
+        bytes32[] memory key = borrowingManager.getBorrowingKeysForTokenId(tokenId);
+
+        borrowingManager.borrow(createBorrowParams(tokenId, minLiqAmt), block.timestamp + 1);
+
+        borrowingManager.borrow(createBorrowParams(tokenId, minLiqAmt), block.timestamp + 1);
+
+        borrowingManager.borrow(createBorrowParams(tokenId, minLiqAmt), block.timestamp + 1);
+
+        //  repay tokens
+        (uint saleOut, uint holdToken) = borrowingManager.repay(
+            createRepayParams(key[0]),
+            block.timestamp + 1
+        );
+        vm.stopPrank();
+
+        console.log("saleTokenOut", saleOut);
+        console.log("holdTokenOut", holdToken);
+        console.log("WETH balance bob after repayment", WETH.balanceOf(bob));
+        console.log("WBTC balance bob after repayment", WBTC.balanceOf(bob));
+        console.log("WETH balance vault after repayment", WETH.balanceOf(vault));
+        console.log("WBTC balance vault after repayment", WBTC.balanceOf(vault));
+        (, , , , , , , liquidity, , , , ) = INonfungiblePositionManager(
+            NONFUNGIBLE_POSITION_MANAGER_ADDRESS
+        ).positions(tokenId);
+        console.log("lender liquidity after repayment", liquidity);
     }
 }

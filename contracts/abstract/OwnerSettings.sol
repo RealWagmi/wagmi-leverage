@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: SAL-1.0
-pragma solidity 0.8.21;
+pragma solidity 0.8.23;
 import "@openzeppelin/contracts/access/Ownable.sol";
 import { Constants } from "../libraries/Constants.sol";
 import "../interfaces/abstract/IOwnerSettings.sol";
