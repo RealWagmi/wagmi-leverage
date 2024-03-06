@@ -65,6 +65,22 @@ contract PositionEffectivityChart {
         UNDERLYING_POSITION_MANAGER_ADDRESS = _positionManagerAddress;
     }
 
+    function _calcMargin(
+        uint160 step,
+        uint160 maxSqrtPriceX96,
+        uint160 minSqrtPriceX96,
+        uint160 marginPointsNumber
+    ) private pure returns (uint160 margin, uint256 pointsNumber) {
+        uint160 maxMarginPoints = (maxSqrtPriceX96 - minSqrtPriceX96) / step;
+        if (maxMarginPoints < marginPointsNumber) {
+            margin = step * maxMarginPoints;
+            pointsNumber = maxMarginPoints;
+        } else {
+            margin = step * marginPointsNumber;
+            pointsNumber = marginPointsNumber;
+        }
+    }
+
     /// @notice Creates charts representing loan positions over a price range, including an aggressive mode profit line.
     /// @param zeroForSaleToken Flag indicating whether the sale token is zero for price calculations
     /// @param loans Array of loan positions that will be visualized
@@ -156,15 +172,25 @@ contract PositionEffectivityChart {
         uint160 step = uint160(
             (calcCashe.maxSqrtPriceX96 - calcCashe.minSqrtPriceX96) / pointsNumber
         );
-        // margin from edges
-        uint160 margin = step * marginPointsNumber;
-        if (MIN_SQRT_RATIO <= calcCashe.minSqrtPriceX96 - margin) {
+        require(step > 0, "step is 0");
+        {
+            (uint160 margin, uint256 maxMarginPoints) = _calcMargin(
+                step,
+                calcCashe.minSqrtPriceX96, //max
+                MIN_SQRT_RATIO, //min
+                marginPointsNumber
+            );
             calcCashe.minSqrtPriceX96 -= margin;
-            pointsNumber += marginPointsNumber;
-        }
-        if (MAX_SQRT_RATIO >= calcCashe.maxSqrtPriceX96 + margin) {
+            pointsNumber += maxMarginPoints;
+
+            (margin, maxMarginPoints) = _calcMargin(
+                step,
+                MAX_SQRT_RATIO, //max
+                calcCashe.maxSqrtPriceX96, //min
+                marginPointsNumber
+            );
             calcCashe.maxSqrtPriceX96 += margin;
-            pointsNumber += marginPointsNumber;
+            pointsNumber += maxMarginPoints;
         }
 
         chart = new Chart[](pointsNumber);

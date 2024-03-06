@@ -169,7 +169,7 @@ describe("WagmiLeverageTests", () => {
         expect(await borrowingManager.platformFeesBP()).to.equal(2000);
 
         // DEFAULT_LIQUIDATION_BONUS
-        await expect(borrowingManager.connect(owner).updateSettings(1, [101])).to.be.reverted; ////MAX_LIQUIDATION_BONUS = 100;
+        await expect(borrowingManager.connect(owner).updateSettings(1, [1001])).to.be.reverted; ////MAX_LIQUIDATION_BONUS = 1000;
         await expect(borrowingManager.connect(owner).updateSettings(1, [101, 4])).to.be.reverted;
         await borrowingManager.connect(owner).updateSettings(1, [100]);
         expect(await borrowingManager.dafaultLiquidationBonusBP()).to.equal(100);
@@ -180,8 +180,8 @@ describe("WagmiLeverageTests", () => {
         expect(await borrowingManager.operator()).to.equal(bob.address);
 
         // LIQUIDATION_BONUS_FOR_TOKEN
-        await expect(borrowingManager.connect(owner).updateSettings(3, [USDT_ADDRESS, 101, 1000000])).to.be.reverted; ////MAX_LIQUIDATION_BONUS = 100;
-        await expect(borrowingManager.connect(owner).updateSettings(3, [USDT_ADDRESS, 101, 1000000, 2])).to.be.reverted; ////MAX_LIQUIDATION_BONUS = 100;
+        await expect(borrowingManager.connect(owner).updateSettings(3, [USDT_ADDRESS, 1001, 1000000])).to.be.reverted; ////MAX_LIQUIDATION_BONUS = 1000;
+        await expect(borrowingManager.connect(owner).updateSettings(3, [USDT_ADDRESS, 1001, 1000000, 2])).to.be.reverted; ////MAX_LIQUIDATION_BONUS = 1000;
         await borrowingManager.connect(owner).updateSettings(3, [USDT_ADDRESS, 99, 1000000]);
         expect((await borrowingManager.liquidationBonusForToken(USDT_ADDRESS)).bonusBP).to.equal(99);
         expect((await borrowingManager.liquidationBonusForToken(USDT_ADDRESS)).minBonusAmount).to.equal(1000000);

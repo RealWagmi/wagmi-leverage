@@ -37,7 +37,7 @@ This function is used to repay a loan.The position is closed either by the trade
 |------|------| ------- | -----| -----|
 | Wagmi | METIS | 1088 | LiquidityBorrowingManager | [0x20fa274D00fF4917A13cD464FDbB200475B6EaBd](https://explorer.metis.io/address/0x20fa274D00fF4917A13cD464FDbB200475B6EaBd) |
 | Wagmi | METIS | 1088 | Vault| [0x5e0e38F49c89D2535D12459a3Cab40dB6D2f7fC9](https://explorer.metis.io/address/0x5e0e38F49c89D2535D12459a3Cab40dB6D2f7fC9) |
-| Wagmi | METIS | 1088 | PositionEffectivityChart| [0x80F43230778F402E99d530e4e35FA423d72020c3](https://explorer.metis.io/address/0x80F43230778F402E99d530e4e35FA423d72020c3) |
+| Wagmi | METIS | 1088 | PositionEffectivityChart| [0xbbF979671b95fB27Ab19d817Fc41E6F51D4a9Bf9](https://explorer.metis.io/address/0xbbF979671b95fB27Ab19d817Fc41E6F51D4a9Bf9) |
 
 ##
 
