@@ -5,7 +5,7 @@ pragma solidity 0.8.23;
 library Constants {
     uint256 internal constant BP = 10000;
     uint256 internal constant BPS = 1000;
-    uint256 internal constant MAX_FLASH_LOAN_FEE = 10000; // 1%
+    uint24 internal constant MAX_FLASH_LOAN_FEE = 10000; // 1%
     uint256 internal constant DEFAULT_DAILY_RATE = 20; // 0.2%
     uint256 internal constant MAX_PLATFORM_FEE = 2000; // 20%
     uint256 internal constant MAX_LIQUIDATION_BONUS = 1000; // 10%

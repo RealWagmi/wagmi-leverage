@@ -79,6 +79,7 @@ abstract contract LiquidityManager is ApproveSwapAndPay, ILiquidityManager {
      */
     function _getSingleSideRoundUpBorrowedAmount(
         bool zeroForSaleToken,
+        uint24 feeTiers,
         int24 tickLower,
         int24 tickUpper,
         uint128 liquidity
@@ -96,6 +97,9 @@ abstract contract LiquidityManager is ApproveSwapAndPay, ILiquidityManager {
                     liquidity
                 )
         );
+        // Apply the fee tier to the borrowed amount
+        feeTiers += Constants.MAX_FLASH_LOAN_FEE;
+        borrowedAmount += FullMath.mulDivRoundingUp(borrowedAmount, feeTiers, 1e6 - feeTiers);
     }
 
     /**
@@ -504,6 +508,7 @@ abstract contract LiquidityManager is ApproveSwapAndPay, ILiquidityManager {
         // Calculate the holdTokenDebt using
         cache.holdTokenDebt = _getSingleSideRoundUpBorrowedAmount(
             zeroForSaleToken,
+            cache.fee,
             cache.tickLower,
             cache.tickUpper,
             loan.liquidity

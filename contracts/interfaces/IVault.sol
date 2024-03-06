@@ -15,12 +15,12 @@ interface IVault {
         bytes calldata data
     ) external;
 
-    function setFlashFee(address token, uint256 flashFee) external;
+    function setFlashFee(address token, uint24 flashFee) external;
 
     // Function to get the balances of multiple tokens
     function getBalances(
         address[] calldata tokens
     ) external view returns (uint256[] memory balances);
 
-    function flashFeeForToken(address token) external view returns (uint256);
+    function flashFeeForToken(address token) external view returns (uint24);
 }
