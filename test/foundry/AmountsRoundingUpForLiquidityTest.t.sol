@@ -104,6 +104,7 @@ contract AmountsRoundingUpForLiquidityTest is Test, HelperContract {
 
         repay = ILiquidityBorrowingManager.RepayParams({
             returnOnlyHoldToken: true,
+            zapInAlgorithm: 0,
             isEmergency: false,
             internalSwapPoolfee: internalSwapPoolfee, //token1 - WETH
             externalSwap: swapParams,

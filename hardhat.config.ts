@@ -24,6 +24,20 @@ const COMPILER_SETTINGS_OLD = {
   },
 };
 
+const COMPILER_SETTINGS = {
+  version: '0.8.23',
+  settings: {
+    evmVersion: "paris",
+    optimizer: {
+      enabled: true,
+      runs: 999,
+    },
+    metadata: {
+      bytecodeHash: 'none',
+    },
+  },
+};
+
 const config: HardhatUserConfig = {
   dodoc: {
     runOnCompile: true,
@@ -71,6 +85,7 @@ const config: HardhatUserConfig = {
       }
     ],
     overrides: {
+      'contracts/LightQuoterV3.sol': COMPILER_SETTINGS,
       'contracts/mock/ForceSend.sol': COMPILER_SETTINGS_OLD,
     },
   },

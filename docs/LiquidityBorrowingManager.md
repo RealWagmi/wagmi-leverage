@@ -648,6 +648,22 @@ function repay(ILiquidityBorrowingManager.RepayParams params, uint256 deadline) 
 | saleTokenOut | uint256 | undefined |
 | holdTokenOut | uint256 | undefined |
 
+### setQuoter
+
+```solidity
+function setQuoter(contract ILightQuoterV3 _quoter) external nonpayable
+```
+
+
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| _quoter | contract ILightQuoterV3 | undefined |
+
 ### setSwapCallToWhitelist
 
 ```solidity

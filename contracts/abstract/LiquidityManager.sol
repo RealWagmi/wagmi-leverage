@@ -8,6 +8,7 @@ import { Constants } from "../libraries/Constants.sol";
 import { ErrLib } from "../libraries/ErrLib.sol";
 import { AmountsLiquidity } from "../libraries/AmountsLiquidity.sol";
 import "../interfaces/abstract/ILiquidityManager.sol";
+import "hardhat/console.sol";
 
 abstract contract LiquidityManager is ApproveSwapAndPay, ILiquidityManager {
     using { ErrLib.revertError } for bool;
@@ -23,7 +24,7 @@ abstract contract LiquidityManager is ApproveSwapAndPay, ILiquidityManager {
     /**
      * @notice The Quoter contract.
      */
-    ILightQuoterV3 public immutable lightQuoterV3;
+    ILightQuoterV3 public lightQuoterV3;
 
     ///  msg.sender => token => FeesAmt
     mapping(address => mapping(address => uint256)) internal loansFeesInfo;
@@ -79,6 +80,7 @@ abstract contract LiquidityManager is ApproveSwapAndPay, ILiquidityManager {
      */
     function _getSingleSideRoundUpBorrowedAmount(
         bool zeroForSaleToken,
+        uint24 feeTiers,
         int24 tickLower,
         int24 tickUpper,
         uint128 liquidity
@@ -96,6 +98,8 @@ abstract contract LiquidityManager is ApproveSwapAndPay, ILiquidityManager {
                     liquidity
                 )
         );
+        // Apply the fee tier to the borrowed amount
+        borrowedAmount += FullMath.mulDivRoundingUp(borrowedAmount, feeTiers, 1e6 - feeTiers);
     }
 
     /**
@@ -226,6 +230,7 @@ abstract contract LiquidityManager is ApproveSwapAndPay, ILiquidityManager {
 
     function _calculateAmountsToSwap(
         bool zeroForIn,
+        uint8 zapInAlgorithm,
         uint128 liquidity,
         NftPositionCache memory cache,
         uint256 tokenInBalance,
@@ -235,11 +240,13 @@ abstract contract LiquidityManager is ApproveSwapAndPay, ILiquidityManager {
 
         (, amountIn, , amounts.amount0, amounts.amount1) = lightQuoterV3.calculateExactZapIn(
             ILightQuoterV3.CalculateExactZapInParams({
+                zapInAlgorithm: zapInAlgorithm,
                 swapPool: pool,
                 zeroForIn: zeroForIn,
                 tickLower: cache.tickLower,
                 tickUpper: cache.tickUpper,
                 liquidityExactAmount: liquidity,
+                holdTokenDebt: cache.holdTokenDebt,
                 tokenInBalance: tokenInBalance,
                 tokenOutBalance: tokenOutBalance
             })
@@ -307,11 +314,10 @@ abstract contract LiquidityManager is ApproveSwapAndPay, ILiquidityManager {
                     if (params.swapPoolfeeTier == cache.fee) {
                         (holdTokenAmountIn, amounts) = _calculateAmountsToSwap(
                             !params.zeroForSaleToken,
+                            params.zapInAlgorithm,
                             loan.liquidity,
                             cache,
-                            cache.holdTokenDebt > holdTokenBalance
-                                ? holdTokenBalance
-                                : cache.holdTokenDebt,
+                            holdTokenBalance,
                             saleTokenBalance
                         );
                     } else {
@@ -504,6 +510,7 @@ abstract contract LiquidityManager is ApproveSwapAndPay, ILiquidityManager {
         // Calculate the holdTokenDebt using
         cache.holdTokenDebt = _getSingleSideRoundUpBorrowedAmount(
             zeroForSaleToken,
+            cache.fee,
             cache.tickLower,
             cache.tickUpper,
             loan.liquidity

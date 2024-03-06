@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.23;
+pragma solidity ^0.8.10;
 
 import "forge-std/Test.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -20,24 +20,26 @@ import { Constants } from "../../contracts/libraries/Constants.sol";
 
 import { console } from "forge-std/console.sol";
 
-contract SwapAmountIsZeroMetis is Test, HelperContract {
+contract LBMdebugFull is Test, HelperContract {
     address constant NONFUNGIBLE_POSITION_MANAGER_ADDRESS =
         0xA7E119Cf6c8f5Be29Ca82611752463f0fFcb1B02;
     address constant UNISWAP_V3_FACTORY = 0x8112E18a34b63964388a3B2984037d6a2EFE5B8A;
     bytes32 constant UNISWAP_V3_POOL_INIT_CODE_HASH =
         0x30146866f3a846fe3c636beb2756dbd24cf321bc52c9113c837c21f47470dfeb;
-    address constant alice = 0x0FAB28472D94737c63856033Fd7B936EbB9050A4;
+    address constant alice = 0xcD28C364Fd3163f2DF2Bf89c6D5A897477EB1e33; // 0x3c1Cb7D4c0ce0dc72eDc7Ea06acC866e62a8f1d8 jordge
     address constant WAGMI = 0xaf20f5f19698f1D19351028cd7103B63D30DE7d7;
     address constant USDT = 0xbB06DCA3AE6887fAbF931640f67cab3e3a16F4dC;
+    address constant WMETIS = 0x75cb093E4D61d2A2e65D8e0BBb01DE8d89b53481;
     LiquidityBorrowingManager borrowingManager;
 
     function setUp() public {
-        vm.createSelectFork("metis", 13428428);
+        vm.createSelectFork("metis", 14484957);
         vm.label(address(WAGMI), "WAGMI");
+        vm.label(address(WMETIS), "WMETIS");
         vm.label(address(USDT), "USDT");
-        vm.label(address(this), "SwapAmountIsZeroMetis");
+        vm.label(address(this), "LBMdebugFull");
         vm.label(address(NONFUNGIBLE_POSITION_MANAGER_ADDRESS), "NONFUNGIBLE_POSITION_MANAGER");
-        deal(address(WAGMI), alice, 100_000_000e18);
+        deal(address(WMETIS), alice, 100_000_000e18);
         address lightQuoter = address(new LightQuoterV3());
         borrowingManager = new LiquidityBorrowingManager(
             NONFUNGIBLE_POSITION_MANAGER_ADDRESS,
@@ -67,8 +69,8 @@ contract SwapAmountIsZeroMetis is Test, HelperContract {
         vm.label(alice, "Alice");
     }
 
-    function test_repay() public {
-        uint256 tokenId = 143;
+    function test_lbmfull() public {
+        uint256 tokenId = 183;
         address ownerPositionManager = INonfungiblePositionManager(
             NONFUNGIBLE_POSITION_MANAGER_ADDRESS
         ).ownerOf(tokenId);
@@ -80,42 +82,27 @@ contract SwapAmountIsZeroMetis is Test, HelperContract {
         );
         vm.stopPrank();
         vm.startPrank(alice);
-        _maxApproveIfNecessary(address(WAGMI), address(borrowingManager), type(uint256).max);
+        _maxApproveIfNecessary(address(WMETIS), address(borrowingManager), type(uint256).max);
 
         ILiquidityManager.LoanInfo memory loanInfo = ILiquidityManager.LoanInfo({
-            liquidity: 87161523697251899, //127161523697251899,
+            liquidity: 90177335165481605,
             tokenId: tokenId
         });
 
-        IApproveSwapAndPay.SwapParams[] memory exSwapParams = new IApproveSwapAndPay.SwapParams[](
-            2
-        );
-        bytes
-            memory data = hex"b858183f000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000800000000000000000000000001bbce9fc68e47cd3e4b6bc3be64e271bcdb3edf1000000000000000000000000000000000000000000000000000000003fd709bd000000000000000000000000000000000000000000000edc167dec7b74e8dbc00000000000000000000000000000000000000000000000000000000000000042bb06dca3ae6887fabf931640f67cab3e3a16f4dc0005dc75cb093e4d61d2a2e65d8e0bbb01de8d89b53481002710af20f5f19698f1d19351028cd7103b63d30de7d7000000000000000000000000000000000000000000000000000000000000";
-        exSwapParams[0] = IApproveSwapAndPay.SwapParams({
-            swapTarget: 0x8B741B0D79BE80E135C880F7583d427B4D41F015,
-            maxGasForCall: 0,
-            swapData: data
-        });
-        data = hex"b858183f000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000800000000000000000000000001bbce9fc68e47cd3e4b6bc3be64e271bcdb3edf100000000000000000000000000000000000000000000000000000000035c28ef0000000000000000000000000000000000000000000000c99c67f89cfe3c43370000000000000000000000000000000000000000000000000000000000000059bb06dca3ae6887fabf931640f67cab3e3a16f4dc0005dc420000000000000000000000000000000000000a0005dc75cb093e4d61d2a2e65d8e0bbb01de8d89b53481000bb8af20f5f19698f1d19351028cd7103b63d30de7d700000000000000";
-        exSwapParams[1] = IApproveSwapAndPay.SwapParams({
-            swapTarget: 0x8B741B0D79BE80E135C880F7583d427B4D41F015,
-            maxGasForCall: 0,
-            swapData: data
-        });
+        IApproveSwapAndPay.SwapParams[] memory swapParams;
 
         LiquidityManager.LoanInfo[] memory loanInfoArrayMemory = new LiquidityManager.LoanInfo[](1);
         loanInfoArrayMemory[0] = loanInfo;
 
         LiquidityBorrowingManager.BorrowParams
             memory AliceBorrowingParams = ILiquidityBorrowingManager.BorrowParams({
-                internalSwapPoolfee: 3000,
+                internalSwapPoolfee: 1500,
                 saleToken: address(USDT),
-                holdToken: address(WAGMI),
-                minHoldTokenOut: 0,
+                holdToken: address(WMETIS),
+                minHoldTokenOut: 841937399665370526001,
                 maxMarginDeposit: type(uint256).max,
-                maxDailyRate: 108905675429610427458,
-                externalSwap: exSwapParams,
+                maxDailyRate: 2564671424041240532,
+                externalSwap: swapParams,
                 loans: loanInfoArrayMemory
             });
 
@@ -125,15 +112,14 @@ contract SwapAmountIsZeroMetis is Test, HelperContract {
         );
         vm.roll(block.number + 10);
 
-        IApproveSwapAndPay.SwapParams[] memory swapParams;
-        LiquidityBorrowingManager.RepayParams memory AliceRepayingParams = ILiquidityBorrowingManager
-            .RepayParams({
+        LiquidityBorrowingManager.RepayParams
+            memory AliceRepayingParams = ILiquidityBorrowingManager.RepayParams({
                 returnOnlyHoldToken: true,
                 isEmergency: false,
                 zapInAlgorithm: 0,
-                internalSwapPoolfee: 3000,
+                internalSwapPoolfee: 1500,
                 externalSwap: swapParams,
-                borrowingKey: AliceBorrowingKeys[0], //0x72787559296c9d1309dc99f0c951bf20b89bbe4d55d93f9bfff0dba8b3dbdd4b,
+                borrowingKey: AliceBorrowingKeys[0],
                 minHoldTokenOut: 0,
                 minSaleTokenOut: 0
             });

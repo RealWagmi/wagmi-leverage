@@ -88,6 +88,10 @@ contract LiquidityBorrowingManager is
         whitelistedCall[swapTarget][funcSelector] = isAllowed;
     }
 
+    function setQuoter(ILightQuoterV3 _quoter) external onlyOwner {
+        lightQuoterV3 = _quoter;
+    }
+
     /**
      * @notice This function allows the owner to collect protocol fees for multiple tokens
      * and transfer them to a specified recipient.
@@ -641,6 +645,7 @@ contract LiquidityBorrowingManager is
             _restoreLiquidity(
                 RestoreLiquidityParams({
                     zeroForSaleToken: zeroForSaleToken,
+                    zapInAlgorithm: params.zapInAlgorithm,
                     swapPoolfeeTier: params.internalSwapPoolfee,
                     totalfeesOwed: currentFees,
                     totalBorrowedAmount: borrowing.borrowedAmount

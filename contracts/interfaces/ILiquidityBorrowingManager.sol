@@ -75,6 +75,8 @@ interface ILiquidityBorrowingManager is
         bool returnOnlyHoldToken;
         /// @notice The activation of the emergency liquidity restoration mode (available only to the lender)
         bool isEmergency;
+        /// liquidity restoration algorithm
+        uint8 zapInAlgorithm;
         /// @notice The pool fee level for the internal swap
         uint24 internalSwapPoolfee;
         /// @notice The external swap parameters for the repayment transaction

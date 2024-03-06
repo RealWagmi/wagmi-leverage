@@ -4,13 +4,12 @@
  * wagmi.com
  */
 
-pragma solidity 0.8.21;
+pragma solidity 0.8.23;
 
-import {IUniswapV3Factory} from "./interfaces/IUniswapV3Factory.sol";
-import {ILightQuoterV3WithImpact} from "./interfaces/ILightQuoterV3WithImpact.sol";
+import { IUniswapV3Factory } from "./interfaces/IUniswapV3Factory.sol";
+import { ILightQuoterV3WithImpact } from "./interfaces/ILightQuoterV3WithImpact.sol";
 
 contract BestInternalPool {
-
     ILightQuoterV3WithImpact public immutable quoter;
 
     constructor(ILightQuoterV3WithImpact _quoter) {
@@ -45,7 +44,6 @@ contract BestInternalPool {
                 }
             }
         }
-        
     }
 
     function getBestInternalPoolByOutput(

@@ -6,6 +6,7 @@ interface ILightQuoterV3 {
     /// @title Struct for "Zap In" Calculation Parameters
     /// @notice This struct encapsulates the various parameters required for calculating the exact amount of tokens to zap in.
     struct CalculateExactZapInParams {
+        uint8 zapInAlgorithm;
         /// @notice The address of the swap pool where liquidity will be added.
         address swapPool;
         /// @notice A boolean determining which token will be used to add liquidity (true for token0 or false for token1).
@@ -16,6 +17,7 @@ interface ILightQuoterV3 {
         int24 tickUpper;
         /// @notice The exact amount of liquidity to add to the pool.
         uint128 liquidityExactAmount;
+        uint256 holdTokenDebt;
         /// @notice The balance of the token that will be used to add liquidity.
         uint256 tokenInBalance;
         /// @notice The balance of the other token in the pool, not typically used for adding liquidity directly but necessary for calculations.

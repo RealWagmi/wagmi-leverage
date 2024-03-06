@@ -8,11 +8,12 @@ import { TickMath } from "./vendor0.8/uniswap/TickMath.sol";
 import { SwapMath } from "./vendor0.8/uniswap/SwapMath.sol";
 import { BitMath } from "./vendor0.8/uniswap/BitMath.sol";
 import { AmountsLiquidity } from "./libraries/AmountsLiquidity.sol";
+import "hardhat/console.sol";
 
 contract LightQuoterV3 is ILightQuoterV3 {
     using SafeCast for uint256;
 
-    uint256 public constant MAX_ITER = 10;
+    uint256 public constant MAX_ITER = 15;
 
     struct SwapCache {
         bool zeroForOne;
@@ -21,6 +22,8 @@ contract LightQuoterV3 is ILightQuoterV3 {
         uint24 fee;
         int24 tickSpacing;
         int24 tick;
+        uint160 sqrtRatioAX96Lower;
+        uint160 sqrtRatioBX96Upper;
         uint160 sqrtPriceX96;
         uint160 sqrtPriceX96Limit;
         address swapPool;
@@ -98,15 +101,41 @@ contract LightQuoterV3 is ILightQuoterV3 {
             uint256 calcAmountOut
         )
     {
-        uint160 sqrtRatioAX96 = TickMath.getSqrtRatioAtTick(params.tickLower);
-        uint160 sqrtRatioBX96 = TickMath.getSqrtRatioAtTick(params.tickUpper);
         SwapCache memory cache = _prepareSwapCache(params.zeroForIn, params.swapPool);
+        cache.sqrtRatioAX96Lower = TickMath.getSqrtRatioAtTick(params.tickLower);
+        cache.sqrtRatioBX96Upper = TickMath.getSqrtRatioAtTick(params.tickUpper);
+        if (params.zapInAlgorithm == 0) {
+            (
+                sqrtPriceX96After,
+                swapAmountIn,
+                swapAmountOut,
+                calcAmountIn,
+                calcAmountOut
+            ) = _calculateExactZapIn0(params, cache);
+        } else {
+            revert("LtQV3:unsupported zapInAlgorithm");
+        }
+    }
 
+    function _calculateExactZapIn0(
+        CalculateExactZapInParams memory params,
+        SwapCache memory cache
+    )
+        private
+        view
+        returns (
+            uint160 sqrtPriceX96After,
+            uint256 swapAmountIn,
+            uint256 swapAmountOut,
+            uint256 calcAmountIn,
+            uint256 calcAmountOut
+        )
+    {
         uint256 amountInNext;
         (amountInNext, calcAmountIn, calcAmountOut) = _calculateAmounts(
             cache.sqrtPriceX96,
-            sqrtRatioAX96,
-            sqrtRatioBX96,
+            cache.sqrtRatioAX96Lower,
+            cache.sqrtRatioBX96Upper,
             params,
             0
         );
@@ -133,8 +162,8 @@ contract LightQuoterV3 is ILightQuoterV3 {
 
                 (amountInNext, calcAmountIn, calcAmountOut) = _calculateAmounts(
                     sqrtPriceX96After,
-                    sqrtRatioAX96,
-                    sqrtRatioBX96,
+                    cache.sqrtRatioAX96Lower,
+                    cache.sqrtRatioBX96Upper,
                     params,
                     amountInNext
                 );
@@ -158,8 +187,8 @@ contract LightQuoterV3 is ILightQuoterV3 {
             if (swapAmountIn == 0) {
                 (amountInNext, calcAmountIn, calcAmountOut) = _calculateAmounts(
                     cache.sqrtPriceX96,
-                    sqrtRatioAX96,
-                    sqrtRatioBX96,
+                    cache.sqrtRatioAX96Lower,
+                    cache.sqrtRatioBX96Upper,
                     params,
                     0
                 );
@@ -218,6 +247,8 @@ contract LightQuoterV3 is ILightQuoterV3 {
             sqrtPriceX96Limit: zeroForOne
                 ? TickMath.MIN_SQRT_RATIO + 1
                 : TickMath.MAX_SQRT_RATIO - 1,
+            sqrtRatioAX96Lower: 0,
+            sqrtRatioBX96Upper: 0,
             swapPool: swapPool
         });
     }

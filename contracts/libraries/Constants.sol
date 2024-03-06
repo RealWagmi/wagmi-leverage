@@ -7,7 +7,7 @@ library Constants {
     uint256 internal constant BPS = 1000;
     uint256 internal constant DEFAULT_DAILY_RATE = 20; // 0.2%
     uint256 internal constant MAX_PLATFORM_FEE = 2000; // 20%
-    uint256 internal constant MAX_LIQUIDATION_BONUS = 100; // 1%
+    uint256 internal constant MAX_LIQUIDATION_BONUS = 1000; // 10%
     uint256 internal constant MAX_DAILY_RATE = 10000; // 100%
     uint256 internal constant MIN_DAILY_RATE = 5; // 0.05 %
     uint256 internal constant MAX_ENTRANCE_FEE_BPS = 1000; // 10%

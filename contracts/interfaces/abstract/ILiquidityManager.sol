@@ -35,6 +35,7 @@ interface ILiquidityManager {
      */
     struct RestoreLiquidityParams {
         bool zeroForSaleToken;
+        uint8 zapInAlgorithm;
         uint24 swapPoolfeeTier;
         uint256 totalfeesOwed;
         uint256 totalBorrowedAmount;

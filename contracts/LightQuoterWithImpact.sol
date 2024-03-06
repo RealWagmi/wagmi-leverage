@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
-pragma solidity 0.8.21;
+pragma solidity 0.8.23;
 
 import "./interfaces/ILightQuoterV3WithImpact.sol";
 import { IUniswapV3Pool } from "./interfaces/IUniswapV3Pool.sol";
@@ -224,7 +224,7 @@ contract LightQuoterV3WithImpact is ILightQuoterV3WithImpact {
             tick: tick,
             sqrtPriceX96: sqrtPriceX96,
             sqrtPriceX96Limit: zeroForOne
-                ? uint160(FullMath.mulDiv(sqrtPriceX96,  100 - impact, 100)) 
+                ? uint160(FullMath.mulDiv(sqrtPriceX96, 100 - impact, 100))
                 : uint160(FullMath.mulDiv(sqrtPriceX96, 100 + impact, 100)),
             swapPool: swapPool
         });

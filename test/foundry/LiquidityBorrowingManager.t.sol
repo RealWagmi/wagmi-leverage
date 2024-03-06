@@ -232,6 +232,7 @@ contract ContractTest is Test, HelperContract {
         repay = ILiquidityBorrowingManager.RepayParams({
             returnOnlyHoldToken: true,
             isEmergency: false,
+            zapInAlgorithm: 0,
             internalSwapPoolfee: 500, //token1 - WETH
             externalSwap: swapParams,
             borrowingKey: _borrowingKey,

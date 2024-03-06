@@ -4,11 +4,11 @@
  * wagmi.com
  */
 
-pragma solidity 0.8.21;
+pragma solidity 0.8.23;
 
-import {IUniswapV3Factory} from "./IUniswapV3Factory.sol";
+import { IUniswapV3Factory } from "./IUniswapV3Factory.sol";
 
-interface IBestInternalPool{
+interface IBestInternalPool {
     function getBestInternalPoolByInput(
         uint256 amountIn,
         IUniswapV3Factory _underlyingV3Factory,
