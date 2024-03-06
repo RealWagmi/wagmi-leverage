@@ -48,7 +48,7 @@ abstract contract LiquidityManager is ApproveSwapAndPay, ILiquidityManager {
         // Generate a unique salt for the new Vault contract
         bytes32 salt = keccak256(abi.encode(block.timestamp, address(this)));
         // Deploy a new Vault contract using the generated salt and assign its address to VAULT_ADDRESS
-        VAULT_ADDRESS = address(new Vault{ salt: salt }());
+        VAULT_ADDRESS = address(new Vault{ salt: salt }(Constants.MAX_FLASH_LOAN_FEE));
     }
 
     error InvalidBorrowedLiquidityAmount(
