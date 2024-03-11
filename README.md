@@ -54,12 +54,12 @@ This function is used to repay a loan.The position is closed either by the trade
 
 | V3 | Network | ChainId | Contract | Address |
 |------|------| ------- | -----| -----|
-| Wagmi | KAVA | 2222 | LiquidityBorrowingManager | [0x180cBA6501ECc1E64D66Cf9658ad8BBF5B821deF](https://explorer.metis.io/address/0x180cBA6501ECc1E64D66Cf9658ad8BBF5B821deF) |
-| Wagmi | KAVA | 2222 | Vault| [0x5cBa9B2c6a7004C120481ACa72ab4CA75E516AED](https://explorer.metis.io/address/0x5cBa9B2c6a7004C120481ACa72ab4CA75E516AED) |
-| Wagmi | KAVA | 2222 | PositionEffectivityChart| [0x89792C7b478cf25220EE7fCF0F445Ea134A992f4](https://explorer.metis.io/address/0x89792C7b478cf25220EE7fCF0F445Ea134A992f4) |
-| Kinetix | KAVA | 2222 | LiquidityBorrowingManager | [0x5037de5B646AF604f964Dd86c0D9719459122454](https://explorer.metis.io/address/0x5037de5B646AF604f964Dd86c0D9719459122454) |
-| Kinetix | KAVA | 2222 | Vault| [0x7D05964F271Cb30a2DD18DcE7363e1155a5bA1Ff](https://explorer.metis.io/address/0x7D05964F271Cb30a2DD18DcE7363e1155a5bA1Ff) |
-| Kinetix | KAVA | 2222 | PositionEffectivityChart| [0x8c5863C690e99e4625789f7ebb7374b5CD091895](https://explorer.metis.io/address/0x8c5863C690e99e4625789f7ebb7374b5CD091895) |
+| Wagmi | KAVA | 2222 | LiquidityBorrowingManager | [0x180cBA6501ECc1E64D66Cf9658ad8BBF5B821deF](https://kavascan.com/address/0x180cBA6501ECc1E64D66Cf9658ad8BBF5B821deF) |
+| Wagmi | KAVA | 2222 | Vault| [0x5cBa9B2c6a7004C120481ACa72ab4CA75E516AED](https://kavascan.com/address/0x5cBa9B2c6a7004C120481ACa72ab4CA75E516AED) |
+| Wagmi | KAVA | 2222 | PositionEffectivityChart| [0x89792C7b478cf25220EE7fCF0F445Ea134A992f4](https://kavascan.com/address/0x89792C7b478cf25220EE7fCF0F445Ea134A992f4) |
+| Kinetix | KAVA | 2222 | LiquidityBorrowingManager | [0x5037de5B646AF604f964Dd86c0D9719459122454](https://kavascan.com/address/0x5037de5B646AF604f964Dd86c0D9719459122454) |
+| Kinetix | KAVA | 2222 | Vault| [0x7D05964F271Cb30a2DD18DcE7363e1155a5bA1Ff](https://kavascan.com/address/0x7D05964F271Cb30a2DD18DcE7363e1155a5bA1Ff) |
+| Kinetix | KAVA | 2222 | PositionEffectivityChart| [0x8c5863C690e99e4625789f7ebb7374b5CD091895](https://kavascan.com/address/0x8c5863C690e99e4625789f7ebb7374b5CD091895) |
 
 
 ##
