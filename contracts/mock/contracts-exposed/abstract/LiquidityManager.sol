@@ -13,10 +13,11 @@ import "../../../../contracts/interfaces/abstract/IApproveSwapAndPay.sol";
 contract $LiquidityManager is LiquidityManager {
     bytes32 public constant __hh_exposed_bytecode_marker = "hardhat-exposed";
 
-    event return$_v3SwapExactInput(uint256 amountOut);
+    event return$_v3SwapExact(uint256 amountOut);
 
     constructor(
         address _underlyingPositionManagerAddress,
+        address _flashLoanAggregator,
         address _lightQuoterV3,
         address _underlyingV3Factory,
         bytes32 _underlyingV3PoolInitCodeHash
@@ -24,6 +25,7 @@ contract $LiquidityManager is LiquidityManager {
         payable
         LiquidityManager(
             _underlyingPositionManagerAddress,
+            _flashLoanAggregator,
             _lightQuoterV3,
             _underlyingV3Factory,
             _underlyingV3PoolInitCodeHash
@@ -34,14 +36,6 @@ contract $LiquidityManager is LiquidityManager {
         return loansFeesInfo[arg0][arg1];
     }
 
-    function $MIN_SQRT_RATIO() external pure returns (uint160) {
-        return MIN_SQRT_RATIO;
-    }
-
-    function $MAX_SQRT_RATIO() external pure returns (uint160) {
-        return MAX_SQRT_RATIO;
-    }
-
     function $_getMinLiquidityAmt(
         int24 tickLower,
         int24 tickUpper
@@ -49,30 +43,23 @@ contract $LiquidityManager is LiquidityManager {
         (minLiquidity) = super._getMinLiquidityAmt(tickLower, tickUpper);
     }
 
-    function $_simulateSwap(
-        bool exactIn,
-        bool zeroForIn,
-        uint24 fee,
-        address tokenIn,
-        address tokenOut,
-        uint256 amountIn
-    ) external view returns (uint160 sqrtPriceX96After, uint256 amountOut) {
-        (sqrtPriceX96After, amountOut) = super._simulateSwap(
-            exactIn,
-            zeroForIn,
-            fee,
-            tokenIn,
-            tokenOut,
-            amountIn
-        );
-    }
-
-    function $_restoreLiquidity(
-        RestoreLiquidityParams calldata params,
-        LoanInfo[] calldata loans
-    ) external {
-        super._restoreLiquidity(params, loans);
-    }
+    // function $_simulateSwap(
+    //     bool exactIn,
+    //     bool zeroForIn,
+    //     uint24 fee,
+    //     address tokenIn,
+    //     address tokenOut,
+    //     uint256 amountIn
+    // ) external view returns (uint160 sqrtPriceX96After, uint256 amountOut) {
+    //     (sqrtPriceX96After, amountOut) = super._simulateSwap(
+    //         exactIn,
+    //         zeroForIn,
+    //         fee,
+    //         tokenIn,
+    //         tokenOut,
+    //         amountIn
+    //     );
+    // }
 
     function $_getOwnerOf(uint256 tokenId) external view returns (address tokenOwner) {
         (tokenOwner) = super._getOwnerOf(tokenId);
@@ -86,8 +73,8 @@ contract $LiquidityManager is LiquidityManager {
         super._upNftPositionCache(zeroForSaleToken, loan, cache);
     }
 
-    function $_maxApproveIfNecessary(address token, address spender, uint256 amount) external {
-        super._maxApproveIfNecessary(token, spender, amount);
+    function $_maxApproveIfNecessary(address token, address spender) external {
+        super._maxApproveIfNecessary(token, spender);
     }
 
     function $_getBalance(address token) external view returns (uint256 balance) {
@@ -109,11 +96,9 @@ contract $LiquidityManager is LiquidityManager {
         super._pay(token, payer, recipient, value);
     }
 
-    function $_v3SwapExactInput(
-        v3SwapExactInputParams calldata params
-    ) external returns (uint256 amountOut) {
-        (amountOut) = super._v3SwapExactInput(params);
-        emit return$_v3SwapExactInput(amountOut);
+    function $_v3SwapExact(v3SwapExactParams calldata params) external returns (uint256 amountOut) {
+        (amountOut) = super._v3SwapExact(params);
+        emit return$_v3SwapExact(amountOut);
     }
 
     receive() external payable {}

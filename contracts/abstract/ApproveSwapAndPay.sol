@@ -1,15 +1,13 @@
 // SPDX-License-Identifier: SAL-1.0
 pragma solidity 0.8.23;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { TransferHelper } from "../libraries/TransferHelper.sol";
 import { IUniswapV3Pool } from "../interfaces/IUniswapV3Pool.sol";
 import { IApproveSwapAndPay } from "../interfaces/abstract/IApproveSwapAndPay.sol";
 import { SafeCast } from "../vendor0.8/uniswap/SafeCast.sol";
 import "../libraries/ExternalCall.sol";
 import "../libraries/ErrLib.sol";
-
-// import "hardhat/console.sol";
 
 abstract contract ApproveSwapAndPay is IApproveSwapAndPay {
     using SafeCast for uint256;
@@ -18,11 +16,9 @@ abstract contract ApproveSwapAndPay is IApproveSwapAndPay {
     using { ExternalCall._readFirstBytes4 } for bytes;
     using { ErrLib.revertError } for bool;
 
-    /// @dev The minimum value that can be returned from #getSqrtRatioAtTick. Equivalent to getSqrtRatioAtTick(MIN_TICK)
-    uint160 internal constant MIN_SQRT_RATIO = 4295128739;
-
-    /// @dev The maximum value that can be returned from #getSqrtRatioAtTick. Equivalent to getSqrtRatioAtTick(MAX_TICK)
-    uint160 internal constant MAX_SQRT_RATIO = 1461446703485210103287273052203988822378723970342;
+    uint160 internal constant MIN_SQRT_RATIO_ADD_ONE = 4295128740;
+    uint160 internal constant MAX_SQRT_RATIO_SUB_ONE =
+        1461446703485210103287273052203988822378723970341;
 
     address public immutable UNDERLYING_V3_FACTORY_ADDRESS;
     bytes32 public immutable UNDERLYING_V3_POOL_INIT_CODE_HASH;
@@ -77,10 +73,9 @@ abstract contract ApproveSwapAndPay is IApproveSwapAndPay {
      * it reverts with an error indicating that the approval did not succeed.
      * @param token The address of the token contract.
      * @param spender The address of the spender.
-     * @param amount The minimum required allowance.
      */
-    function _maxApproveIfNecessary(address token, address spender, uint256 amount) internal {
-        if (IERC20(token).allowance(address(this), spender) < amount) {
+    function _maxApproveIfNecessary(address token, address spender) internal {
+        if (IERC20(token).allowance(address(this), spender) < type(uint128).max) {
             if (!_tryApprove(token, spender, type(uint256).max)) {
                 if (!_tryApprove(token, spender, type(uint256).max - 1)) {
                     require(_tryApprove(token, spender, 0));
@@ -146,11 +141,11 @@ abstract contract ApproveSwapAndPay is IApproveSwapAndPay {
                 ErrLib.ErrorCode.SWAP_TARGET_NOT_APPROVED
             );
             // Maximizing approval if necessary
-            _maxApproveIfNecessary(tokenIn, swapTarget, type(uint128).max);
+            _maxApproveIfNecessary(tokenIn, swapTarget);
 
             // calling the external swap
             bool success = swapTarget._externalCall(swapData, maxGasForCall);
-            (!success).revertError(ErrLib.ErrorCode.INVALID_SWAP);
+            (!success).revertError(ErrLib.ErrorCode.EXTERNAL_SWAP_ERROR);
             unchecked {
                 ++i;
             }
@@ -177,17 +172,19 @@ abstract contract ApproveSwapAndPay is IApproveSwapAndPay {
     }
 
     /**
-     * @dev Performs a token swap using Uniswap V3 with exact input.
-     * @param params The struct containing all swap parameters.
-     * @return amountOut The amount of tokens received as output from the swap.
-     * @notice This internal function swaps the exact amount of `params.amountIn` tokens from `params.tokenIn` to `params.tokenOut`.
-     * The swapped amount is calculated based on the current pool ratio between `params.tokenIn` and `params.tokenOut`.
+     * @notice Performs a token swap on Uniswap V3 using either exact input or output amount.
+     * @dev This internal function allows swapping tokens on Uniswap V3 with precise control over inputs or outputs. It asserts non-zero pool fees and validates the resultant amounts against minimum expectations.
+     * @param params A `v3SwapExactParams` struct containing:
+     * - tokenIn: Address of the token being swapped from.
+     * - tokenOut: Address of the token being swapped to.
+     * - amount: Exact amount of tokenIn or maximum expected amount of tokenOut.
+     * - fee: Pool fee used for the swap.
+     * - isExactInput: Set to true if `amount` is the amount of tokenIn, false if it's the maximum amount of tokenOut.
+     * @return amount The actual amount of tokens received from the swap. Depending on `isExactInput`, this is either the amount of tokenOut or tokenIn.
      */
-    function _v3SwapExactInput(
-        v3SwapExactInputParams memory params
-    ) internal returns (uint256 amountOut) {
+    function _v3SwapExact(v3SwapExactParams memory params) internal returns (uint256 amount) {
         // fee must be non-zero
-        (params.fee == 0).revertError(ErrLib.ErrorCode.INTERNAL_SWAP_POOL_REQUIRED);
+        (params.fee == 0).revertError(ErrLib.ErrorCode.INTERNAL_SWAP_POOL_FEE_CANNOT_BE_ZERO);
         // Determine if tokenIn has a 0th token
         bool zeroForTokenIn = params.tokenIn < params.tokenOut;
         // Compute the address of the Uniswap V3 pool based on tokenIn, tokenOut, and fee
@@ -197,12 +194,24 @@ abstract contract ApproveSwapAndPay is IApproveSwapAndPay {
         ).swap(
                 address(this), //recipient
                 zeroForTokenIn,
-                params.amountIn.toInt256(),
-                zeroForTokenIn ? MIN_SQRT_RATIO + 1 : MAX_SQRT_RATIO - 1,
+                params.isExactInput ? params.amount.toInt256() : -params.amount.toInt256(),
+                zeroForTokenIn ? MIN_SQRT_RATIO_ADD_ONE : MAX_SQRT_RATIO_SUB_ONE,
                 abi.encode(params.fee, params.tokenIn, params.tokenOut)
             );
-        // Calculate the actual amount of output tokens received
-        amountOut = uint256(-(zeroForTokenIn ? amount1Delta : amount0Delta));
+        if (params.isExactInput) {
+            // Calculate the actual amount of output tokens received
+            unchecked {
+                amount = uint256(-(zeroForTokenIn ? amount1Delta : amount0Delta));
+            }
+        } else {
+            uint256 amountOutReceived;
+            (amount, amountOutReceived) = zeroForTokenIn
+                ? (uint256(amount0Delta), uint256(-amount1Delta))
+                : (uint256(amount1Delta), uint256(-amount0Delta));
+            (amountOutReceived < params.amount).revertError(
+                ErrLib.ErrorCode.INTERNAL_SWAP_TOO_SMALL_AMOUNT_OUT
+            );
+        }
     }
 
     /**
@@ -224,7 +233,8 @@ abstract contract ApproveSwapAndPay is IApproveSwapAndPay {
         int256 amount1Delta,
         bytes calldata data
     ) external {
-        (amount0Delta <= 0 && amount1Delta <= 0).revertError(ErrLib.ErrorCode.INVALID_SWAP); // swaps entirely within 0-liquidity regions are not supported
+        // swaps entirely within 0-liquidity regions are not supported
+        (amount0Delta <= 0 && amount1Delta <= 0).revertError(ErrLib.ErrorCode.INTERNAL_SWAP_ERROR);
 
         (uint24 fee, address tokenIn, address tokenOut) = abi.decode(
             data,

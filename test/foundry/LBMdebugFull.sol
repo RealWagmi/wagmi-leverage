@@ -5,6 +5,7 @@ import "forge-std/Test.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { LiquidityBorrowingManager } from "contracts/LiquidityBorrowingManager.sol";
+import { FlashLoanAggregator } from "contracts/FlashLoanAggregator.sol";
 import { LightQuoterV3 } from "contracts/LightQuoterV3.sol";
 import { HelperContract } from "../testsHelpers/HelperContract.sol";
 import { INonfungiblePositionManager } from "contracts/interfaces/INonfungiblePositionManager.sol";
@@ -41,8 +42,14 @@ contract LBMdebugFull is Test, HelperContract {
         vm.label(address(NONFUNGIBLE_POSITION_MANAGER_ADDRESS), "NONFUNGIBLE_POSITION_MANAGER");
         deal(address(WMETIS), alice, 100_000_000e18);
         address lightQuoter = address(new LightQuoterV3());
+        FlashLoanAggregator flashLoanAggregator = new FlashLoanAggregator(
+            UNISWAP_V3_FACTORY,
+            UNISWAP_V3_POOL_INIT_CODE_HASH,
+            "wagmi"
+        );
         borrowingManager = new LiquidityBorrowingManager(
             NONFUNGIBLE_POSITION_MANAGER_ADDRESS,
+            address(flashLoanAggregator),
             lightQuoter,
             UNISWAP_V3_FACTORY,
             UNISWAP_V3_POOL_INIT_CODE_HASH
@@ -112,12 +119,12 @@ contract LBMdebugFull is Test, HelperContract {
         );
         vm.roll(block.number + 10);
 
+        ILiquidityManager.FlashLoanRoutes memory routes;
+
         LiquidityBorrowingManager.RepayParams
             memory AliceRepayingParams = ILiquidityBorrowingManager.RepayParams({
-                returnOnlyHoldToken: true,
                 isEmergency: false,
-                internalSwapPoolfee: 1500,
-                externalSwap: swapParams,
+                routes: routes,
                 borrowingKey: AliceBorrowingKeys[0],
                 minHoldTokenOut: 0,
                 minSaleTokenOut: 0

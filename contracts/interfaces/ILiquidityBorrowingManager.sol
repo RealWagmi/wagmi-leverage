@@ -68,22 +68,22 @@ interface ILiquidityBorrowingManager is
         bytes32 key;
     }
 
-    /// @title RepayParams
-    /// @notice This struct represents the parameters required for repaying a loan.
+    /// @title Repayment Parameters Structure Definition
+    /// @notice This struct represents the parameters required for repaying a loan, including emergency mode flag, restoration routes, external swaps, and minimum expected token outputs.
+
+    /// @dev Struct storing the details necessary to facilitate the repayment of a loan.
+    /// This includes whether emergency liquidity restoration is activated, detailed restoration routes,
+    /// parameters for any external swaps during repayment, the unique loan identifier, and minimum output amounts expected for both hold and sale tokens.
     struct RepayParams {
-        /// @return returnOnlyHoldToken A boolean representing whether the contract returns only the HoldToken
-        bool returnOnlyHoldToken;
-        /// @notice The activation of the emergency liquidity restoration mode (available only to the lender)
+        /// @notice The activation of the emergency liquidity restoration, accessible only by the lender.
         bool isEmergency;
-        /// @notice The pool fee level for the internal swap
-        uint24 internalSwapPoolfee;
-        /// @notice The external swap parameters for the repayment transaction
-        SwapParams[] externalSwap;
-        /// @notice The unique borrowing key associated with the loan
+        /// @notice FlashLoanRoutes structs, detailing each route used in the repayment process.
+        FlashLoanRoutes routes;
+        /// @notice The unique identifier (borrowing key) associated with the specific loan being repaid.
         bytes32 borrowingKey;
-        /// minimun expected hold token out
+        /// @notice The minimum amount of hold token that must be received when the loan is repaid.
         uint256 minHoldTokenOut;
-        /// minimun expected sale token out
+        /// @notice The minimum amount of sale token that must be received when the loan is repaid.
         uint256 minSaleTokenOut;
     }
 

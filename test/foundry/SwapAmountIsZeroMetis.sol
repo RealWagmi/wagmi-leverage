@@ -5,18 +5,12 @@ import "forge-std/Test.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { LiquidityBorrowingManager } from "contracts/LiquidityBorrowingManager.sol";
+import { FlashLoanAggregator } from "contracts/FlashLoanAggregator.sol";
 import { LightQuoterV3 } from "contracts/LightQuoterV3.sol";
 import { HelperContract } from "../testsHelpers/HelperContract.sol";
 import { INonfungiblePositionManager } from "contracts/interfaces/INonfungiblePositionManager.sol";
-
-import { ApproveSwapAndPay } from "contracts/abstract/ApproveSwapAndPay.sol";
-
 import { LiquidityManager } from "contracts/abstract/LiquidityManager.sol";
 import { IApproveSwapAndPay, ILiquidityManager, ILiquidityBorrowingManager } from "contracts/interfaces/ILiquidityBorrowingManager.sol";
-
-import { TickMath } from "../../contracts/vendor0.8/uniswap/TickMath.sol";
-import { LiquidityAmounts } from "../../contracts/vendor0.8/uniswap/LiquidityAmounts.sol";
-import { Constants } from "../../contracts/libraries/Constants.sol";
 
 import { console } from "forge-std/console.sol";
 
@@ -39,12 +33,19 @@ contract SwapAmountIsZeroMetis is Test, HelperContract {
         vm.label(address(NONFUNGIBLE_POSITION_MANAGER_ADDRESS), "NONFUNGIBLE_POSITION_MANAGER");
         deal(address(WAGMI), alice, 100_000_000e18);
         address lightQuoter = address(new LightQuoterV3());
+        FlashLoanAggregator flashLoanAggregator = new FlashLoanAggregator(
+            UNISWAP_V3_FACTORY,
+            UNISWAP_V3_POOL_INIT_CODE_HASH,
+            "wagmi"
+        );
         borrowingManager = new LiquidityBorrowingManager(
             NONFUNGIBLE_POSITION_MANAGER_ADDRESS,
+            address(flashLoanAggregator),
             lightQuoter,
             UNISWAP_V3_FACTORY,
             UNISWAP_V3_POOL_INIT_CODE_HASH
         );
+        flashLoanAggregator.setWagmiLeverageAddress(address(borrowingManager));
         borrowingManager.setSwapCallToWhitelist(
             0x8B741B0D79BE80E135C880F7583d427B4D41F015,
             0x04e45aaf,
@@ -125,14 +126,35 @@ contract SwapAmountIsZeroMetis is Test, HelperContract {
         );
         vm.roll(block.number + 10);
 
-        IApproveSwapAndPay.SwapParams[] memory swapParams;
-        LiquidityBorrowingManager.RepayParams memory AliceRepayingParams = ILiquidityBorrowingManager
-            .RepayParams({
-                returnOnlyHoldToken: true,
+        uint24 poolfeeTiers0 = 10000; //usdt-wmetis
+        uint24 poolfeeTiers1 = 1500; //usdt-weth
+        uint256 wagmi = 0;
+        uint256 kinetix = 1;
+        uint256 dexIndx = wagmi;
+        address secondToken0 = 0x75cb093E4D61d2A2e65D8e0BBb01DE8d89b53481; // wmetis  pool usdt-wmetis
+        address secondToken1 = 0x420000000000000000000000000000000000000A; // weth   pool usdt-weth
+
+        ILiquidityManager.FlashLoanParams[]
+            memory flashLoanParams = new ILiquidityManager.FlashLoanParams[](2);
+        flashLoanParams[0] = ILiquidityManager.FlashLoanParams({
+            protocol: 1, //uniswap
+            data: abi.encode(poolfeeTiers0, secondToken0, dexIndx)
+        });
+        flashLoanParams[1] = ILiquidityManager.FlashLoanParams({
+            protocol: 1, //uniswap
+            data: abi.encode(poolfeeTiers1, secondToken1, dexIndx)
+        });
+
+        ILiquidityManager.FlashLoanRoutes memory routes = ILiquidityManager.FlashLoanRoutes({
+            strict: true,
+            flashLoanParams: flashLoanParams
+        });
+
+        LiquidityBorrowingManager.RepayParams
+            memory AliceRepayingParams = ILiquidityBorrowingManager.RepayParams({
                 isEmergency: false,
-                internalSwapPoolfee: 3000,
-                externalSwap: swapParams,
-                borrowingKey: AliceBorrowingKeys[0], //0x72787559296c9d1309dc99f0c951bf20b89bbe4d55d93f9bfff0dba8b3dbdd4b,
+                routes: routes,
+                borrowingKey: AliceBorrowingKeys[0],
                 minHoldTokenOut: 0,
                 minSaleTokenOut: 0
             });

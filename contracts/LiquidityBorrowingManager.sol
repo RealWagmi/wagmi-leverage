@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: SAL-1.0
 
 /**
- * WAGMI Leverage Protocol v1.5
+ * WAGMI Leverage Protocol v2.0 beta
  * wagmi.com
  */
 
@@ -38,8 +38,6 @@ contract LiquidityBorrowingManager is
     mapping(uint256 => EnumerableSet.Bytes32Set) private tokenIdToBorrowingKeys;
     /// borrower => EnumerableSet.Bytes32Set
     mapping(address => EnumerableSet.Bytes32Set) private userBorrowingKeys;
-    ///  token => FeesAmt
-    mapping(address => uint256) private platformsFeesInfo;
 
     /// @dev Modifier to check if the current block timestamp is before or equal to the deadline.
     modifier checkDeadline(uint256 deadline) {
@@ -58,17 +56,27 @@ contract LiquidityBorrowingManager is
 
     constructor(
         address _underlyingPositionManagerAddress,
+        address _flashLoanAggregator,
         address _lightQuoterV3,
         address _underlyingV3Factory,
         bytes32 _underlyingV3PoolInitCodeHash
     )
         LiquidityManager(
             _underlyingPositionManagerAddress,
+            _flashLoanAggregator,
             _lightQuoterV3,
             _underlyingV3Factory,
             _underlyingV3PoolInitCodeHash
         )
     {}
+
+    function _setFlashLoanAggregator(address _flashLoanAggregator) external onlyOwner {
+        flashLoanAggregatorAddress = _flashLoanAggregator;
+    }
+
+    function _setLightQuoter(address _lightQuoterV3) external onlyOwner {
+        lightQuoterV3 = ILightQuoterV3(_lightQuoterV3);
+    }
 
     /**
      * @dev Adds or removes a swap call params to the whitelist.
@@ -300,19 +308,20 @@ contract LiquidityBorrowingManager is
     ) public view returns (uint256 liquidationBonus) {
         // Retrieve liquidation bonus for the given token
         Liquidation memory liq = liquidationBonusForToken[token];
+        unchecked {
+            if (liq.bonusBP == 0) {
+                // If there is no specific bonus for the token
+                // Use default bonus
+                liq.minBonusAmount = Constants.MINIMUM_AMOUNT;
+                liq.bonusBP = dafaultLiquidationBonusBP;
+            }
+            liquidationBonus = (borrowedAmount * liq.bonusBP) / Constants.BP;
 
-        if (liq.bonusBP == 0) {
-            // If there is no specific bonus for the token
-            // Use default bonus
-            liq.minBonusAmount = Constants.MINIMUM_AMOUNT;
-            liq.bonusBP = dafaultLiquidationBonusBP;
+            if (liquidationBonus < liq.minBonusAmount) {
+                liquidationBonus = liq.minBonusAmount;
+            }
+            liquidationBonus *= (times > 0 ? times : 1);
         }
-        liquidationBonus = (borrowedAmount * liq.bonusBP) / Constants.BP;
-
-        if (liquidationBonus < liq.minBonusAmount) {
-            liquidationBonus = liq.minBonusAmount;
-        }
-        liquidationBonus *= (times > 0 ? times : 1);
     }
 
     /**
@@ -433,30 +442,36 @@ contract LiquidityBorrowingManager is
         // positive slippage
         if (cache.holdTokenBalance > cache.borrowedAmount) {
             // Thus, we stimulate the platform to look for the best conditions for swapping on external aggregators.
-            platformsFeesInfo[params.holdToken] +=
-                (cache.holdTokenBalance - cache.borrowedAmount) *
-                Constants.COLLATERAL_BALANCE_PRECISION;
+            unchecked {
+                platformsFeesInfo[params.holdToken] +=
+                    (cache.holdTokenBalance - cache.borrowedAmount) *
+                    Constants.COLLATERAL_BALANCE_PRECISION;
+            }
         } else {
-            marginDeposit = cache.borrowedAmount - cache.holdTokenBalance;
+            unchecked {
+                marginDeposit = cache.borrowedAmount - cache.holdTokenBalance;
+            }
             (marginDeposit > params.maxMarginDeposit).revertError(
                 ErrLib.ErrorCode.TOO_BIG_MARGIN_DEPOSIT
             );
         }
-
-        // Updating borrowing details
-        borrowing.borrowedAmount += cache.borrowedAmount;
-        borrowing.liquidationBonus += liquidationBonus;
+        // Transfer the required tokens to the VAULT_ADDRESS for collateral and holdTokenBalance
         borrowing.dailyRateCollateralBalance +=
             cache.dailyRateCollateral *
             Constants.COLLATERAL_BALANCE_PRECISION;
+        uint256 amountToPay;
+        unchecked {
+            // Updating borrowing details
+            borrowing.borrowedAmount += cache.borrowedAmount;
+            borrowing.liquidationBonus += liquidationBonus;
 
-        // Transfer the required tokens to the VAULT_ADDRESS for collateral and holdTokenBalance
-        _pay(
-            params.holdToken,
-            msg.sender,
-            VAULT_ADDRESS,
-            marginDeposit + liquidationBonus + cache.dailyRateCollateral + cache.holdTokenEntraceFee
-        );
+            amountToPay =
+                marginDeposit +
+                liquidationBonus +
+                cache.dailyRateCollateral +
+                cache.holdTokenEntraceFee;
+        }
+        _pay(params.holdToken, msg.sender, VAULT_ADDRESS, amountToPay);
         // Transferring holdTokenBalance to VAULT_ADDRESS
         _pay(params.holdToken, address(this), VAULT_ADDRESS, cache.holdTokenBalance);
         // Emit the Borrow event with the borrower, borrowing key, and borrowed amount
@@ -561,9 +576,11 @@ contract LiquidityBorrowingManager is
 
             // Calculate liquidation bonus and adjust fees owed
             if (collateralBalance > 0) {
-                liquidationBonus +=
-                    uint256(collateralBalance) /
-                    Constants.COLLATERAL_BALANCE_PRECISION;
+                unchecked {
+                    liquidationBonus +=
+                        uint256(collateralBalance) /
+                        Constants.COLLATERAL_BALANCE_PRECISION;
+                }
             } else {
                 currentFees = borrowing.dailyRateCollateralBalance;
             }
@@ -589,7 +606,9 @@ contract LiquidityBorrowingManager is
                 _pickUpPlatformFees(borrowing.holdToken, feesAmt) /
                 Constants.COLLATERAL_BALANCE_PRECISION;
             // Deduct the removed amount from totalBorrowed
-            holdTokenRateInfo.totalBorrowed -= removedAmt;
+            unchecked {
+                holdTokenRateInfo.totalBorrowed -= removedAmt;
+            }
             // If loansInfoLength is 0, remove the borrowing key from storage and get the liquidation bonus
             if (completeRepayment) {
                 LoanInfo[] memory empty;
@@ -604,7 +623,9 @@ contract LiquidityBorrowingManager is
                 borrowingStorage.dailyRateCollateralBalance = borrowing.dailyRateCollateralBalance;
                 borrowingStorage.borrowedAmount = borrowing.borrowedAmount;
             }
-            holdTokenOut = removedAmt + feesAmt;
+            unchecked {
+                holdTokenOut = removedAmt + feesAmt;
+            }
             // Transfer removedAmt + feesAmt to msg.sender and emit EmergencyLoanClosure event
             Vault(VAULT_ADDRESS).transferToken(borrowing.holdToken, msg.sender, holdTokenOut);
             emit EmergencyLoanClosure(borrowing.borrower, msg.sender, params.borrowingKey);
@@ -612,7 +633,9 @@ contract LiquidityBorrowingManager is
             // Calculate platform fees and adjust fees owed
             currentFees = _pickUpPlatformFees(borrowing.holdToken, currentFees);
             // Deduct borrowedAmount from totalBorrowed
-            holdTokenRateInfo.totalBorrowed -= borrowing.borrowedAmount;
+            unchecked {
+                holdTokenRateInfo.totalBorrowed -= borrowing.borrowedAmount;
+            }
 
             // Transfer the borrowed amount and liquidation bonus from the VAULT to this contract
             Vault(VAULT_ADDRESS).transferToken(
@@ -621,31 +644,20 @@ contract LiquidityBorrowingManager is
                 borrowing.borrowedAmount + liquidationBonus
             );
 
-            if (params.externalSwap.length != 0) {
-                _callExternalSwap(borrowing.holdToken, params.externalSwap);
-            }
-
             // Restore liquidity using the borrowed amount and pay a daily rate fee
             LoanInfo[] memory loans = loansInfo[params.borrowingKey];
-            _maxApproveIfNecessary(
-                borrowing.holdToken,
-                address(underlyingPositionManager),
-                type(uint128).max
-            );
-            _maxApproveIfNecessary(
-                borrowing.saleToken,
-                address(underlyingPositionManager),
-                type(uint128).max
-            );
+
+            _maxApproveIfNecessary(borrowing.holdToken, address(underlyingPositionManager));
+            _maxApproveIfNecessary(borrowing.saleToken, address(underlyingPositionManager));
 
             _restoreLiquidity(
                 RestoreLiquidityParams({
                     zeroForSaleToken: zeroForSaleToken,
-                    swapPoolfeeTier: params.internalSwapPoolfee,
                     totalfeesOwed: currentFees,
-                    totalBorrowedAmount: borrowing.borrowedAmount
-                }),
-                loans
+                    totalBorrowedAmount: borrowing.borrowedAmount,
+                    routes: params.routes,
+                    loans: loans
+                })
             );
 
             // Remove borrowing key from related data structures
@@ -656,29 +668,6 @@ contract LiquidityBorrowingManager is
                 borrowing.saleToken,
                 borrowing.holdToken
             );
-
-            if (saleTokenOut > 0 && params.returnOnlyHoldToken) {
-                (, uint256 holdTokenAmountOut) = _simulateSwap(
-                    true, // exactInput
-                    zeroForSaleToken,
-                    params.internalSwapPoolfee,
-                    borrowing.saleToken, // saleToken is tokenIn
-                    borrowing.holdToken,
-                    saleTokenOut
-                );
-                if (holdTokenAmountOut > 0) {
-                    // Call the internal v3SwapExactInput function
-                    holdTokenOut += _v3SwapExactInput(
-                        v3SwapExactInputParams({
-                            fee: params.internalSwapPoolfee,
-                            tokenIn: borrowing.saleToken,
-                            tokenOut: borrowing.holdToken,
-                            amountIn: saleTokenOut
-                        })
-                    );
-                    saleTokenOut = 0;
-                }
-            }
 
             (holdTokenOut < params.minHoldTokenOut || saleTokenOut < params.minSaleTokenOut)
                 .revertError(ErrLib.ErrorCode.PRICE_SLIPPAGE_CHECK);
@@ -708,7 +697,9 @@ contract LiquidityBorrowingManager is
         (collateralBalance <= 0).revertError(ErrLib.ErrorCode.FORBIDDEN);
 
         // Calculate platform fees and adjust fees owed
-        borrowing.dailyRateCollateralBalance -= currentFees;
+        unchecked {
+            borrowing.dailyRateCollateralBalance -= currentFees;
+        }
         uint256 feesOwed = _pickUpPlatformFees(borrowing.holdToken, currentFees);
         // Set the accumulated loan rate per second for the borrowing position
         borrowing.accLoanRatePerSeconds = holdTokenRateInfo.accLoanRatePerSeconds;
@@ -732,8 +723,10 @@ contract LiquidityBorrowingManager is
                 _upNftPositionCache(zeroForSaleToken, loan, cache);
                 uint256 feesAmt = FullMath.mulDiv(feesOwed, cache.holdTokenDebt, borrowedAmount);
                 // Calculate the fees amount based on the total fees owed and holdTokenDebt.
-                loansFeesInfo[creditor][cache.holdToken] += feesAmt;
-                harvestedAmt += feesAmt;
+                unchecked {
+                    loansFeesInfo[creditor][cache.holdToken] += feesAmt;
+                    harvestedAmt += feesAmt;
+                }
             }
             unchecked {
                 ++i;
@@ -780,9 +773,15 @@ contract LiquidityBorrowingManager is
                 // Update the liquidity cache based on the loan information.
                 _upNftPositionCache(zeroForSaleToken, loan, cache);
                 // Add the holdTokenDebt value to the removedAmt.
-                removedAmt += cache.holdTokenDebt;
-                // Calculate the fees amount based on the total fees owed and holdTokenDebt.
-                feesAmt += FullMath.mulDiv(totalfeesOwed, cache.holdTokenDebt, totalBorrowedAmount);
+                unchecked {
+                    removedAmt += cache.holdTokenDebt;
+                    // Calculate the fees amount based on the total fees owed and holdTokenDebt.
+                    feesAmt += FullMath.mulDiv(
+                        totalfeesOwed,
+                        cache.holdTokenDebt,
+                        totalBorrowedAmount
+                    );
+                }
             } else {
                 // If the owner of the loan's token ID is not equal to the `msg.sender`,
                 // the function increments the loop counter and moves on to the next loan.
@@ -841,12 +840,16 @@ contract LiquidityBorrowingManager is
             if (tokenIdToBorrowingKeys[loan.tokenId].add(borrowingKey)) {
                 // Push the current loan to the loans array
                 loans.push(loan);
-                pushCounter++;
+                unchecked {
+                    pushCounter++;
+                }
             } else {
                 // If already exists, find the loan and update its liquidity
                 for (uint256 j; j < loans.length; ) {
                     if (loans[j].tokenId == loan.tokenId) {
-                        loans[j].liquidity += loan.liquidity;
+                        unchecked {
+                            loans[j].liquidity += loan.liquidity;
+                        }
                         break;
                     }
                     unchecked {
@@ -905,7 +908,9 @@ contract LiquidityBorrowingManager is
             // the empty loans[] disallowed
             (cache.borrowedAmount == 0).revertError(ErrLib.ErrorCode.LOANS_IS_EMPTY);
             // Increment the total borrowed amount for the hold token information
-            platformsFeesInfo[params.holdToken] += holdTokenPlatformFee;
+            unchecked {
+                platformsFeesInfo[params.holdToken] += holdTokenPlatformFee;
+            }
         }
 
         if (params.externalSwap.length != 0) {
@@ -921,12 +926,13 @@ contract LiquidityBorrowingManager is
         // Check if the sale token balance is greater than 0
         if (saleTokenBalance > 0) {
             // Call the internal v3SwapExactInput function and update the hold token balance in the cache
-            cache.holdTokenBalance += _v3SwapExactInput(
-                v3SwapExactInputParams({
+            cache.holdTokenBalance += _v3SwapExact(
+                v3SwapExactParams({
+                    isExactInput: true,
                     fee: params.internalSwapPoolfee,
                     tokenIn: params.saleToken,
                     tokenOut: params.holdToken,
-                    amountIn: saleTokenBalance
+                    amount: saleTokenBalance
                 })
             );
         }
@@ -1000,8 +1006,10 @@ contract LiquidityBorrowingManager is
         uint256 fees
     ) private returns (uint256 currentFees) {
         uint256 platformFees = (fees * platformFeesBP) / Constants.BP;
-        platformsFeesInfo[holdToken] += platformFees;
-        currentFees = fees - platformFees;
+        unchecked {
+            platformsFeesInfo[holdToken] += platformFees;
+            currentFees = fees - platformFees;
+        }
     }
 
     /**
@@ -1056,10 +1064,12 @@ contract LiquidityBorrowingManager is
         uint256 borrowedAmount,
         uint256 currentDailyRate
     ) private pure returns (uint256 everySecond) {
-        everySecond =
-            (FullMath.mulDivRoundingUp(borrowedAmount, currentDailyRate, Constants.BP) *
-                Constants.COLLATERAL_BALANCE_PRECISION) /
-            1 days;
+        //unchecked {
+        everySecond = FullMath.mulDivRoundingUp(
+            borrowedAmount,
+            currentDailyRate * Constants.COLLATERAL_BALANCE_PRECISION,
+            1 days * Constants.BP
+        );
     }
 
     function _getFees(
@@ -1111,7 +1121,10 @@ contract LiquidityBorrowingManager is
         amounts = new uint256[](tokens.length);
         for (uint256 i; i < tokens.length; ) {
             address token = tokens[i];
-            uint256 amount = collection[token] / Constants.COLLATERAL_BALANCE_PRECISION;
+            uint256 amount;
+            unchecked {
+                amount = collection[token] / Constants.COLLATERAL_BALANCE_PRECISION;
+            }
             if (amount > 0) {
                 collection[token] = 0;
                 amounts[i] = amount;

@@ -8,12 +8,7 @@ interface IVault {
     // Function to transfer tokens from the vault to a specified address
     function transferToken(address _token, address _to, uint256 _amount) external;
 
-    function vaultFlash(
-        bool zeroForFlash,
-        address token,
-        uint256 amount,
-        bytes calldata data
-    ) external;
+    function vaultFlash(address token, uint256 amount, bytes calldata data) external;
 
     function setFlashFee(address token, uint24 flashFee) external;
 

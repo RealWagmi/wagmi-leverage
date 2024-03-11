@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity 0.8.23;
-
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./interfaces/ILightQuoterV3.sol";
 import { IUniswapV3Pool } from "./interfaces/IUniswapV3Pool.sol";
 import { SafeCast } from "./vendor0.8/uniswap/SafeCast.sol";
@@ -9,10 +9,25 @@ import { SwapMath } from "./vendor0.8/uniswap/SwapMath.sol";
 import { BitMath } from "./vendor0.8/uniswap/BitMath.sol";
 import { AmountsLiquidity } from "./libraries/AmountsLiquidity.sol";
 
+// import "hardhat/console.sol";
+
+interface IZapinCaller {
+    function VAULT_ADDRESS() external view returns (address);
+
+    function _getPairBalance(
+        address tokenA,
+        address tokenB
+    ) external view returns (uint256 balanceA, uint256 balanceB);
+}
+
+interface IZapinCallersVault {
+    function getBalances(address[] memory tokens) external view returns (uint256[] memory balances);
+}
+
 contract LightQuoterV3 is ILightQuoterV3 {
     using SafeCast for uint256;
 
-    uint256 public constant MAX_ITER = 10;
+    uint256 public constant MAX_ITER = 20;
 
     struct SwapCache {
         bool zeroForOne;
@@ -70,7 +85,8 @@ contract LightQuoterV3 is ILightQuoterV3 {
         address swapPool,
         uint256 amountIn
     ) external view returns (uint160 sqrtPriceX96After, uint256 amountOut) {
-        SwapCache memory cache = _prepareSwapCache(zeroForIn, swapPool);
+        SwapCache memory cache;
+        _prepareSwapCache(zeroForIn, swapPool, cache);
         (sqrtPriceX96After, , amountOut) = _simulateSwap(true, amountIn.toInt256(), cache);
     }
 
@@ -79,36 +95,51 @@ contract LightQuoterV3 is ILightQuoterV3 {
         address swapPool,
         uint256 amountOut
     ) external view returns (uint160 sqrtPriceX96After, uint256 amountIn) {
-        SwapCache memory cache = _prepareSwapCache(zeroForIn, swapPool);
+        SwapCache memory cache;
+        _prepareSwapCache(zeroForIn, swapPool, cache);
         uint256 out;
         (sqrtPriceX96After, amountIn, out) = _simulateSwap(false, -amountOut.toInt256(), cache);
         require(out == amountOut, "LtQV3:liquidity is too low");
     }
 
+    function getBalanceOf(address token, address target) internal view returns (uint256 balance) {
+        bytes memory callData = abi.encodeWithSelector(IERC20.balanceOf.selector, target);
+        (bool success, bytes memory data) = token.staticcall(callData);
+        require(success && data.length >= 32);
+        balance = abi.decode(data, (uint256));
+    }
+
+    function _getVaultBalance(
+        bool zeroForIn,
+        address swapPool
+    ) private view returns (uint256 vaultBalance) {
+        address saleToken = zeroForIn
+            ? IUniswapV3Pool(swapPool).token1()
+            : IUniswapV3Pool(swapPool).token0();
+        address vault = IZapinCaller(msg.sender).VAULT_ADDRESS();
+        vaultBalance = getBalanceOf(saleToken, vault);
+    }
+
     function calculateExactZapIn(
         CalculateExactZapInParams memory params
-    )
-        external
-        view
-        returns (
-            uint160 sqrtPriceX96After,
-            uint256 swapAmountIn,
-            uint256 swapAmountOut,
-            uint256 calcAmountIn,
-            uint256 calcAmountOut
-        )
-    {
+    ) external view returns (uint256 swapAmountIn, uint256 calcAmountIn, uint256 calcAmountOut) {
+        uint160 sqrtPriceX96After;
+        uint256 swapAmountOut;
         uint160 sqrtRatioAX96 = TickMath.getSqrtRatioAtTick(params.tickLower);
         uint160 sqrtRatioBX96 = TickMath.getSqrtRatioAtTick(params.tickUpper);
-        SwapCache memory cache = _prepareSwapCache(params.zeroForIn, params.swapPool);
+        SwapCache memory cache;
+        _prepareSwapCache(params.zeroForIn, params.swapPool, cache);
+        params.tokenOutBalance += _getVaultBalance(params.zeroForIn, params.swapPool);
 
         uint256 amountInNext;
         (amountInNext, calcAmountIn, calcAmountOut) = _calculateAmounts(
+            params.zeroForIn,
+            params.liquidityExactAmount,
             cache.sqrtPriceX96,
             sqrtRatioAX96,
             sqrtRatioBX96,
-            params,
-            0
+            0,
+            params.tokenInBalance
         );
 
         if (params.tokenOutBalance < calcAmountOut) {
@@ -132,11 +163,13 @@ contract LightQuoterV3 is ILightQuoterV3 {
                 );
 
                 (amountInNext, calcAmountIn, calcAmountOut) = _calculateAmounts(
+                    params.zeroForIn,
+                    params.liquidityExactAmount,
                     sqrtPriceX96After,
                     sqrtRatioAX96,
                     sqrtRatioBX96,
-                    params,
-                    amountInNext
+                    amountInNext,
+                    params.tokenInBalance
                 );
 
                 if (
@@ -157,11 +190,13 @@ contract LightQuoterV3 is ILightQuoterV3 {
             }
             if (swapAmountIn == 0) {
                 (amountInNext, calcAmountIn, calcAmountOut) = _calculateAmounts(
+                    params.zeroForIn,
+                    params.liquidityExactAmount,
                     cache.sqrtPriceX96,
                     sqrtRatioAX96,
                     sqrtRatioBX96,
-                    params,
-                    0
+                    0,
+                    params.tokenInBalance
                 );
                 revert LtQV3ZapInFailed(
                     amountInNext,
@@ -179,22 +214,24 @@ contract LightQuoterV3 is ILightQuoterV3 {
     }
 
     function _calculateAmounts(
+        bool zeroForIn,
+        uint128 liquidityExactAmount,
         uint160 sqrtPriceX96,
         uint160 sqrtRatioAX96,
         uint160 sqrtRatioBX96,
-        CalculateExactZapInParams memory params,
-        uint256 previousAmountInNext
+        uint256 previousAmountInNext,
+        uint256 tokenInBalance
     ) private pure returns (uint256 amountInNext, uint256 calcAmountIn, uint256 calcAmountOut) {
         (uint256 amount0, uint256 amount1) = AmountsLiquidity.getAmountsRoundingUpForLiquidity(
             sqrtPriceX96,
             sqrtRatioAX96,
             sqrtRatioBX96,
-            params.liquidityExactAmount
+            liquidityExactAmount
         );
 
-        (amountInNext, calcAmountIn, calcAmountOut) = params.zeroForIn
-            ? (params.tokenInBalance - amount0, amount0, amount1)
-            : (params.tokenInBalance - amount1, amount1, amount0);
+        (amountInNext, calcAmountIn, calcAmountOut) = zeroForIn
+            ? (tokenInBalance - amount0, amount0, amount1)
+            : (tokenInBalance - amount1, amount1, amount0);
         if (amountInNext == 0) {
             amountInNext = previousAmountInNext / 2;
         }
@@ -202,24 +239,22 @@ contract LightQuoterV3 is ILightQuoterV3 {
 
     function _prepareSwapCache(
         bool zeroForOne,
-        address swapPool
-    ) private view returns (SwapCache memory cache) {
+        address swapPool,
+        SwapCache memory cache
+    ) private view {
         (uint160 sqrtPriceX96, int24 tick, , , , uint8 feeProtocol, ) = IUniswapV3Pool(swapPool)
             .slot0();
-
-        cache = SwapCache({
-            zeroForOne: zeroForOne,
-            liquidityStart: IUniswapV3Pool(swapPool).liquidity(),
-            feeProtocol: zeroForOne ? (feeProtocol % 16) : (feeProtocol >> 4),
-            fee: IUniswapV3Pool(swapPool).fee(),
-            tickSpacing: IUniswapV3Pool(swapPool).tickSpacing(),
-            tick: tick,
-            sqrtPriceX96: sqrtPriceX96,
-            sqrtPriceX96Limit: zeroForOne
-                ? TickMath.MIN_SQRT_RATIO + 1
-                : TickMath.MAX_SQRT_RATIO - 1,
-            swapPool: swapPool
-        });
+        cache.zeroForOne = zeroForOne;
+        cache.liquidityStart = IUniswapV3Pool(swapPool).liquidity();
+        cache.feeProtocol = zeroForOne ? (feeProtocol % 16) : (feeProtocol >> 4);
+        cache.fee = IUniswapV3Pool(swapPool).fee();
+        cache.tickSpacing = IUniswapV3Pool(swapPool).tickSpacing();
+        cache.tick = tick;
+        cache.sqrtPriceX96 = sqrtPriceX96;
+        cache.sqrtPriceX96Limit = zeroForOne
+            ? TickMath.MIN_SQRT_RATIO + 1
+            : TickMath.MAX_SQRT_RATIO - 1;
+        cache.swapPool = swapPool;
     }
 
     function _simulateSwap(

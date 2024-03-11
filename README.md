@@ -5,6 +5,7 @@
 git clone --recursive https://github.com/RealWagmi/wagmi-leverage.git
 npm install
 mv .env_example .env
+npm run compile
 npm run test
 ```
 
@@ -25,7 +26,7 @@ This function is used to repay a loan.The position is closed either by the trade
 
 ## Deployed
 
-### Addresses
+### V1.5
 
 | Network | ChainId | Contract | Address |
 |------| ------- | -----| -----|
@@ -33,11 +34,35 @@ This function is used to repay a loan.The position is closed either by the trade
 
 ##
 
+
+
 | V3 | Network | ChainId | Contract | Address |
 |------|------| ------- | -----| -----|
 | Wagmi | METIS | 1088 | LiquidityBorrowingManager | [0x20fa274D00fF4917A13cD464FDbB200475B6EaBd](https://explorer.metis.io/address/0x20fa274D00fF4917A13cD464FDbB200475B6EaBd) |
 | Wagmi | METIS | 1088 | Vault| [0x5e0e38F49c89D2535D12459a3Cab40dB6D2f7fC9](https://explorer.metis.io/address/0x5e0e38F49c89D2535D12459a3Cab40dB6D2f7fC9) |
 | Wagmi | METIS | 1088 | PositionEffectivityChart| [0xbbF979671b95fB27Ab19d817Fc41E6F51D4a9Bf9](https://explorer.metis.io/address/0xbbF979671b95fB27Ab19d817Fc41E6F51D4a9Bf9) |
+
+##
+
+### V2.0 beta
+
+| Network | ChainId | Contract | Address |
+|------| ------- | -----| -----|
+| KAVA | 2222 | LightQuoterV3 | [0xCa4526D9d02A7Bb005d850c2176E8aE30B970149](https://kavascan.com/address/0xCa4526D9d02A7Bb005d850c2176E8aE30B970149) |
+
+##
+
+| V3 | Network | ChainId | Contract | Address |
+|------|------| ------- | -----| -----|
+| Wagmi | KAVA | 2222 | LiquidityBorrowingManager | [0x04B559698DfE6Fc1c56268d0d12Da9f5722a60a4](https://explorer.metis.io/address/0x04B559698DfE6Fc1c56268d0d12Da9f5722a60a4) |
+| Wagmi | KAVA | 2222 | Vault| [0x92dD5c26804e424f5c65E55356DedC69255FC7A8](https://explorer.metis.io/address/0x92dD5c26804e424f5c65E55356DedC69255FC7A8) |
+| Wagmi | KAVA | 2222 | FlashLoanAggregator | [0xE0Af69B8a345609C051bAED6208b65f89Cd86C76](https://kavascan.com/address/0xE0Af69B8a345609C051bAED6208b65f89Cd86C76) |
+| Wagmi | KAVA | 2222 | PositionEffectivityChart| [0x89792C7b478cf25220EE7fCF0F445Ea134A992f4](https://explorer.metis.io/address/0x89792C7b478cf25220EE7fCF0F445Ea134A992f4) |
+| Kinetix | KAVA | 2222 | LiquidityBorrowingManager | [0x273F78979aC05669F4162ae86459C10fCEEF8D38](https://explorer.metis.io/address/0x273F78979aC05669F4162ae86459C10fCEEF8D38) |
+|Kinetix | KAVA | 2222 | Vault| [0x130C1aE83682A32c1100aFaB86147DB9186E7e45](https://explorer.metis.io/address/0x130C1aE83682A32c1100aFaB86147DB9186E7e45) |
+| Kinetix | KAVA | 2222 | FlashLoanAggregator | [0x51fa95FC18B0A98b2080f83D1f030684C99E1c2A](https://kavascan.com/address/0x51fa95FC18B0A98b2080f83D1f030684C99E1c2A) |
+| Kinetix | KAVA | 2222 | PositionEffectivityChart| [0x8c5863C690e99e4625789f7ebb7374b5CD091895](https://explorer.metis.io/address/0x8c5863C690e99e4625789f7ebb7374b5CD091895) |
+
 
 ##
 

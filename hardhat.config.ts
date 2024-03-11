@@ -27,10 +27,11 @@ const COMPILER_SETTINGS_OLD = {
 const COMPILER_SETTINGS = {
   version: '0.8.23',
   settings: {
+    viaIR: true,
     evmVersion: "paris",
     optimizer: {
       enabled: true,
-      runs: 999,
+      runs: 9999,
     },
     metadata: {
       bytecodeHash: 'none',
@@ -61,7 +62,7 @@ const config: HardhatUserConfig = {
     disambiguatePaths: false,
     runOnCompile: true,
     strict: true,
-    only: ["LiquidityBorrowingManager", "LightQuoterV3"],
+    only: ["LiquidityBorrowingManager", "LightQuoterV3", "FlashLoanAggregator"],
   },
   paths: {
     sources: './contracts',
@@ -78,13 +79,15 @@ const config: HardhatUserConfig = {
           evmVersion: "paris",
           optimizer: {
             enabled: true,
-            runs: 999
+            runs: 200
           }
 
         }
       }
     ],
     overrides: {
+      'contracts/FlashLoanAggregator.sol': COMPILER_SETTINGS,
+      'contracts/LightQuoterV3.sol': COMPILER_SETTINGS,
       'contracts/mock/ForceSend.sol': COMPILER_SETTINGS_OLD,
     },
   },

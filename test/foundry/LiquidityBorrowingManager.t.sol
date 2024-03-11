@@ -5,6 +5,7 @@ import "forge-std/Test.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IUniswapV3Pool } from "contracts/interfaces/IUniswapV3Pool.sol";
 import { LiquidityBorrowingManager } from "contracts/LiquidityBorrowingManager.sol";
+import { FlashLoanAggregator } from "contracts/FlashLoanAggregator.sol";
 import { LightQuoterV3 } from "contracts/LightQuoterV3.sol";
 import { AggregatorMock } from "contracts/mock/AggregatorMock.sol";
 import { HelperContract } from "../testsHelpers/HelperContract.sol";
@@ -55,15 +56,23 @@ contract ContractTest is Test, HelperContract {
 
         aggregatorMock = new AggregatorMock(UNISWAP_V3_QUOTER_V2);
         lightQuoterV3 = new LightQuoterV3();
+        FlashLoanAggregator flashLoanAggregator = new FlashLoanAggregator(
+            UNISWAP_V3_FACTORY,
+            UNISWAP_V3_POOL_INIT_CODE_HASH,
+            "uniswap"
+        );
         borrowingManager = new LiquidityBorrowingManager(
             NONFUNGIBLE_POSITION_MANAGER_ADDRESS,
+            address(flashLoanAggregator),
             address(lightQuoterV3),
             UNISWAP_V3_FACTORY,
             UNISWAP_V3_POOL_INIT_CODE_HASH
         );
+        flashLoanAggregator.setWagmiLeverageAddress(address(borrowingManager));
         vm.label(address(lightQuoterV3), "LIGHT_QUOTER_V3");
         vm.label(address(borrowingManager), "LiquidityBorrowingManager");
         vm.label(address(aggregatorMock), "AggregatorMock");
+        vm.label(address(flashLoanAggregator), "FlashLoanAggregator");
         deal(address(USDT), address(this), 1_000_000_000e6);
         deal(address(WBTC), address(this), 10e8);
         deal(address(WETH), address(this), 100e18);
@@ -220,20 +229,11 @@ contract ContractTest is Test, HelperContract {
     function createRepayParams(
         bytes32 _borrowingKey
     ) public pure returns (LiquidityBorrowingManager.RepayParams memory repay) {
-        IApproveSwapAndPay.SwapParams[] memory swapParams;
-        // bytes memory swapData = "";
-        // = new ApproveSwapAndPay.SwapParams[](1);
-        // SwapParams[0] = IApproveSwapAndPay.SwapParams({
-        //     swapTarget: address(0),
-        //     maxGasForCall: 0,
-        //     swapData: swapData
-        // });
+        ILiquidityManager.FlashLoanRoutes memory routes;
 
         repay = ILiquidityBorrowingManager.RepayParams({
-            returnOnlyHoldToken: true,
             isEmergency: false,
-            internalSwapPoolfee: 500, //token1 - WETH
-            externalSwap: swapParams,
+            routes: routes,
             borrowingKey: _borrowingKey,
             minHoldTokenOut: 0,
             minSaleTokenOut: 0
@@ -311,17 +311,31 @@ contract ContractTest is Test, HelperContract {
         borrowingManager.borrow(createBorrowParams(tokenId, minLiqAmt), block.timestamp + 1);
         bytes32[] memory key = borrowingManager.getBorrowingKeysForTokenId(tokenId);
 
-        borrowingManager.borrow(createBorrowParams(tokenId, minLiqAmt), block.timestamp + 1);
+        // borrowingManager.borrow(createBorrowParams(tokenId, minLiqAmt), block.timestamp + 1);
 
-        borrowingManager.borrow(createBorrowParams(tokenId, minLiqAmt), block.timestamp + 1);
+        // borrowingManager.borrow(createBorrowParams(tokenId, minLiqAmt), block.timestamp + 1);
 
-        borrowingManager.borrow(createBorrowParams(tokenId, minLiqAmt), block.timestamp + 1);
+        // borrowingManager.borrow(createBorrowParams(tokenId, minLiqAmt), block.timestamp + 1);
 
         //  repay tokens
-        (uint saleOut, uint holdToken) = borrowingManager.repay(
-            createRepayParams(key[0]),
-            block.timestamp + 1
-        );
+
+        uint24 poolfeeTiers = 500;
+        uint256 dexIndx = 0;
+
+        ILiquidityManager.FlashLoanParams[]
+            memory flashLoanParams = new ILiquidityManager.FlashLoanParams[](1);
+        flashLoanParams[0] = ILiquidityManager.FlashLoanParams({
+            protocol: 1, //uniswap
+            data: abi.encode(poolfeeTiers, dexIndx)
+        });
+
+        ILiquidityManager.FlashLoanRoutes memory routes = ILiquidityManager.FlashLoanRoutes({
+            strict: true,
+            flashLoanParams: flashLoanParams
+        });
+        LiquidityBorrowingManager.RepayParams memory params = createRepayParams(key[0]);
+        params.routes = routes;
+        (uint saleOut, uint holdToken) = borrowingManager.repay(params, block.timestamp + 1);
         vm.stopPrank();
 
         console.log("saleTokenOut", saleOut);

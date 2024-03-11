@@ -26,6 +26,7 @@ import {
     LiquidityBorrowingManager,
     IERC20,
     LightQuoterV3,
+    FlashLoanAggregator,
     IUniswapV3Pool,
     INonfungiblePositionManager,
     Vault,
@@ -69,6 +70,7 @@ describe("WagmiLeverageTests", () => {
     let pool3000: IUniswapV3Pool;
     let pool10000: IUniswapV3Pool;
     let lightQuoter: LightQuoterV3;
+    let flashLoanAggregator: FlashLoanAggregator;
     let USDT: IERC20;
     let WETH: IERC20;
     let WBTC: IERC20;
@@ -80,11 +82,17 @@ describe("WagmiLeverageTests", () => {
     let vault: Vault;
     let nftpos: PositionManagerPosInfo[];
     let swapData: string;
+    let flashRoutes: ILiquidityManager.FlashLoanRoutesStruct;
 
     const swapIface = new ethers.utils.Interface(["function swap(bytes calldata wrappedCallData)"]);
 
     before(async () => {
         [owner, alice, bob] = await ethers.getSigners();
+
+        flashRoutes = {
+            strict: false,
+            flashLoanParams: [],
+        };
 
         USDT = await ethers.getContractAt("IERC20", USDT_ADDRESS);
         WETH = await ethers.getContractAt("IERC20", WETH_ADDRESS);
@@ -100,14 +108,20 @@ describe("WagmiLeverageTests", () => {
         const LightQuoterV3Factory = await ethers.getContractFactory("LightQuoterV3"); // Assuming there is an ERC20Mock contract
         lightQuoter = await LightQuoterV3Factory.deploy();
 
+        const FlashLoanAggregatorFactory = await ethers.getContractFactory("FlashLoanAggregator");
+        flashLoanAggregator = await FlashLoanAggregatorFactory.deploy(UNISWAP_V3_FACTORY, UNISWAP_V3_POOL_INIT_CODE_HASH, "uniswap");
+
         const LiquidityBorrowingManager = await ethers.getContractFactory("LiquidityBorrowingManager");
         borrowingManager = await LiquidityBorrowingManager.deploy(
             NONFUNGIBLE_POSITION_MANAGER_ADDRESS,
+            flashLoanAggregator.address,
             lightQuoter.address,
             UNISWAP_V3_FACTORY,
             UNISWAP_V3_POOL_INIT_CODE_HASH
         );
         await borrowingManager.deployed();
+        await flashLoanAggregator.setWagmiLeverageAddress(borrowingManager.address);
+
         const AggregatorMockFactory = await ethers.getContractFactory("AggregatorMock");
         aggregatorMock = await AggregatorMockFactory.deploy(UNISWAP_V3_QUOTER_V2);
         await aggregatorMock.deployed();
@@ -322,8 +336,6 @@ describe("WagmiLeverageTests", () => {
             }
         ];
 
-
-
         let borrowParams: ILiquidityBorrowingManager.BorrowParamsStruct = {
             internalSwapPoolfee: 500,
             saleToken: WETH_ADDRESS,
@@ -365,12 +377,14 @@ describe("WagmiLeverageTests", () => {
         expect(await borrowingManager.getLenderCreditsCount(nftpos[3].tokenId)).to.be.equal(1);
 
 
-        const lenderFees = (await borrowingManager.getFeesInfo(alice.address, [WBTC_ADDRESS]))[0];
+        const lenderFees = ((await borrowingManager.getFeesInfo(alice.address, [WBTC_ADDRESS]))[0]).div(COLLATERAL_BALANCE_PRECISION);
+        const lenderFeesEntrance = holdTokenEntraceFee.mul(8000).div(10000);// +20%
+        expect(lenderFees).to.be.within(lenderFeesEntrance.sub(1), lenderFeesEntrance);
         let prevBobBalance = await WBTC.balanceOf(bob.address);
         // check platform fees
-        const afterBorrowPlatformsFees = (await borrowingManager.getPlatformFeesInfo([WBTC_ADDRESS]))[0];
+        const afterBorrowPlatformsFees = ((await borrowingManager.getPlatformFeesInfo([WBTC_ADDRESS]))[0]).div(COLLATERAL_BALANCE_PRECISION);;
         const platformEntrance = holdTokenEntraceFee.mul(2000).div(10000);// +20%
-        expect(afterBorrowPlatformsFees.div(COLLATERAL_BALANCE_PRECISION)).to.be.within(platformEntrance.sub(1), platformEntrance);
+        expect(afterBorrowPlatformsFees).to.be.within(platformEntrance.sub(1), platformEntrance);
 
         const borrowingsInfo = await borrowingManager.borrowingsInfo(borrowingKey);
         const dailyCollateralBalance = borrowingsInfo.dailyRateCollateralBalance;
@@ -378,31 +392,34 @@ describe("WagmiLeverageTests", () => {
         expect(liquidationBonus).to.be.equal(liquidBonus);
         //should be more than 0
         expect(liquidationBonus).to.be.gt(0);
-        const borrowingsDebtsInfo = (await borrowingManager.getBorrowerDebtsInfo(bob.address))[0];
-        const collateralBalance = borrowingsDebtsInfo.collateralBalance;
+        const collateralBalance = dailyCollateralBalance;
 
         const local_snapshot = await takeSnapshot();
         await time.increase(10);
 
-        let repayParams = {
-            returnOnlyHoldToken: false,
+
+
+        let repayParams: ILiquidityBorrowingManager.RepayParamsStruct = {
             isEmergency: false,
-            internalSwapPoolfee: 500,
-            externalSwap: [],
+            routes: flashRoutes,
             borrowingKey: borrowingKey,
             minHoldTokenOut: BigNumber.from(0),
             minSaleTokenOut: BigNumber.from(0)
         };
-        //console.log("dailyCollateral", dailyCollateral.toString());
-        let [saleTokenOut, holdTokenOut] = await borrowingManager.connect(bob).callStatic.repay(repayParams, deadline);
 
+
+        let [saleTokenOut, holdTokenOut] = await borrowingManager.connect(bob).callStatic.repay(repayParams, deadline);
         repayParams.minHoldTokenOut = holdTokenOut.mul(990).div(1000);// 1% slippage
+        repayParams.minSaleTokenOut = saleTokenOut.mul(990).div(1000);// 1% slippage
+
+
         let borrowingsDebtsInfoNew = (await borrowingManager.getBorrowerDebtsInfo(bob.address))[0];
         let collateralBalanceNew = borrowingsDebtsInfoNew.collateralBalance;
-        //console.log("=>dailyCollateralBalanceNew", dailyCollateralBalanceNew.toString());
-        let fees = collateralBalance.sub(collateralBalanceNew);
-        let platformfees = fees.mul(2000).div(10000);
-        let lenderfees = fees.mul(8000).div(10000);
+        let fees = collateralBalance.sub(collateralBalanceNew);;
+        let platformfees = fees.mul(2000).div(10000).div(COLLATERAL_BALANCE_PRECISION);
+        let lenderfees = fees.add(liquidationBonus).mul(8000).div(10000).div(COLLATERAL_BALANCE_PRECISION);
+
+
         await time.setNextBlockTimestamp(await time.latest());
         //BOB repay his loan but loose his dailyCollateral even tho it hasn't been a day
         await borrowingManager.connect(bob).repay(repayParams, deadline);
@@ -410,11 +427,12 @@ describe("WagmiLeverageTests", () => {
 
         // check platform fees after repay
 
-        let newLenderFees = (await borrowingManager.getFeesInfo(alice.address, [WBTC_ADDRESS]))[0];
-        let newPlatformsFees = (await borrowingManager.getPlatformFeesInfo([WBTC_ADDRESS]))[0];
+        let newLenderFees = ((await borrowingManager.getFeesInfo(alice.address, [WBTC_ADDRESS]))[0]).div(COLLATERAL_BALANCE_PRECISION);
+        expect(newLenderFees).to.be.gt(0);
+        let newPlatformsFees = ((await borrowingManager.getPlatformFeesInfo([WBTC_ADDRESS]))[0]).div(COLLATERAL_BALANCE_PRECISION);;
 
-        expect(newPlatformsFees).to.be.within(afterBorrowPlatformsFees.add(platformfees).sub(1), afterBorrowPlatformsFees.add(platformfees).add(1));
-        expect(newLenderFees).to.be.within(lenderFees.add(lenderfees).sub(1), lenderFees.add(lenderfees).add(1));
+        expect(newPlatformsFees).to.be.equal(afterBorrowPlatformsFees.add(platformfees));
+        expect(newLenderFees).to.be.equal(lenderFees.add(lenderfees));
 
         let expectedMinimumBobHoldTokenBalance = prevBobBalance.add(liquidationBonus).add((collateralBalanceNew).sub(fees).div(COLLATERAL_BALANCE_PRECISION));
         expect(newBobBalance).to.be.within(expectedMinimumBobHoldTokenBalance, expectedMinimumBobHoldTokenBalance.add(marginDeposit));
@@ -432,14 +450,14 @@ describe("WagmiLeverageTests", () => {
         await borrowingManager.connect(owner).updateHoldTokenEntranceFee(WETH_ADDRESS, WBTC_ADDRESS, 1001); //disabled
         await borrowingManager.connect(bob).borrow(borrowParams, (await time.latest()) + 60);
 
+
         repayParams = {
-            returnOnlyHoldToken: true,//now we want to return only the holdToken
             isEmergency: false,
-            internalSwapPoolfee: 500,
-            externalSwap: [],
+            routes: flashRoutes,
             borrowingKey: borrowingKey,
             minHoldTokenOut: BigNumber.from(0),
             minSaleTokenOut: BigNumber.from(0)
+
         };
 
         //console.log("dailyCollateral", dailyCollateral.toString());
@@ -449,19 +467,19 @@ describe("WagmiLeverageTests", () => {
         collateralBalanceNew = borrowingsDebtsInfoNew.collateralBalance;
         //console.log("=>dailyCollateralBalanceNew", dailyCollateralBalanceNew.toString());
         fees = collateralBalance.mul(2).sub(collateralBalanceNew);// 2xborrow
-        platformfees = fees.mul(2000).div(10000);
-        lenderfees = fees.mul(8000).div(10000);
+        platformfees = fees.mul(2000).div(10000).div(COLLATERAL_BALANCE_PRECISION);
+        lenderfees = fees.mul(8000).div(10000).div(COLLATERAL_BALANCE_PRECISION);
         await time.setNextBlockTimestamp(await time.latest());
         //BOB repay his loan but loose his dailyCollateral even tho it hasn't been a day
         await borrowingManager.connect(bob).repay(repayParams, deadline);
         newBobBalance = await WBTC.balanceOf(bob.address);
         let [, amountOut] = await lightQuoter.quoteExactInputSingle(false, WBTC_WETH_500_POOL_ADDRESS, saleTokenOut);
 
-        newLenderFees = (await borrowingManager.getFeesInfo(alice.address, [WBTC_ADDRESS]))[0];
-        newPlatformsFees = (await borrowingManager.getPlatformFeesInfo([WBTC_ADDRESS]))[0];
+        newLenderFees = ((await borrowingManager.getFeesInfo(alice.address, [WBTC_ADDRESS]))[0]).div(COLLATERAL_BALANCE_PRECISION);;
+        newPlatformsFees = ((await borrowingManager.getPlatformFeesInfo([WBTC_ADDRESS]))[0]).div(COLLATERAL_BALANCE_PRECISION);
 
-        expect(newPlatformsFees).to.be.within(afterBorrowPlatformsFees.add(platformfees).sub(1), afterBorrowPlatformsFees.add(platformfees).add(1));
-        expect(newLenderFees).to.be.within(lenderFees.add(lenderfees).sub(1), lenderFees.add(lenderfees).add(1));
+        expect(newPlatformsFees).to.be.equal(afterBorrowPlatformsFees.add(platformfees));
+        expect(newLenderFees).to.be.equal(lenderFees.add(lenderfees));
 
         expectedMinimumBobHoldTokenBalance = prevBobBalance.add(liquidationBonus).add((collateralBalanceNew).sub(fees).div(COLLATERAL_BALANCE_PRECISION)).add(amountOut);
         expect(newBobBalance).to.be.within(expectedMinimumBobHoldTokenBalance, expectedMinimumBobHoldTokenBalance.add(marginDeposit).add(amountOut));
@@ -489,7 +507,7 @@ describe("WagmiLeverageTests", () => {
         await snapshot_global.restore();
         const amountWBTC = ethers.utils.parseUnits("0.05", 8); //token0
         const deadline = (await time.latest()) + 60;
-        const minLeverageDesired = 50;
+        const minLeverageDesired = 30;
         const maxMarginDepositWBTC = amountWBTC.div(minLeverageDesired);
 
         const loans = [
@@ -532,7 +550,7 @@ describe("WagmiLeverageTests", () => {
     it("RIGHT_OUTRANGE_TOKEN_0 borrowing liquidity (long position WBTC zeroForSaleToken = false)  will be successful", async () => {
         const amountWBTC = ethers.utils.parseUnits("0.05", 8); //token0
         const deadline = (await time.latest()) + 60;
-        const minLeverageDesired = 50;
+        const minLeverageDesired = 30;
         const maxMarginDepositWBTC = amountWBTC.div(minLeverageDesired);
 
         const loans = [
@@ -569,7 +587,7 @@ describe("WagmiLeverageTests", () => {
     it("INRANGE_TOKEN_0_TOKEN_1 borrowing liquidity (long position WBTC zeroForSaleToken = false)  will be successful", async () => {
         const amountWBTC = ethers.utils.parseUnits("0.05", 8); //token0
         const deadline = (await time.latest()) + 60;
-        const minLeverageDesired = 50;
+        const minLeverageDesired = 30;
         const maxMarginDepositWBTC = amountWBTC.div(minLeverageDesired);
 
         const loans = [
@@ -611,18 +629,15 @@ describe("WagmiLeverageTests", () => {
     it("repay borrowing and restore liquidity (long position WBTC zeroForSaleToken = false) will be successful", async () => {
         const borrowingKey = (await borrowingManager.getBorrowingKeysForBorrower(bob.address))[0];
         const deadline = (await time.latest()) + 60;
-
-
-        let params = {
-            returnOnlyHoldToken: true,
+        let repayParams: ILiquidityBorrowingManager.RepayParamsStruct = {
             isEmergency: false,
-            internalSwapPoolfee: 500,
-            externalSwap: [],
+            routes: flashRoutes,
             borrowingKey: borrowingKey,
             minHoldTokenOut: BigNumber.from(0),
             minSaleTokenOut: BigNumber.from(0)
         };
-        await borrowingManager.connect(bob).repay(params, deadline);
+
+        await borrowingManager.connect(bob).repay(repayParams, deadline);
         const rateInfo = await borrowingManager.getHoldTokenInfo(WETH_ADDRESS, WBTC_ADDRESS);
         expect(rateInfo.totalBorrowed).to.be.equal(0);
         await time.increase(86400);
@@ -633,7 +648,7 @@ describe("WagmiLeverageTests", () => {
         await snapshot_global.restore();
         const amountWETH = ethers.utils.parseUnits("0.88", 18);
         const deadline = (await time.latest()) + 60;
-        const minLeverageDesired = 50;
+        const minLeverageDesired = 30;
         const maxMarginDeposit = amountWETH.div(minLeverageDesired);
 
         const loans = [
@@ -678,7 +693,7 @@ describe("WagmiLeverageTests", () => {
     it("RIGHT_OUTRANGE_TOKEN_0 borrowing liquidity (long position WETH zeroForSaleToken = true)  will be successful", async () => {
         const amountWETH = ethers.utils.parseUnits("0.88", 18);
         const deadline = (await time.latest()) + 60;
-        const minLeverageDesired = 50;
+        const minLeverageDesired = 30;
         const maxMarginDeposit = amountWETH.div(minLeverageDesired);
 
         const loans = [
@@ -711,7 +726,7 @@ describe("WagmiLeverageTests", () => {
     it("INRANGE_TOKEN_0_TOKEN_1 borrowing liquidity (long position WETH zeroForSaleToken = true)  will be successful", async () => {
         const amountWETH = ethers.utils.parseUnits("0.88", 18);
         const deadline = (await time.latest()) + 60;
-        const minLeverageDesired = 50;
+        const minLeverageDesired = 30;
         const maxMarginDeposit = amountWETH.div(minLeverageDesired);
 
         const loans = [
@@ -754,12 +769,9 @@ describe("WagmiLeverageTests", () => {
         const borrowingKey = (await borrowingManager.getBorrowingKeysForBorrower(bob.address))[0];
         const deadline = (await time.latest()) + 60;
 
-
-        let params = {
-            returnOnlyHoldToken: true,
+        let params: ILiquidityBorrowingManager.RepayParamsStruct = {
             isEmergency: false,
-            internalSwapPoolfee: 500,
-            externalSwap: [],
+            routes: flashRoutes,
             borrowingKey: borrowingKey,
             minHoldTokenOut: BigNumber.from(0),
             minSaleTokenOut: BigNumber.from(0)
@@ -775,7 +787,7 @@ describe("WagmiLeverageTests", () => {
         await snapshot_global.restore();
         const amountWETH = ethers.utils.parseUnits("0.88", 18);
         const deadline = (await time.latest()) + 60;
-        const minLeverageDesired = 50;
+        const minLeverageDesired = 30;
         const maxMarginDeposit = amountWETH.div(minLeverageDesired);
 
         const loans = [
@@ -818,7 +830,7 @@ describe("WagmiLeverageTests", () => {
     it("RIGHT_OUTRANGE_TOKEN_0 borrowing liquidity (long position WETH)  will be successful", async () => {
         const amountWETH = ethers.utils.parseUnits("0.88", 18);
         const deadline = (await time.latest()) + 60;
-        const minLeverageDesired = 50;
+        const minLeverageDesired = 30;
         const maxMarginDeposit = amountWETH.div(minLeverageDesired);
 
         const loans = [
@@ -850,7 +862,7 @@ describe("WagmiLeverageTests", () => {
     it("INRANGE_TOKEN_0_TOKEN_1 borrowing liquidity (long position WETH)  will be successful", async () => {
         const amountWETH = ethers.utils.parseUnits("0.88", 18);
         let deadline = (await time.latest()) + 60;
-        const minLeverageDesired = 50;
+        const minLeverageDesired = 30;
         const maxMarginDeposit = amountWETH.div(minLeverageDesired);
 
         const loans = [
@@ -892,16 +904,14 @@ describe("WagmiLeverageTests", () => {
         const borrowingKey = (await borrowingManager.getBorrowingKeysForBorrower(bob.address))[0];
         const deadline = (await time.latest()) + 60;
 
-
-        let params = {
-            returnOnlyHoldToken: true,
+        let params: ILiquidityBorrowingManager.RepayParamsStruct = {
             isEmergency: false,
-            internalSwapPoolfee: 500,
-            externalSwap: [],
+            routes: flashRoutes,
             borrowingKey: borrowingKey,
             minHoldTokenOut: BigNumber.from(0),
             minSaleTokenOut: BigNumber.from(0)
         };
+
         await borrowingManager.connect(bob).repay(params, deadline);
         const rateInfo = await borrowingManager.getHoldTokenInfo(USDT_ADDRESS, WETH_ADDRESS);
         expect(rateInfo.totalBorrowed).to.be.equal(0);
@@ -1006,11 +1016,66 @@ describe("WagmiLeverageTests", () => {
         await expect(borrowingManager.connect(bob).borrow(params, deadline)).to.be.reverted;
     });
 
-    it("borrowing all liquidity in one transaction (long position WBTC & WETH) using an external swap will be successful", async () => {
+    it("using external swap with non-whitelisted parameters will fail", async () => {
         const amountWBTC = ethers.utils.parseUnits("0.2", 8); //token0
         const amountWETH = ethers.utils.parseUnits("2.90", 18); //token0
         const deadline = (await time.latest()) + 60;
         const minLeverageDesired = 80;
+        const maxMarginDepositWBTC = amountWBTC.div(minLeverageDesired);
+
+        let amountIn = ethers.utils.parseUnits("0.5", 18);//amountWETH
+
+        let swap_params = ethers.utils.defaultAbiCoder.encode(
+            ["address", "address", "uint256", "uint256"],
+            [WETH_ADDRESS, WBTC_ADDRESS, amountIn, 0]
+        );
+        const nonWhitelistedSwapIface = new ethers.utils.Interface([
+            "function nonWhitelistedSwap(bytes calldata wrappedCallData)",
+        ]);
+        swapData = nonWhitelistedSwapIface.encodeFunctionData("nonWhitelistedSwap", [swap_params]);
+
+        const swapParams: IApproveSwapAndPay.SwapParamsStruct = {
+            swapTarget: aggregatorMock.address,
+            maxGasForCall: 0,
+            swapData: swapData,
+        };
+
+        let loans = [
+            {
+                liquidity: nftpos[3].liquidity, //correct
+                tokenId: nftpos[3].tokenId,
+            },
+            {
+                liquidity: nftpos[4].liquidity,
+                tokenId: nftpos[4].tokenId,
+            },
+            {
+                liquidity: nftpos[5].liquidity, //correct
+                tokenId: nftpos[5].tokenId,
+            },
+        ];
+
+        let maxDailyRate = (await borrowingManager.getHoldTokenInfo(WETH_ADDRESS, WBTC_ADDRESS))[0];
+
+        let params = {
+            internalSwapPoolfee: 500,
+            saleToken: WETH_ADDRESS,
+            holdToken: WBTC_ADDRESS,
+            minHoldTokenOut: amountWBTC,
+            maxMarginDeposit: maxMarginDepositWBTC,
+            maxDailyRate: maxDailyRate,
+            externalSwap: [swapParams],
+            loans: loans,
+        };
+
+        await expect(borrowingManager.connect(bob).borrow(params, deadline)).to.be.reverted;
+    });
+
+    it("borrowing all liquidity in one transaction (long position WBTC & WETH) using an external swap will be successful", async () => {
+        const amountWBTC = ethers.utils.parseUnits("0.2", 8); //token0
+        const amountWETH = ethers.utils.parseUnits("2.90", 18); //token0
+        const deadline = (await time.latest()) + 60;
+        const minLeverageDesired = 30;
         const maxMarginDeposit = amountWETH.div(minLeverageDesired);
         const maxMarginDepositWBTC = amountWBTC.div(minLeverageDesired);
 
@@ -1153,10 +1218,8 @@ describe("WagmiLeverageTests", () => {
         let deadline = (await time.latest()) + 60;
 
         let params: ILiquidityBorrowingManager.RepayParamsStruct = {
-            returnOnlyHoldToken: true,
-            isEmergency: true, //emergency
-            internalSwapPoolfee: 0,
-            externalSwap: [],
+            isEmergency: true,
+            routes: flashRoutes,
             borrowingKey: borrowingKey,
             minHoldTokenOut: BigNumber.from(0),
             minSaleTokenOut: BigNumber.from(0)
@@ -1216,32 +1279,21 @@ describe("WagmiLeverageTests", () => {
 
     it("Loan liquidation will be successful for anyone if the collateral is depleted", async () => {
         snapshot_global.restore();
+        // let debt = (await borrowingManager.getBorrowerDebtsInfo(bob.address))[1];
+        // console.log("debt.estimatedLifeTime.toNumber()", debt.estimatedLifeTime.toNumber());
+        // await time.increase(debt.estimatedLifeTime.toNumber() + 1);
+
         let borrowingKey = (await borrowingManager.getBorrowingKeysForBorrower(bob.address))[1];
         let deadline = (await time.latest()) + 60;
 
-        let amountIn = ethers.utils.parseUnits("0.01", 18);
-
-        let swap_params = ethers.utils.defaultAbiCoder.encode(
-            ["address", "address", "uint256", "uint256"],
-            [WETH_ADDRESS, USDT_ADDRESS, amountIn, 0]
-        );
-        swapData = swapIface.encodeFunctionData("swap", [swap_params]);
-
-        let swapParams: IApproveSwapAndPay.SwapParamsStruct = {
-            swapTarget: aggregatorMock.address,
-            maxGasForCall: 0,
-            swapData: swapData,
-        };
-
         let params: ILiquidityBorrowingManager.RepayParamsStruct = {
-            returnOnlyHoldToken: true,
             isEmergency: false,
-            internalSwapPoolfee: 500,
-            externalSwap: [swapParams],
+            routes: flashRoutes,
             borrowingKey: borrowingKey,
             minHoldTokenOut: BigNumber.from(0),
             minSaleTokenOut: BigNumber.from(0)
         };
+
 
         await borrowingManager.connect(alice).repay(params, deadline);
 
@@ -1252,14 +1304,13 @@ describe("WagmiLeverageTests", () => {
         borrowingKey = (await borrowingManager.getBorrowingKeysForBorrower(bob.address))[0];
 
         params = {
-            returnOnlyHoldToken: true,
             isEmergency: false,
-            internalSwapPoolfee: 500,
-            externalSwap: [],
+            routes: flashRoutes,
             borrowingKey: borrowingKey,
             minHoldTokenOut: BigNumber.from(0),
             minSaleTokenOut: BigNumber.from(0)
         };
+
         await expect(borrowingManager.connect(alice).repay(params, deadline)).to.be.reverted; // too old
         deadline = (await time.latest()) + 60;
         await borrowingManager.connect(alice).repay(params, deadline);
@@ -1301,8 +1352,6 @@ describe("WagmiLeverageTests", () => {
     });
 
     it("harvest should work correctly", async () => {
-
-
         let debt = (await borrowingManager.getBorrowerDebtsInfo(bob.address))[1];
         expect(debt.collateralBalance).to.be.gt(0);
         let dailyRateCollateralBalanceBefore = debt.info.dailyRateCollateralBalance;
@@ -1365,110 +1414,78 @@ describe("WagmiLeverageTests", () => {
         expect(loansInfo[0].tokenId).to.be.equal(nftpos[0].tokenId);
     });
 
-    it("using external swap with non-whitelisted parameters will fail", async () => {
-        const borrowingKey = (await borrowingManager.getBorrowingKeysForBorrower(bob.address))[1];
-        const deadline = (await time.latest()) + 60;
 
-        let amountIn = ethers.utils.parseUnits("0.1", 18);
+    // it("repay borrowing and restore liquidity using an external swap will be successful", async () => {
+    //     let borrowingKey = (await borrowingManager.getBorrowingKeysForBorrower(bob.address))[1];
+    //     const deadline = (await time.latest()) + 60;
 
-        const swap_params = ethers.utils.defaultAbiCoder.encode(
-            ["address", "address", "uint256", "uint256"],
-            [WETH_ADDRESS, USDT_ADDRESS, amountIn, 0]
-        );
-        const nonWhitelistedSwapIface = new ethers.utils.Interface([
-            "function nonWhitelistedSwap(bytes calldata wrappedCallData)",
-        ]);
-        swapData = nonWhitelistedSwapIface.encodeFunctionData("nonWhitelistedSwap", [swap_params]);
+    //     let amountIn = ethers.utils.parseUnits("0.01", 18);
 
-        const swapParams: IApproveSwapAndPay.SwapParamsStruct = {
-            swapTarget: aggregatorMock.address,
-            maxGasForCall: 0,
-            swapData: swapData,
-        };
+    //     let swap_params = ethers.utils.defaultAbiCoder.encode(
+    //         ["address", "address", "uint256", "uint256"],
+    //         [WETH_ADDRESS, USDT_ADDRESS, amountIn, 0]
+    //     );
+    //     swapData = swapIface.encodeFunctionData("swap", [swap_params]);
 
-        const params: ILiquidityBorrowingManager.RepayParamsStruct = {
-            returnOnlyHoldToken: true,
-            isEmergency: false,
-            internalSwapPoolfee: 500,
-            externalSwap: [swapParams],
-            borrowingKey: borrowingKey,
-            minHoldTokenOut: BigNumber.from(0),
-            minSaleTokenOut: BigNumber.from(0)
-        };
-        await expect(borrowingManager.connect(bob).repay(params, deadline)).to.be.reverted;
-    });
+    //     let swapParams: IApproveSwapAndPay.SwapParamsStruct = {
+    //         swapTarget: aggregatorMock.address,
+    //         maxGasForCall: 0,
+    //         swapData: swapData,
+    //     };
 
-    it("repay borrowing and restore liquidity using an external swap will be successful", async () => {
-        let borrowingKey = (await borrowingManager.getBorrowingKeysForBorrower(bob.address))[1];
-        const deadline = (await time.latest()) + 60;
+    //     let params: ILiquidityBorrowingManager.RepayParamsStruct = {
+    //         returnOnlyHoldToken: true,
+    //         isEmergency: false,
+    //         internalSwapPoolfee: 500,
+    //         externalSwap: [swapParams],
+    //         borrowingKey: borrowingKey,
+    //         minHoldTokenOut: BigNumber.from(0),
+    //         minSaleTokenOut: BigNumber.from(0)
+    //     };
+    //     // borrower only
+    //     await expect(borrowingManager.connect(alice).repay(params, deadline)).to.be.reverted;
+    //     await borrowingManager.connect(bob).repay(params, deadline);
+    //     let rateInfo = await borrowingManager.getHoldTokenInfo(USDT_ADDRESS, WETH_ADDRESS);
+    //     expect(rateInfo.totalBorrowed).to.be.equal(0);
 
-        let amountIn = ethers.utils.parseUnits("0.01", 18);
+    //     // WBTC_WETH
+    //     borrowingKey = (await borrowingManager.getBorrowingKeysForBorrower(bob.address))[0];
+    //     // external swap
+    //     amountIn = ethers.utils.parseUnits("0.001", 8);
+    //     swap_params = ethers.utils.defaultAbiCoder.encode(
+    //         ["address", "address", "uint256", "uint256"],
+    //         [WBTC_ADDRESS, WETH_ADDRESS, amountIn, 0]
+    //     );
+    //     swapData = swapIface.encodeFunctionData("swap", [swap_params]);
 
-        let swap_params = ethers.utils.defaultAbiCoder.encode(
-            ["address", "address", "uint256", "uint256"],
-            [WETH_ADDRESS, USDT_ADDRESS, amountIn, 0]
-        );
-        swapData = swapIface.encodeFunctionData("swap", [swap_params]);
+    //     swapParams = {
+    //         swapTarget: aggregatorMock.address,
+    //         maxGasForCall: 0,
+    //         swapData: swapData,
+    //     };
 
-        let swapParams: IApproveSwapAndPay.SwapParamsStruct = {
-            swapTarget: aggregatorMock.address,
-            maxGasForCall: 0,
-            swapData: swapData,
-        };
+    //     params = {
+    //         returnOnlyHoldToken: true,
+    //         isEmergency: false,
+    //         internalSwapPoolfee: 500,
+    //         externalSwap: [swapParams],
+    //         borrowingKey: borrowingKey,
+    //         minHoldTokenOut: BigNumber.from(0),
+    //         minSaleTokenOut: BigNumber.from(0)
+    //     };
+    //     await expect(borrowingManager.connect(alice).repay(params, deadline)).to.be.reverted;
+    //     await borrowingManager.connect(bob).repay(params, deadline);
 
-        let params: ILiquidityBorrowingManager.RepayParamsStruct = {
-            returnOnlyHoldToken: true,
-            isEmergency: false,
-            internalSwapPoolfee: 500,
-            externalSwap: [swapParams],
-            borrowingKey: borrowingKey,
-            minHoldTokenOut: BigNumber.from(0),
-            minSaleTokenOut: BigNumber.from(0)
-        };
-        // borrower only
-        await expect(borrowingManager.connect(alice).repay(params, deadline)).to.be.reverted;
-        await borrowingManager.connect(bob).repay(params, deadline);
-        let rateInfo = await borrowingManager.getHoldTokenInfo(USDT_ADDRESS, WETH_ADDRESS);
-        expect(rateInfo.totalBorrowed).to.be.equal(0);
-
-        // WBTC_WETH
-        borrowingKey = (await borrowingManager.getBorrowingKeysForBorrower(bob.address))[0];
-        // external swap
-        amountIn = ethers.utils.parseUnits("0.001", 8);
-        swap_params = ethers.utils.defaultAbiCoder.encode(
-            ["address", "address", "uint256", "uint256"],
-            [WBTC_ADDRESS, WETH_ADDRESS, amountIn, 0]
-        );
-        swapData = swapIface.encodeFunctionData("swap", [swap_params]);
-
-        swapParams = {
-            swapTarget: aggregatorMock.address,
-            maxGasForCall: 0,
-            swapData: swapData,
-        };
-
-        params = {
-            returnOnlyHoldToken: true,
-            isEmergency: false,
-            internalSwapPoolfee: 500,
-            externalSwap: [swapParams],
-            borrowingKey: borrowingKey,
-            minHoldTokenOut: BigNumber.from(0),
-            minSaleTokenOut: BigNumber.from(0)
-        };
-        await expect(borrowingManager.connect(alice).repay(params, deadline)).to.be.reverted;
-        await borrowingManager.connect(bob).repay(params, deadline);
-
-        rateInfo = await borrowingManager.getHoldTokenInfo(WETH_ADDRESS, WBTC_ADDRESS);
-        expect(rateInfo.totalBorrowed).to.be.equal(0);
-        expect(await borrowingManager.getLenderCreditsCount(nftpos[0].tokenId)).to.be.equal(0);
-        expect(await borrowingManager.getLenderCreditsCount(nftpos[1].tokenId)).to.be.equal(0);
-        expect(await borrowingManager.getLenderCreditsCount(nftpos[2].tokenId)).to.be.equal(0);
-        expect(await borrowingManager.getLenderCreditsCount(nftpos[3].tokenId)).to.be.equal(0);
-        expect(await borrowingManager.getLenderCreditsCount(nftpos[4].tokenId)).to.be.equal(0);
-        expect(await borrowingManager.getLenderCreditsCount(nftpos[5].tokenId)).to.be.equal(0);
-        expect(await borrowingManager.getBorrowerDebtsCount(bob.address)).to.be.equal(0);
-    });
+    //     rateInfo = await borrowingManager.getHoldTokenInfo(WETH_ADDRESS, WBTC_ADDRESS);
+    //     expect(rateInfo.totalBorrowed).to.be.equal(0);
+    //     expect(await borrowingManager.getLenderCreditsCount(nftpos[0].tokenId)).to.be.equal(0);
+    //     expect(await borrowingManager.getLenderCreditsCount(nftpos[1].tokenId)).to.be.equal(0);
+    //     expect(await borrowingManager.getLenderCreditsCount(nftpos[2].tokenId)).to.be.equal(0);
+    //     expect(await borrowingManager.getLenderCreditsCount(nftpos[3].tokenId)).to.be.equal(0);
+    //     expect(await borrowingManager.getLenderCreditsCount(nftpos[4].tokenId)).to.be.equal(0);
+    //     expect(await borrowingManager.getLenderCreditsCount(nftpos[5].tokenId)).to.be.equal(0);
+    //     expect(await borrowingManager.getBorrowerDebtsCount(bob.address)).to.be.equal(0);
+    // });
 
     it("Vault test should be successful", async () => {
         const balances = await vault.getBalances([USDT_ADDRESS, WETH_ADDRESS]);
@@ -1501,15 +1518,15 @@ describe("WagmiLeverageTests", () => {
         await $approveSwapAndPay.$_pay(USDT_ADDRESS, owner.address, $approveSwapAndPay.address, amountUSDT);
         const usdtBalance = await $approveSwapAndPay.$_getBalance(USDT_ADDRESS);
         expect(usdtBalance).to.be.equal(amountUSDT);
-        const v3SwapExactInputParams = {
+        const v3SwapExactParams = {
+            isExactInput: true,
             fee: 500,
             tokenIn: USDT_ADDRESS,
             tokenOut: WETH_ADDRESS,
-            amountIn: amountUSDT,
-            amountOutMinimum: 0,
+            amount: amountUSDT
         };
-        await $approveSwapAndPay.$_v3SwapExactInput(v3SwapExactInputParams);
 
+        await $approveSwapAndPay.$_v3SwapExact(v3SwapExactParams);
         await $approveSwapAndPay.$_pay(USDT_ADDRESS, owner.address, $approveSwapAndPay.address, amountUSDT);
         let amountIn = ethers.utils.parseUnits("1", 6);
         let swap_params = ethers.utils.defaultAbiCoder.encode(
@@ -1546,33 +1563,29 @@ describe("WagmiLeverageTests", () => {
             swapData: swapData,
         };
         await $approveSwapAndPay.$_callExternalSwap(USDT_ADDRESS, [swapParams]);
-        await $approveSwapAndPay.$_maxApproveIfNecessary(USDT_ADDRESS, aggregatorMock.address, constants.MaxUint256);
+        await $approveSwapAndPay.$_maxApproveIfNecessary(USDT_ADDRESS, aggregatorMock.address);
 
         let factoryMockERC20FailApprove = await ethers.getContractFactory("MockERC20FailApprove");
         let failApproveToken = await factoryMockERC20FailApprove.deploy("fail", "fail");
         await failApproveToken.deployed();
         await $approveSwapAndPay.$_maxApproveIfNecessary(
             failApproveToken.address,
-            "0x0000000000000000000000000000000000000002",
-            constants.MaxUint256
+            "0x0000000000000000000000000000000000000002"
         );
         await $approveSwapAndPay.$_maxApproveIfNecessary(
             failApproveToken.address,
-            "0x0000000000000000000000000000000000000001",
-            constants.MaxUint256
+            "0x0000000000000000000000000000000000000001"
         );
         await expect(
             $approveSwapAndPay.$_maxApproveIfNecessary(
                 failApproveToken.address,
-                "0x0000000000000000000000000000000000000003",
-                constants.MaxUint256
+                "0x0000000000000000000000000000000000000003"
             )
         ).to.be.reverted; //require(_tryApprove(token, spender, 0));
         await expect(
             $approveSwapAndPay.$_maxApproveIfNecessary(
                 failApproveToken.address,
-                "0x0000000000000000000000000000000000000004",
-                constants.MaxUint256
+                "0x0000000000000000000000000000000000000004"
             )
         ).to.be.reverted; //failed to approve
 

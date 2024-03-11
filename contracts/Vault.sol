@@ -9,7 +9,7 @@ pragma solidity 0.8.23;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "./interfaces/IVault.sol";
-import "./interfaces/IUniswapV3FlashCallback.sol";
+import "./interfaces/IWagmiLeverageFlashCallback.sol";
 import "./vendor0.8/uniswap/FullMath.sol";
 import { TransferHelper } from "./libraries/TransferHelper.sol";
 
@@ -25,16 +25,11 @@ contract Vault is Ownable, IVault {
     }
 
     function setFlashFee(address token, uint24 flashFee) external onlyOwner {
-        require(flashFee <= maxFlashFee, "WV-FE");
+        require(flashFee <= maxFlashFee, "V-FE");
         flashFeeForToken[token] = flashFee;
     }
 
-    function vaultFlash(
-        bool zeroForFlash,
-        address token,
-        uint256 amount,
-        bytes calldata data
-    ) external onlyOwner {
+    function vaultFlash(address token, uint256 amount, bytes calldata data) external onlyOwner {
         uint256 balanceBefore = token.getBalance();
 
         if (balanceBefore < amount) amount = balanceBefore;
@@ -48,10 +43,10 @@ contract Vault is Ownable, IVault {
             token.safeTransfer(msg.sender, amount);
             balanceBefore += feeAmt;
         }
-        (uint256 fee0, uint256 fee1) = zeroForFlash ? (feeAmt, uint256(0)) : (uint256(0), feeAmt);
-        IUniswapV3FlashCallback(msg.sender).uniswapV3FlashCallback(fee0, fee1, data);
+
+        IWagmiLeverageFlashCallback(msg.sender).wagmiLeverageFlashCallback(amount, feeAmt, data);
         uint256 balanceAfter = token.getBalance();
-        require(balanceBefore <= balanceAfter, "WV-FL");
+        require(balanceBefore <= balanceAfter, "V-FL");
 
         if (amount > 0) emit VaultFlash(token, amount, feeAmt);
     }

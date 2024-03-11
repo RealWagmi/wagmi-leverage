@@ -13,7 +13,7 @@ contract $DailyRateAndCollateral is DailyRateAndCollateral {
 
     constructor() payable {}
 
-    function $_checkEntranceFee(uint256 entranceFeeBP) external pure returns (uint256 ret0) {
+    function $_checkEntranceFee(uint128 entranceFeeBP) external pure returns (uint256 ret0) {
         (ret0) = super._checkEntranceFee(entranceFeeBP);
     }
 
@@ -33,7 +33,7 @@ contract $DailyRateAndCollateral is DailyRateAndCollateral {
     }
 
     function $_calculateCollateralBalance(
-        uint256 borrowedAmount,
+        uint128 borrowedAmount,
         uint256 borrowingAccLoanRatePerShare,
         uint256 borrowingDailyRateCollateral,
         uint256 accLoanRatePerSeconds

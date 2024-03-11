@@ -5,6 +5,7 @@ import "forge-std/Test.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { LiquidityBorrowingManager } from "contracts/LiquidityBorrowingManager.sol";
+import { FlashLoanAggregator } from "contracts/FlashLoanAggregator.sol";
 import { LightQuoterV3 } from "contracts/LightQuoterV3.sol";
 import { HelperContract } from "../testsHelpers/HelperContract.sol";
 import { INonfungiblePositionManager } from "contracts/interfaces/INonfungiblePositionManager.sol";
@@ -90,23 +91,13 @@ contract AmountsRoundingUpForLiquidityTest is Test, HelperContract {
     }
 
     function createRepayParams(
-        uint24 internalSwapPoolfee,
         bytes32 _borrowingKey
     ) public pure returns (LiquidityBorrowingManager.RepayParams memory repay) {
-        IApproveSwapAndPay.SwapParams[] memory swapParams;
-        // bytes memory swapData = "";
-        //  = new ApproveSwapAndPay.SwapParams[](1);
-        // SwapParams[0] = IApproveSwapAndPay.SwapParams({
-        //     swapTarget: address(0),
-        //     maxGasForCall: 0,
-        //     swapData: swapData
-        // });
+        ILiquidityManager.FlashLoanRoutes memory routes;
 
         repay = ILiquidityBorrowingManager.RepayParams({
-            returnOnlyHoldToken: true,
             isEmergency: false,
-            internalSwapPoolfee: internalSwapPoolfee, //token1 - WETH
-            externalSwap: swapParams,
+            routes: routes,
             borrowingKey: _borrowingKey,
             minHoldTokenOut: 0,
             minSaleTokenOut: 0
@@ -116,8 +107,14 @@ contract AmountsRoundingUpForLiquidityTest is Test, HelperContract {
     function test_AmountsRoundingUpKava() public {
         vm.selectFork(roundingUpTestFork);
         address lightQuoter = address(new LightQuoterV3());
+        FlashLoanAggregator flashLoanAggregator = new FlashLoanAggregator(
+            UNISWAP_V3_FACTORY,
+            UNISWAP_V3_POOL_INIT_CODE_HASH,
+            "wagmi"
+        );
         LiquidityBorrowingManager borrowingManager = new LiquidityBorrowingManager(
             NONFUNGIBLE_POSITION_MANAGER_ADDRESS,
+            address(flashLoanAggregator),
             lightQuoter,
             UNISWAP_V3_FACTORY,
             UNISWAP_V3_POOL_INIT_CODE_HASH
@@ -137,7 +134,7 @@ contract AmountsRoundingUpForLiquidityTest is Test, HelperContract {
             address(USDT),
             address(ODIN),
             99502487562189054726,
-            8580586475451077445,
+            type(uint256).max,
             108537896990498585,
             76304477072925,
             371
@@ -150,7 +147,6 @@ contract AmountsRoundingUpForLiquidityTest is Test, HelperContract {
         vm.roll(block.number + 10);
 
         LiquidityBorrowingManager.RepayParams memory AliceRepayingParams = createRepayParams(
-            uint24(10000),
             AliceBorrowingKeys[0]
         );
         borrowingManager.repay(AliceRepayingParams, block.timestamp + 60);
@@ -161,8 +157,14 @@ contract AmountsRoundingUpForLiquidityTest is Test, HelperContract {
     function test_CalculateZapOutKava() public {
         vm.selectFork(calculateAmountsToSwapTestFork);
         address lightQuoter = address(new LightQuoterV3());
+        FlashLoanAggregator flashLoanAggregator = new FlashLoanAggregator(
+            UNISWAP_V3_FACTORY,
+            UNISWAP_V3_POOL_INIT_CODE_HASH,
+            "wagmi"
+        );
         LiquidityBorrowingManager borrowingManager = new LiquidityBorrowingManager(
             NONFUNGIBLE_POSITION_MANAGER_ADDRESS,
+            address(flashLoanAggregator),
             lightQuoter,
             UNISWAP_V3_FACTORY,
             UNISWAP_V3_POOL_INIT_CODE_HASH
@@ -190,7 +192,7 @@ contract AmountsRoundingUpForLiquidityTest is Test, HelperContract {
             address(USDT),
             address(ODIN),
             1492537313432835820895,
-            37012999757887272302,
+            type(uint256).max,
             1536828855480484849,
             1011284991173027,
             384
@@ -202,7 +204,6 @@ contract AmountsRoundingUpForLiquidityTest is Test, HelperContract {
         );
 
         LiquidityBorrowingManager.RepayParams memory AliceRepayingParams = createRepayParams(
-            uint24(10000),
             AliceBorrowingKeys[0]
         );
         borrowingManager.repay(AliceRepayingParams, block.timestamp + 60);

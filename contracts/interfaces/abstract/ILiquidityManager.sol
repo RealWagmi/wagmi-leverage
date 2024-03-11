@@ -25,19 +25,52 @@ interface ILiquidityManager {
         uint24 feeTier;
         uint160 sqrtPriceLimitX96;
     }
+
+    /// @dev Struct containing parameters necessary for conducting a flash loan.
+    /// @param protocol The identifier of the flash loan protocol (if 0, the flash loan is not used).
+    /// @param data Arbitrary data that can be used by the flash loan protocol.
+    struct FlashLoanParams {
+        uint8 protocol;
+        bytes data;
+    }
+
+    /// @dev Struct containing parameters for defining restoration routes,
+    /// including the use of external swaps, fee tiers for internal swaps, and potential flash loan arrangements.
+    /// @param strict  If the flag strict is false, part of the profit or liquidation bonus can be used to close the position.
+    /// @param tokenId The ID of the NFT-POS token that needs to be restored, if applicable.
+    /// @param flashLoanParams An array of FlashLoanParams structs, detailing each flash loan involved in the route.
+    struct FlashLoanRoutes {
+        bool strict;
+        FlashLoanParams[] flashLoanParams;
+    }
     /**
      * @notice Contains parameters for restoring liquidity.
      * @dev This struct is used to store various parameters required for restoring liquidity.
      * @param zeroForSaleToken A boolean value indicating whether the token for sale is the 0th token or not.
-     * @param swapPoolfeeTier The fee associated with the internal swap pool is represented by a uint24 value.
      * @param totalfeesOwed The total fees owed represented by a uint256 value.
      * @param totalBorrowedAmount The total borrowed amount represented by a uint256 value.
+     * @param routes An array of FlashLoanRoutes structs representing the restoration routes.
+     * @param loans An array of LoanInfo structs representing the loans.
      */
     struct RestoreLiquidityParams {
         bool zeroForSaleToken;
-        uint24 swapPoolfeeTier;
         uint256 totalfeesOwed;
         uint256 totalBorrowedAmount;
+        FlashLoanRoutes routes;
+        LoanInfo[] loans;
+    }
+
+    struct CallbackData {
+        bool zeroForSaleToken;
+        uint24 fee;
+        address saleToken;
+        address holdToken;
+        uint256 holdTokenDebt;
+        uint256 vaultBodyDebt;
+        uint256 vaultFeeDebt;
+        Amounts amounts;
+        LoanInfo loan;
+        FlashLoanRoutes routes;
     }
     /**
      * @title NFT Position Cache Data Structure

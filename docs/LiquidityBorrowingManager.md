@@ -61,6 +61,38 @@ The address of the vault contract.
 |---|---|---|
 | _0 | address | undefined |
 
+### _setFlashLoanAggregator
+
+```solidity
+function _setFlashLoanAggregator(address _flashLoanAggregator) external nonpayable
+```
+
+
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| _flashLoanAggregator | address | undefined |
+
+### _setLightQuoter
+
+```solidity
+function _setLightQuoter(address _lightQuoterV3) external nonpayable
+```
+
+
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| _lightQuoterV3 | address | undefined |
+
 ### borrow
 
 ```solidity
@@ -235,6 +267,23 @@ function dafaultLiquidationBonusBP() external view returns (uint256)
 | Name | Type | Description |
 |---|---|---|
 | _0 | uint256 | undefined |
+
+### flashLoanAggregatorAddress
+
+```solidity
+function flashLoanAggregatorAddress() external view returns (address)
+```
+
+
+
+
+
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | address | undefined |
 
 ### getBorrowerDebtsCount
 
@@ -793,6 +842,24 @@ This external function is used to update the settings for a particular item. The
 | _item | enum IOwnerSettings.ITEM | The item to update the settings for. |
 | values | uint256[] | An array of values containing the new settings. |
 
+### wagmiLeverageFlashCallback
+
+```solidity
+function wagmiLeverageFlashCallback(uint256 bodyAmt, uint256 feeAmt, bytes data) external nonpayable
+```
+
+
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| bodyAmt | uint256 | undefined |
+| feeAmt | uint256 | undefined |
+| data | bytes | undefined |
+
 
 
 ## Events
@@ -1000,10 +1067,10 @@ event UpdateSettingsByOwner(enum IOwnerSettings.ITEM _item, uint256[] values)
 
 ## Errors
 
-### InvalidBorrowedLiquidityAmount
+### InvalidLiquidityAmount
 
 ```solidity
-error InvalidBorrowedLiquidityAmount(uint256 tokenId, uint128 posLiquidity, uint128 minLiquidityAmt, uint128 liquidity)
+error InvalidLiquidityAmount(uint256 tokenId, uint128 liquidity)
 ```
 
 
@@ -1015,14 +1082,12 @@ error InvalidBorrowedLiquidityAmount(uint256 tokenId, uint128 posLiquidity, uint
 | Name | Type | Description |
 |---|---|---|
 | tokenId | uint256 | undefined |
-| posLiquidity | uint128 | undefined |
-| minLiquidityAmt | uint128 | undefined |
 | liquidity | uint128 | undefined |
 
 ### InvalidRestoredLiquidity
 
 ```solidity
-error InvalidRestoredLiquidity(uint256 tokenId, uint128 borrowedLiquidity, uint128 restoredLiquidity, uint256 amount0, uint256 amount1, uint256 holdTokentBalance, uint256 saleTokenBalance)
+error InvalidRestoredLiquidity(uint256 tokenId, uint128 borrowedLiquidity, uint128 restoredLiquidity)
 ```
 
 
@@ -1036,10 +1101,6 @@ error InvalidRestoredLiquidity(uint256 tokenId, uint128 borrowedLiquidity, uint1
 | tokenId | uint256 | undefined |
 | borrowedLiquidity | uint128 | undefined |
 | restoredLiquidity | uint128 | undefined |
-| amount0 | uint256 | undefined |
-| amount1 | uint256 | undefined |
-| holdTokentBalance | uint256 | undefined |
-| saleTokenBalance | uint256 | undefined |
 
 ### InvalidSettingsValue
 

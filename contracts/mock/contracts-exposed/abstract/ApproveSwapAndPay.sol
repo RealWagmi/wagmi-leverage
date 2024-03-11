@@ -16,7 +16,7 @@ contract $ApproveSwapAndPay is ApproveSwapAndPay {
     bytes32 public constant __hh_exposed_bytecode_marker = "hardhat-exposed";
     EnumerableSet.Bytes32Set self;
 
-    event return$_v3SwapExactInput(uint256 amountOut);
+    event return$_v3SwapExact(uint256 amountOut);
 
     constructor(
         address _UNDERLYING_V3_FACTORY_ADDRESS,
@@ -26,16 +26,8 @@ contract $ApproveSwapAndPay is ApproveSwapAndPay {
         ApproveSwapAndPay(_UNDERLYING_V3_FACTORY_ADDRESS, _UNDERLYING_V3_POOL_INIT_CODE_HASH)
     {}
 
-    function $MIN_SQRT_RATIO() external pure returns (uint160) {
-        return MIN_SQRT_RATIO;
-    }
-
-    function $MAX_SQRT_RATIO() external pure returns (uint160) {
-        return MAX_SQRT_RATIO;
-    }
-
-    function $_maxApproveIfNecessary(address token, address spender, uint256 amount) external {
-        super._maxApproveIfNecessary(token, spender, amount);
+    function $_maxApproveIfNecessary(address token, address spender) external {
+        super._maxApproveIfNecessary(token, spender);
     }
 
     function $_getBalance(address token) external view returns (uint256 balance) {
@@ -76,11 +68,9 @@ contract $ApproveSwapAndPay is ApproveSwapAndPay {
         super._pay(token, payer, recipient, value);
     }
 
-    function $_v3SwapExactInput(
-        v3SwapExactInputParams calldata params
-    ) external returns (uint256 amountOut) {
-        (amountOut) = super._v3SwapExactInput(params);
-        emit return$_v3SwapExactInput(amountOut);
+    function $_v3SwapExact(v3SwapExactParams calldata params) external returns (uint256 amountOut) {
+        (amountOut) = super._v3SwapExact(params);
+        emit return$_v3SwapExact(amountOut);
     }
 
     function $_setSwapCallToWhitelist(

@@ -30,24 +30,12 @@ interface ILightQuoterV3 {
     ///      The number of iterations to reach an accurate result is bounded by a maximum value.
     /// @param params A `CalculateExactZapInParams` struct containing all necessary parameters to perform the calculations.
     ///               This may include details about the liquidity pool, desired position, slippage tolerance, etc.
-    /// @return sqrtPriceX96After The square root of the price after adding liquidity, adjusted by scaling factor 2^96.
     /// @return swapAmountIn The exact total amount of input tokens required to complete the zap in operation.
-    /// @return swapAmountOut The output token amount after swap.
-    ///                       This can be used to measure slippage or compare against expected values.
     /// @return amount0 The exact amount of the token0 will be used for "zapping in" to a position.
     /// @return amount1 The exact amount of the token1 will be used for "zapping in" to a position.
     function calculateExactZapIn(
         CalculateExactZapInParams memory params
-    )
-        external
-        view
-        returns (
-            uint160 sqrtPriceX96After,
-            uint256 swapAmountIn,
-            uint256 swapAmountOut,
-            uint256 amount0,
-            uint256 amount1
-        );
+    ) external view returns (uint256 swapAmountIn, uint256 amount0, uint256 amount1);
 
     /**
      * @notice Quotes the output amount for a given input amount in a single token swap operation on Uniswap V3.
