@@ -18,9 +18,13 @@ async function main() {
 
     // let UNISWAP_V3_FACTORY_WAGMI = "";
     // let UNISWAP_V3_POOL_INIT_CODE_HASH_WAGMI = "";
+    // let UNISWAP_V3_FACTORY_KINETIX = "";
+    // let UNISWAP_V3_POOL_INIT_CODE_HASH_KINETIX = "";
     // if (network === "kava") {
     //     UNISWAP_V3_FACTORY_WAGMI = "0x0e0Ce4D450c705F8a0B6Dd9d5123e3df2787D16B";
     //     UNISWAP_V3_POOL_INIT_CODE_HASH_WAGMI = "0x30146866f3a846fe3c636beb2756dbd24cf321bc52c9113c837c21f47470dfeb";
+    //     UNISWAP_V3_FACTORY_KINETIX = "0x2dBB6254231C5569B6A4313c6C1F5Fe1340b35C2";
+    //     UNISWAP_V3_POOL_INIT_CODE_HASH_KINETIX = "0xe34f199b19b2b4f47f68442619d555527d244f78a3297ea89325f843f87b8b54";
     // } else if (network === "metis") {
     //     UNISWAP_V3_FACTORY_WAGMI = "0x8112E18a34b63964388a3B2984037d6a2EFE5B8A";
     //     UNISWAP_V3_POOL_INIT_CODE_HASH_WAGMI = "0x30146866f3a846fe3c636beb2756dbd24cf321bc52c9113c837c21f47470dfeb";
@@ -30,10 +34,9 @@ async function main() {
     // const flashLoanAggregator = await FlashLoanAggregatorFactory.deploy(UNISWAP_V3_FACTORY_WAGMI, UNISWAP_V3_POOL_INIT_CODE_HASH_WAGMI, "wagmi");
     // await flashLoanAggregator.deployed();
     // console.log(`FlashLoanAggregator  deployed to ${flashLoanAggregator.address}`);
-
     // await sleep(5000);
-    // await flashLoanAggregator.addUniswapV3Dex("0x2dBB6254231C5569B6A4313c6C1F5Fe1340b35C2", "0xe34f199b19b2b4f47f68442619d555527d244f78a3297ea89325f843f87b8b54", "kinetix");
-    // console.log(`addUniswapV3Dex kinetix`);
+    // await flashLoanAggregator.addUniswapV3Dex(UNISWAP_V3_FACTORY_KINETIX, UNISWAP_V3_POOL_INIT_CODE_HASH_KINETIX, "kinetix");
+    // console.log(`add kinetix to flashLoanAggregator`);
 
     // Kinetix.finance kava
     // https://github.com/kinetixfi/v3-deploy-scripts/blob/main/state.json
@@ -42,7 +45,7 @@ async function main() {
     // const UNISWAP_V3_POOL_INIT_CODE_HASH = "0xe34f199b19b2b4f47f68442619d555527d244f78a3297ea89325f843f87b8b54";
     // const UNISWAP_V3_FACTORY = "0x2dBB6254231C5569B6A4313c6C1F5Fe1340b35C2";
     // const LIGHT_QUOTER_V3 = "0xCa4526D9d02A7Bb005d850c2176E8aE30B970149";
-    // const FLASH_LOAN_AGGREGATOR_ADDRESS = "0x51fa95FC18B0A98b2080f83D1f030684C99E1c2A";
+    // const FLASH_LOAN_AGGREGATOR_ADDRESS = "0x57b647530B718103B05751278C4835B068FDC491";
 
     // wagmi kava
     // https://github.com/RealWagmi/v3_core
@@ -51,7 +54,7 @@ async function main() {
     // const UNISWAP_V3_POOL_INIT_CODE_HASH = "0x30146866f3a846fe3c636beb2756dbd24cf321bc52c9113c837c21f47470dfeb";
     // const UNISWAP_V3_FACTORY = "0x0e0Ce4D450c705F8a0B6Dd9d5123e3df2787D16B";
     // const LIGHT_QUOTER_V3 = "0xCa4526D9d02A7Bb005d850c2176E8aE30B970149";
-    // const FLASH_LOAN_AGGREGATOR_ADDRESS = "0xE0Af69B8a345609C051bAED6208b65f89Cd86C76";
+    // const FLASH_LOAN_AGGREGATOR_ADDRESS = "0x57b647530B718103B05751278C4835B068FDC491";
 
     /// wagmi Metis
     // const dexname ="wagmi"
@@ -84,11 +87,11 @@ async function main() {
     await flashLoanAggregator.setWagmiLeverageAddress(borrowingManager.address);
     console.log(`setWagmiLeverageAddress flashLoanAggregator`);
 
-    await sleep(5000);
-    const PositionEffectivityChart = await ethers.getContractFactory("PositionEffectivityChart");
-    const positionEffectivityChart = await PositionEffectivityChart.deploy(NONFUNGIBLE_POSITION_MANAGER_ADDRESS, UNISWAP_V3_FACTORY, UNISWAP_V3_POOL_INIT_CODE_HASH);
-    await positionEffectivityChart.deployed();
-    console.log(`PositionEffectivityChart  deployed to ${positionEffectivityChart.address}`);
+    // await sleep(5000);
+    // const PositionEffectivityChart = await ethers.getContractFactory("PositionEffectivityChart");
+    // const positionEffectivityChart = await PositionEffectivityChart.deploy(NONFUNGIBLE_POSITION_MANAGER_ADDRESS, UNISWAP_V3_FACTORY, UNISWAP_V3_POOL_INIT_CODE_HASH);
+    // await positionEffectivityChart.deployed();
+    // console.log(`PositionEffectivityChart  deployed to ${positionEffectivityChart.address}`);
 
     await sleep(30000);
     const vaultAddress = await borrowingManager.VAULT_ADDRESS();

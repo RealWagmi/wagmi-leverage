@@ -8,7 +8,6 @@
 pragma solidity 0.8.23;
 
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-import "./abstract/LiquidityManager.sol";
 import "./abstract/OwnerSettings.sol";
 import "./abstract/DailyRateAndCollateral.sol";
 import "./libraries/ErrLib.sol";
@@ -22,7 +21,6 @@ import { EnumerableSet } from "@openzeppelin/contracts/utils/structs/EnumerableS
  */
 contract LiquidityBorrowingManager is
     ILiquidityBorrowingManager,
-    LiquidityManager,
     OwnerSettings,
     DailyRateAndCollateral,
     ReentrancyGuard
@@ -69,14 +67,6 @@ contract LiquidityBorrowingManager is
             _underlyingV3PoolInitCodeHash
         )
     {}
-
-    function _setFlashLoanAggregator(address _flashLoanAggregator) external onlyOwner {
-        flashLoanAggregatorAddress = _flashLoanAggregator;
-    }
-
-    function _setLightQuoter(address _lightQuoterV3) external onlyOwner {
-        lightQuoterV3 = ILightQuoterV3(_lightQuoterV3);
-    }
 
     /**
      * @dev Adds or removes a swap call params to the whitelist.
@@ -469,7 +459,7 @@ contract LiquidityBorrowingManager is
                 marginDeposit +
                 liquidationBonus +
                 cache.dailyRateCollateral +
-                cache.holdTokenEntraceFee;
+                cache.holdTokenEntranceFee;
         }
         _pay(params.holdToken, msg.sender, VAULT_ADDRESS, amountToPay);
         // Transferring holdTokenBalance to VAULT_ADDRESS
@@ -482,14 +472,14 @@ contract LiquidityBorrowingManager is
             marginDeposit,
             liquidationBonus,
             cache.dailyRateCollateral,
-            cache.holdTokenEntraceFee
+            cache.holdTokenEntranceFee
         );
         return (
             cache.borrowedAmount,
             marginDeposit,
             liquidationBonus,
             cache.dailyRateCollateral,
-            cache.holdTokenEntraceFee
+            cache.holdTokenEntranceFee
         );
     }
 
@@ -894,7 +884,7 @@ contract LiquidityBorrowingManager is
             uint256 holdTokenPlatformFee;
             (
                 cache.borrowedAmount,
-                cache.holdTokenEntraceFee,
+                cache.holdTokenEntranceFee,
                 holdTokenPlatformFee
             ) = _extractLiquidity(
                 zeroForSaleToken,

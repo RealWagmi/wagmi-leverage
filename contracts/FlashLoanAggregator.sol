@@ -34,6 +34,7 @@ contract FlashLoanAggregator is Ownable, IFlashLoanAggregator, IUniswapV3FlashCa
     }
 
     struct CallbackDataExt {
+        address recipient;
         uint256 currentIndex;
         uint256 amount;
         uint256 prevBalance;
@@ -41,12 +42,12 @@ contract FlashLoanAggregator is Ownable, IFlashLoanAggregator, IUniswapV3FlashCa
         bytes originData;
     }
 
-    address public wagmiLeverageAddress;
     UniswapV3Identifier[] public uniswapV3Dexes;
     mapping(bytes32 => bool) public uniswapDexIsExists;
+    mapping(address => bool) public wagmiLeverageContracts;
 
     modifier onlyWagmiLeverage() {
-        require(msg.sender == wagmiLeverageAddress, "IC");
+        require(wagmiLeverageContracts[msg.sender], "IC");
         _;
     }
 
@@ -66,7 +67,7 @@ contract FlashLoanAggregator is Ownable, IFlashLoanAggregator, IUniswapV3FlashCa
     }
 
     function setWagmiLeverageAddress(address _wagmiLeverageAddress) external onlyOwner {
-        wagmiLeverageAddress = _wagmiLeverageAddress;
+        wagmiLeverageContracts[_wagmiLeverageAddress] = true;
     }
 
     function addUniswapV3Dex(
@@ -138,6 +139,7 @@ contract FlashLoanAggregator is Ownable, IFlashLoanAggregator, IUniswapV3FlashCa
                 flashAmount1,
                 abi.encode(
                     CallbackDataExt({
+                        recipient: msg.sender,
                         amount: amount,
                         currentIndex: 0,
                         prevBalance: 0,
@@ -147,7 +149,6 @@ contract FlashLoanAggregator is Ownable, IFlashLoanAggregator, IUniswapV3FlashCa
                 )
             );
         } else if (protocol == Protocol.AAVE) {
-            //aave flashLoanSimple
             revert("AAVE NOT SUPPORTED YET");
         } else {
             revert("UFP");
@@ -200,8 +201,8 @@ contract FlashLoanAggregator is Ownable, IFlashLoanAggregator, IUniswapV3FlashCa
                 }
             }
 
-            decodedData.saleToken.safeTransfer(wagmiLeverageAddress, decodedDataExt.amount);
-            IWagmiLeverageFlashCallback(wagmiLeverageAddress).wagmiLeverageFlashCallback(
+            decodedData.saleToken.safeTransfer(decodedDataExt.recipient, decodedDataExt.amount);
+            IWagmiLeverageFlashCallback(decodedDataExt.recipient).wagmiLeverageFlashCallback(
                 decodedDataExt.amount,
                 interest,
                 decodedDataExt.originData
@@ -231,6 +232,7 @@ contract FlashLoanAggregator is Ownable, IFlashLoanAggregator, IUniswapV3FlashCa
             uint256 nextIndx = decodedDataExt.currentIndex + 1;
             bytes memory nextData = abi.encode(
                 CallbackDataExt({
+                    recipient: decodedDataExt.recipient,
                     amount: decodedDataExt.amount,
                     currentIndex: nextIndx,
                     prevBalance: flashBalance,
@@ -254,7 +256,6 @@ contract FlashLoanAggregator is Ownable, IFlashLoanAggregator, IUniswapV3FlashCa
 
                 IUniswapV3Pool(pool).flash(address(this), flashAmount0, flashAmount1, nextData);
             } else if (protocol == Protocol.AAVE) {
-                //aave flashLoanSimple
                 revert("AAVE NOT SUPPORTED YET");
             } else {
                 revert("UFP");

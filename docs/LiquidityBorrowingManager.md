@@ -61,38 +61,6 @@ The address of the vault contract.
 |---|---|---|
 | _0 | address | undefined |
 
-### _setFlashLoanAggregator
-
-```solidity
-function _setFlashLoanAggregator(address _flashLoanAggregator) external nonpayable
-```
-
-
-
-
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| _flashLoanAggregator | address | undefined |
-
-### _setLightQuoter
-
-```solidity
-function _setLightQuoter(address _lightQuoterV3) external nonpayable
-```
-
-
-
-
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| _lightQuoterV3 | address | undefined |
-
 ### borrow
 
 ```solidity
@@ -571,10 +539,10 @@ This function is used to increase the daily rate collateral for a specific borro
 | collateralAmt | uint256 | The amount of collateral to be added. |
 | deadline | uint256 | The deadline timestamp after which the transaction is considered invalid. |
 
-### lightQuoterV3
+### lightQuoterV3Address
 
 ```solidity
-function lightQuoterV3() external view returns (contract ILightQuoterV3)
+function lightQuoterV3Address() external view returns (address)
 ```
 
 The Quoter contract.
@@ -586,7 +554,7 @@ The Quoter contract.
 
 | Name | Type | Description |
 |---|---|---|
-| _0 | contract ILightQuoterV3 | undefined |
+| _0 | address | undefined |
 
 ### liquidationBonusForToken
 
@@ -867,7 +835,7 @@ function wagmiLeverageFlashCallback(uint256 bodyAmt, uint256 feeAmt, bytes data)
 ### Borrow
 
 ```solidity
-event Borrow(address borrower, bytes32 borrowingKey, uint256 borrowedAmount, uint256 borrowingCollateral, uint256 liquidationBonus, uint256 dailyRatePrepayment, uint256 holdTokenEntraceFee)
+event Borrow(address borrower, bytes32 borrowingKey, uint256 borrowedAmount, uint256 borrowingCollateral, uint256 liquidationBonus, uint256 dailyRatePrepayment, uint256 holdTokenEntranceFee)
 ```
 
 Indicates that a borrower has made a new loan
@@ -884,7 +852,7 @@ Indicates that a borrower has made a new loan
 | borrowingCollateral  | uint256 | undefined |
 | liquidationBonus  | uint256 | undefined |
 | dailyRatePrepayment  | uint256 | undefined |
-| holdTokenEntraceFee  | uint256 | undefined |
+| holdTokenEntranceFee  | uint256 | undefined |
 
 ### CollectLoansFees
 

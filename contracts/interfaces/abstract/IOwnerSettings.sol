@@ -14,7 +14,10 @@ interface IOwnerSettings {
         PLATFORM_FEES_BP,
         DEFAULT_LIQUIDATION_BONUS,
         OPERATOR,
-        LIQUIDATION_BONUS_FOR_TOKEN
+        LIQUIDATION_BONUS_FOR_TOKEN,
+        FLASH_LOAN_AGGREGATOR,
+        LIGHT_QUOTER,
+        VAULT_FLASH_FEES
     }
     /**
      * @dev Struct representing liquidation parameters.

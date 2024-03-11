@@ -31,7 +31,7 @@ abstract contract LiquidityManager is
     /**
      * @notice The Quoter contract.
      */
-    ILightQuoterV3 public lightQuoterV3;
+    address public lightQuoterV3Address;
 
     ///  msg.sender => token => FeesAmt
     mapping(address => mapping(address => uint256)) internal loansFeesInfo;
@@ -55,13 +55,13 @@ abstract contract LiquidityManager is
         // Assign the underlying position manager contract address
         underlyingPositionManager = INonfungiblePositionManager(_underlyingPositionManagerAddress);
         // Assign the quoter contract address
-        lightQuoterV3 = ILightQuoterV3(_lightQuoterV3);
+        lightQuoterV3Address = _lightQuoterV3;
 
         flashLoanAggregatorAddress = _flashLoanAggregator;
         // Generate a unique salt for the new Vault contract
         bytes32 salt = keccak256(abi.encode(block.timestamp, address(this)));
         // Deploy a new Vault contract using the generated salt and assign its address to VAULT_ADDRESS
-        VAULT_ADDRESS = address(new Vault{ salt: salt }(Constants.FLASH_LOAN_FEE_COMPENSATION));
+        VAULT_ADDRESS = address(new Vault{ salt: salt }(Constants.FLASH_LOAN_DEFAULT_VAULT_FEE));
     }
 
     modifier onlyTrustedCallers() {
@@ -160,7 +160,11 @@ abstract contract LiquidityManager is
         LoanInfo[] memory loans
     )
         internal
-        returns (uint256 borrowedAmount, uint256 holdTokenEntraceFee, uint256 holdTokenPlatformFees)
+        returns (
+            uint256 borrowedAmount,
+            uint256 holdTokenEntranceFee,
+            uint256 holdTokenPlatformFees
+        )
     {
         NftPositionCache memory cache;
 
@@ -198,7 +202,7 @@ abstract contract LiquidityManager is
                 uint256 platformFeesAmt;
 
                 unchecked {
-                    holdTokenEntraceFee += entranceFeeAmt;
+                    holdTokenEntranceFee += entranceFeeAmt;
                     entranceFeeAmt *= Constants.COLLATERAL_BALANCE_PRECISION;
                     platformFeesAmt = (entranceFeeAmt * platformFeesBPs) / Constants.BP;
                     holdTokenPlatformFees += platformFeesAmt;
@@ -229,7 +233,7 @@ abstract contract LiquidityManager is
     ) private view returns (uint256 amountIn) {
         address pool = computePoolAddress(cache.holdToken, cache.saleToken, cache.fee);
 
-        (, bytes memory data) = address(lightQuoterV3).staticcall(
+        (, bytes memory data) = lightQuoterV3Address.staticcall(
             abi.encodeWithSelector(
                 ILightQuoterV3.calculateExactZapIn.selector,
                 ILightQuoterV3.CalculateExactZapInParams({

@@ -174,6 +174,17 @@ describe("WagmiLeverageTests", () => {
     });
 
     it("updating settings by the owner will be successful", async () => {
+
+        // enum ITEM {
+        //     PLATFORM_FEES_BP,
+        //     DEFAULT_LIQUIDATION_BONUS,
+        //     OPERATOR,
+        //     LIQUIDATION_BONUS_FOR_TOKEN,
+        //     FLASH_LOAN_AGGREGATOR,
+        //     LIGHT_QUOTER,
+        //     VAULT_FLASH_FEES
+        // }
+
         let snapshot: SnapshotRestorer = await takeSnapshot();
         // PLATFORM_FEES_BP
         await expect(borrowingManager.connect(alice).updateSettings(0, [2000])).to.be.reverted;
@@ -199,6 +210,18 @@ describe("WagmiLeverageTests", () => {
         await borrowingManager.connect(owner).updateSettings(3, [USDT_ADDRESS, 99, 1000000]);
         expect((await borrowingManager.liquidationBonusForToken(USDT_ADDRESS)).bonusBP).to.equal(99);
         expect((await borrowingManager.liquidationBonusForToken(USDT_ADDRESS)).minBonusAmount).to.equal(1000000);
+
+        // FLASH_LOAN_AGGREGATOR
+        await borrowingManager.connect(owner).updateSettings(4, [flashLoanAggregator.address]);
+        expect(await borrowingManager.flashLoanAggregatorAddress()).to.equal(flashLoanAggregator.address);
+
+        // LIGHT_QUOTER
+        await borrowingManager.connect(owner).updateSettings(5, [lightQuoter.address]);
+        expect(await borrowingManager.lightQuoterV3Address()).to.equal(lightQuoter.address);
+
+        // VAULT_FLASH_FEES
+        await borrowingManager.connect(owner).updateSettings(6, [USDT_ADDRESS, 5000]);
+        expect(await vault.flashFeeForToken(USDT_ADDRESS)).to.equal(5000);//0.5%
         await snapshot.restore();
     });
 
@@ -355,7 +378,7 @@ describe("WagmiLeverageTests", () => {
             marginDeposit,
             liquidBonus,
             dailyRateCollateral,
-            holdTokenEntraceFee
+            holdTokenEntranceFee
         ] = await borrowingManager.connect(bob).callStatic.borrow(borrowParams, deadline);
 
         await time.setNextBlockTimestamp(await time.latest());
@@ -366,7 +389,7 @@ describe("WagmiLeverageTests", () => {
         const afterBorrowVaultHoldTokenBalace = await getERC20Balance(WBTC_ADDRESS, vaultAddress);
         const afterBorrowVaultSaleTokenTokenBalace = await getERC20Balance(WETH_ADDRESS, vaultAddress);
         expect(afterBorrowVaultSaleTokenTokenBalace).to.be.equal(prevVaultSaleTokenTokenBalace);
-        expect(afterBorrowVaultHoldTokenBalace).to.be.equal(prevVaultHoldTokenBalace.add(borrowedAmount).add(liquidBonus).add(dailyRateCollateral).add(holdTokenEntraceFee));
+        expect(afterBorrowVaultHoldTokenBalace).to.be.equal(prevVaultHoldTokenBalace.add(borrowedAmount).add(liquidBonus).add(dailyRateCollateral).add(holdTokenEntranceFee));
 
 
         const borrowingKey = (await borrowingManager.getBorrowingKeysForBorrower(bob.address))[0];
@@ -378,12 +401,12 @@ describe("WagmiLeverageTests", () => {
 
 
         const lenderFees = ((await borrowingManager.getFeesInfo(alice.address, [WBTC_ADDRESS]))[0]).div(COLLATERAL_BALANCE_PRECISION);
-        const lenderFeesEntrance = holdTokenEntraceFee.mul(8000).div(10000);// +20%
+        const lenderFeesEntrance = holdTokenEntranceFee.mul(8000).div(10000);// +20%
         expect(lenderFees).to.be.within(lenderFeesEntrance.sub(1), lenderFeesEntrance);
         let prevBobBalance = await WBTC.balanceOf(bob.address);
         // check platform fees
         const afterBorrowPlatformsFees = ((await borrowingManager.getPlatformFeesInfo([WBTC_ADDRESS]))[0]).div(COLLATERAL_BALANCE_PRECISION);;
-        const platformEntrance = holdTokenEntraceFee.mul(2000).div(10000);// +20%
+        const platformEntrance = holdTokenEntranceFee.mul(2000).div(10000);// +20%
         expect(afterBorrowPlatformsFees).to.be.within(platformEntrance.sub(1), platformEntrance);
 
         const borrowingsInfo = await borrowingManager.borrowingsInfo(borrowingKey);

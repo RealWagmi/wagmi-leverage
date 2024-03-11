@@ -3,8 +3,9 @@ pragma solidity 0.8.23;
 import "@openzeppelin/contracts/access/Ownable.sol";
 import { Constants } from "../libraries/Constants.sol";
 import "../interfaces/abstract/IOwnerSettings.sol";
+import "./LiquidityManager.sol";
 
-abstract contract OwnerSettings is Ownable, IOwnerSettings {
+abstract contract OwnerSettings is Ownable, LiquidityManager, IOwnerSettings {
     /**
      * @dev Address of the daily rate operator.
      */
@@ -54,6 +55,9 @@ abstract contract OwnerSettings is Ownable, IOwnerSettings {
                 values[1],
                 values[2]
             );
+        } else if (_item == ITEM.VAULT_FLASH_FEES) {
+            require(values.length == 2);
+            Vault(VAULT_ADDRESS).setFlashFee(address(uint160(values[0])), uint24(values[1]));
         } else {
             require(values.length == 1);
             if (_item == ITEM.PLATFORM_FEES_BP) {
@@ -68,6 +72,10 @@ abstract contract OwnerSettings is Ownable, IOwnerSettings {
                 dafaultLiquidationBonusBP = values[0];
             } else if (_item == ITEM.OPERATOR) {
                 operator = address(uint160(values[0]));
+            } else if (_item == ITEM.FLASH_LOAN_AGGREGATOR) {
+                flashLoanAggregatorAddress = address(uint160(values[0]));
+            } else if (_item == ITEM.LIGHT_QUOTER) {
+                lightQuoterV3Address = address(uint160(values[0]));
             }
         }
         emit UpdateSettingsByOwner(_item, values);

@@ -30,7 +30,7 @@ function VAULT_ADDRESS() external view returns (address)
 ### borrow
 
 ```solidity
-function borrow(ILiquidityBorrowingManager.BorrowParams params, uint256 deadline) external nonpayable returns (uint256 borrowedAmount, uint256 marginDeposit, uint256 liquidationBonus, uint256 dailyRateCollateral, uint256 holdTokenEntraceFee)
+function borrow(ILiquidityBorrowingManager.BorrowParams params, uint256 deadline) external nonpayable returns (uint256 borrowedAmount, uint256 marginDeposit, uint256 liquidationBonus, uint256 dailyRateCollateral, uint256 holdTokenEntranceFee)
 ```
 
 
@@ -52,7 +52,7 @@ function borrow(ILiquidityBorrowingManager.BorrowParams params, uint256 deadline
 | marginDeposit | uint256 | undefined |
 | liquidationBonus | uint256 | undefined |
 | dailyRateCollateral | uint256 | undefined |
-| holdTokenEntraceFee | uint256 | undefined |
+| holdTokenEntranceFee | uint256 | undefined |
 
 ### borrowingsInfo
 
@@ -201,6 +201,23 @@ function dafaultLiquidationBonusBP() external view returns (uint256)
 | Name | Type | Description |
 |---|---|---|
 | _0 | uint256 | undefined |
+
+### flashLoanAggregatorAddress
+
+```solidity
+function flashLoanAggregatorAddress() external view returns (address)
+```
+
+
+
+
+
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | address | undefined |
 
 ### getBorrowerDebtsCount
 
@@ -488,10 +505,10 @@ function increaseCollateralBalance(bytes32 borrowingKey, uint256 collateralAmt, 
 | collateralAmt | uint256 | undefined |
 | deadline | uint256 | undefined |
 
-### lightQuoterV3
+### lightQuoterV3Address
 
 ```solidity
-function lightQuoterV3() external view returns (contract ILightQuoterV3)
+function lightQuoterV3Address() external view returns (address)
 ```
 
 
@@ -503,7 +520,7 @@ function lightQuoterV3() external view returns (contract ILightQuoterV3)
 
 | Name | Type | Description |
 |---|---|---|
-| _0 | contract ILightQuoterV3 | undefined |
+| _0 | address | undefined |
 
 ### liquidationBonusForToken
 
@@ -704,7 +721,7 @@ function updateSettings(enum IOwnerSettings.ITEM _item, uint256[] values) extern
 ### Borrow
 
 ```solidity
-event Borrow(address borrower, bytes32 borrowingKey, uint256 borrowedAmount, uint256 borrowingCollateral, uint256 liquidationBonus, uint256 dailyRatePrepayment, uint256 holdTokenEntraceFee)
+event Borrow(address borrower, bytes32 borrowingKey, uint256 borrowedAmount, uint256 borrowingCollateral, uint256 liquidationBonus, uint256 dailyRatePrepayment, uint256 holdTokenEntranceFee)
 ```
 
 Indicates that a borrower has made a new loan
@@ -721,7 +738,7 @@ Indicates that a borrower has made a new loan
 | borrowingCollateral  | uint256 | undefined |
 | liquidationBonus  | uint256 | undefined |
 | dailyRatePrepayment  | uint256 | undefined |
-| holdTokenEntraceFee  | uint256 | undefined |
+| holdTokenEntranceFee  | uint256 | undefined |
 
 ### CollectLoansFees
 

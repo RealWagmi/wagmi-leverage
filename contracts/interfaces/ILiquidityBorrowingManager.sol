@@ -49,7 +49,7 @@ interface ILiquidityBorrowingManager is
     /// @notice This struct used for caching variables inside a function 'borrow'
     struct BorrowCache {
         bytes32 borrowingKey;
-        uint256 holdTokenEntraceFee;
+        uint256 holdTokenEntranceFee;
         uint256 dailyRateCollateral;
         uint256 borrowedAmount;
         uint256 holdTokenBalance;
@@ -95,7 +95,7 @@ interface ILiquidityBorrowingManager is
         uint256 borrowingCollateral,
         uint256 liquidationBonus,
         uint256 dailyRatePrepayment,
-        uint256 holdTokenEntraceFee
+        uint256 holdTokenEntranceFee
     );
     /// Indicates that a borrower has repaid their loan, optionally with the help of a liquidator
     event Repay(address borrower, address liquidator, bytes32 borrowingKey);
@@ -218,7 +218,7 @@ interface ILiquidityBorrowingManager is
             uint256 marginDeposit,
             uint256 liquidationBonus,
             uint256 dailyRateCollateral,
-            uint256 holdTokenEntraceFee
+            uint256 holdTokenEntranceFee
         );
 
     function repay(

@@ -100,5 +100,7 @@ interface ILiquidityManager {
 
     function underlyingPositionManager() external view returns (INonfungiblePositionManager);
 
-    function lightQuoterV3() external view returns (ILightQuoterV3);
+    function lightQuoterV3Address() external view returns (address);
+
+    function flashLoanAggregatorAddress() external view returns (address);
 }
