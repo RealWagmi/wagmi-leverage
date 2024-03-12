@@ -47,6 +47,24 @@ The "repay" function is used to repay a loan. The position is closed either by t
 
 ### V2.0 beta
 
+| indx | Protocol | Network | supported |
+|------| ------- | -----| -----|
+| 1 | uniswap | KAVA | ✅ |
+| 1 | uniswap | ARBITRUM | ✅ |
+| 2 | aave | KAVA | soon |
+| 2 | aave | ARBITRUM | soon |
+
+##
+
+| Network | V3 | dexIndex |
+|------| ------- | -----|
+| KAVA | wagmi | 0 |
+| KAVA | kinetix | 1 |
+| ARBITRUM | uniswap | 0 |
+| ARBITRUM | sushi | 1 |
+
+##
+
 | Network | ChainId | Contract | Address |
 |------| ------- | -----| -----|
 | KAVA | 2222 | LightQuoterV3 | [0xCa4526D9d02A7Bb005d850c2176E8aE30B970149](https://kavascan.com/address/0xCa4526D9d02A7Bb005d850c2176E8aE30B970149) |
