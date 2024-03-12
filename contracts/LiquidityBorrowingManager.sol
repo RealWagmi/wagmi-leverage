@@ -1,10 +1,5 @@
 // SPDX-License-Identifier: SAL-1.0
 
-/**
- * WAGMI Leverage Protocol v2.0 beta
- * wagmi.com
- */
-
 pragma solidity 0.8.23;
 
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
@@ -15,10 +10,19 @@ import "./interfaces/ILiquidityBorrowingManager.sol";
 import { EnumerableSet } from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
 /**
- * @title LiquidityBorrowingManager
- * @dev This contract manages the borrowing liquidity functionality for WAGMI Leverage protocol.
- * It inherits from LiquidityManager, OwnerSettings, DailyRateAndCollateral, and ReentrancyGuard contracts.
+ * WAGMI Leverage Protocol v2.0 beta
+ * wagmi.com                                                
+ * 
+    /  |  _  /  | /      \  /      \ /  \     /  |/      | 
+    $$ | / \ $$ |/$$$$$$  |/$$$$$$  |$$  \   /$$ |$$$$$$/ 
+    $$ |/$  \$$ |$$ |__$$ |$$ | _$$/ $$$  \ /$$$ |  $$ |  
+    $$ /$$$  $$ |$$    $$ |$$ |/    |$$$$  /$$$$ |  $$ |  
+    $$ $$/$$ $$ |$$$$$$$$ |$$ |$$$$ |$$ $$ $$/$$ |  $$ |  
+    $$$$/  $$$$ |$$ |  $$ |$$ \__$$ |$$ |$$$/ $$ | _$$ |_ 
+    $$$/    $$$ |$$ |  $$ |$$    $$/ $$ | $/  $$ |/ $$   |  
+    $$/      $$/ $$/   $$/  $$$$$$/  $$/      $$/ $$$$$$/  
  */
+
 contract LiquidityBorrowingManager is
     ILiquidityBorrowingManager,
     OwnerSettings,

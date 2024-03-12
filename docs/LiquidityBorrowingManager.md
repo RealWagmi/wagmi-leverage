@@ -6,7 +6,7 @@
 
 
 
-*This contract manages the borrowing liquidity functionality for WAGMI Leverage protocol. It inherits from LiquidityManager, OwnerSettings, DailyRateAndCollateral, and ReentrancyGuard contracts.*
+
 
 ## Methods
 
