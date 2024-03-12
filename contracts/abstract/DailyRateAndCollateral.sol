@@ -101,11 +101,13 @@ abstract contract DailyRateAndCollateral is IDailyRateAndCollateral {
             holdTokenRateInfo.currentDailyRate = Constants.DEFAULT_DAILY_RATE;
         }
         if (holdTokenRateInfo.totalBorrowed > 0) {
-            uint256 timeWeightedRate = (uint32(block.timestamp) -
-                holdTokenRateInfo.latestUpTimestamp) * holdTokenRateInfo.currentDailyRate;
-            holdTokenRateInfo.accLoanRatePerSeconds +=
-                (timeWeightedRate * Constants.COLLATERAL_BALANCE_PRECISION) /
-                1 days;
+            unchecked {
+                uint256 timeWeightedRate = (uint32(block.timestamp) -
+                    holdTokenRateInfo.latestUpTimestamp) * holdTokenRateInfo.currentDailyRate;
+                holdTokenRateInfo.accLoanRatePerSeconds +=
+                    (timeWeightedRate * Constants.COLLATERAL_BALANCE_PRECISION) /
+                    1 days;
+            }
         }
 
         holdTokenRateInfo.latestUpTimestamp = uint32(block.timestamp);

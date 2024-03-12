@@ -818,15 +818,15 @@ function wagmiLeverageFlashCallback(uint256 bodyAmt, uint256 feeAmt, bytes data)
 
 
 
-
+*Executes a flash loan callback function for the Wagmi Leverage protocol. It performs various operations based on the received flash loan data. If the sale token balance is insufficient, it initiates a flash loan to borrow the required amount. Otherwise, it increases liquidity and performs token swaps. Finally, it charges platform fees and makes payments to the vault and flash loan aggregator contracts.*
 
 #### Parameters
 
 | Name | Type | Description |
 |---|---|---|
-| bodyAmt | uint256 | undefined |
-| feeAmt | uint256 | undefined |
-| data | bytes | undefined |
+| bodyAmt | uint256 | The amount of the flash loan body token. |
+| feeAmt | uint256 | The amount of the flash loan fee token. |
+| data | bytes | The encoded flash loan callback data. |
 
 
 

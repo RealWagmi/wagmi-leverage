@@ -26,7 +26,8 @@ library ErrLib {
         EXTERNAL_SWAP_ERROR, //20
         INTERNAL_SWAP_TOO_SMALL_AMOUNT_OUT, //21
         INVALID_ROUTE_TOKENID, //22
-        SWAP_AFTER_FLASH_LOAN_FAILED //23
+        SWAP_AFTER_FLASH_LOAN_FAILED, //23
+        TOO_MUCH_TOTAL_BORROW //24
     }
 
     error RevertErrorCode(ErrorCode code);

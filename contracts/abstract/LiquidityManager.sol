@@ -199,12 +199,10 @@ abstract contract LiquidityManager is
                     Constants.BP
                 );
 
-                uint256 platformFeesAmt;
-
                 unchecked {
                     holdTokenEntranceFee += entranceFeeAmt;
                     entranceFeeAmt *= Constants.COLLATERAL_BALANCE_PRECISION;
-                    platformFeesAmt = (entranceFeeAmt * platformFeesBPs) / Constants.BP;
+                    uint256 platformFeesAmt = (entranceFeeAmt * platformFeesBPs) / Constants.BP;
                     holdTokenPlatformFees += platformFeesAmt;
                     loansFeesInfo[creditor][cache.holdToken] += (entranceFeeAmt - platformFeesAmt);
                 }
@@ -223,6 +221,16 @@ abstract contract LiquidityManager is
         }
     }
 
+    /**
+     * @dev Calculates the amount of tokens to swap based on the given parameters.
+     * @param zeroForIn Boolean indicating whether the swap is zero-for-in or not.
+     * @param liquidity The amount of liquidity.
+     * @param saleTokenBalance The balance of the sale token.
+     * @param holdTokenBalance The balance of the hold token.
+     * @param cache The NftPositionCache struct containing relevant token and fee information.
+     * @param amounts The Amounts struct to store the calculated amounts.
+     * @return amountIn The amount of token to be swapped in.
+     */
     function _calculateAmountsToSwap(
         bool zeroForIn,
         uint128 liquidity,
@@ -364,6 +372,16 @@ abstract contract LiquidityManager is
         }
     }
 
+    /**
+     * @dev Executes a flash loan callback function for the Wagmi Leverage protocol.
+     * It performs various operations based on the received flash loan data.
+     * If the sale token balance is insufficient, it initiates a flash loan to borrow the required amount.
+     * Otherwise, it increases liquidity and performs token swaps.
+     * Finally, it charges platform fees and makes payments to the vault and flash loan aggregator contracts.
+     * @param bodyAmt The amount of the flash loan body token.
+     * @param feeAmt The amount of the flash loan fee token.
+     * @param data The encoded flash loan callback data.
+     */
     function wagmiLeverageFlashCallback(
         uint256 bodyAmt,
         uint256 feeAmt,
@@ -400,14 +418,10 @@ abstract contract LiquidityManager is
                 decodedData.amounts.amount0,
                 decodedData.amounts.amount1
             );
-            uint256 amountToPay;
-            unchecked {
-                amountToPay =
-                    bodyAmt +
-                    feeAmt +
-                    decodedData.vaultBodyDebt +
-                    decodedData.vaultFeeDebt;
-            }
+            uint256 amountToPay = bodyAmt +
+                feeAmt +
+                decodedData.vaultBodyDebt +
+                decodedData.vaultFeeDebt;
 
             uint256 holdTokenAmtIn = _v3SwapExact(
                 v3SwapExactParams({

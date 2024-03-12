@@ -436,11 +436,9 @@ contract LiquidityBorrowingManager is
         // positive slippage
         if (cache.holdTokenBalance > cache.borrowedAmount) {
             // Thus, we stimulate the platform to look for the best conditions for swapping on external aggregators.
-            unchecked {
-                platformsFeesInfo[params.holdToken] +=
-                    (cache.holdTokenBalance - cache.borrowedAmount) *
-                    Constants.COLLATERAL_BALANCE_PRECISION;
-            }
+            platformsFeesInfo[params.holdToken] +=
+                (cache.holdTokenBalance - cache.borrowedAmount) *
+                Constants.COLLATERAL_BALANCE_PRECISION;
         } else {
             unchecked {
                 marginDeposit = cache.borrowedAmount - cache.holdTokenBalance;
@@ -449,16 +447,16 @@ contract LiquidityBorrowingManager is
                 ErrLib.ErrorCode.TOO_BIG_MARGIN_DEPOSIT
             );
         }
-        // Transfer the required tokens to the VAULT_ADDRESS for collateral and holdTokenBalance
-        borrowing.dailyRateCollateralBalance +=
-            cache.dailyRateCollateral *
-            Constants.COLLATERAL_BALANCE_PRECISION;
+
         uint256 amountToPay;
         unchecked {
             // Updating borrowing details
             borrowing.borrowedAmount += cache.borrowedAmount;
             borrowing.liquidationBonus += liquidationBonus;
-
+            // Transfer the required tokens to the VAULT_ADDRESS for collateral and holdTokenBalance
+            borrowing.dailyRateCollateralBalance +=
+                cache.dailyRateCollateral *
+                Constants.COLLATERAL_BALANCE_PRECISION;
             amountToPay =
                 marginDeposit +
                 liquidationBonus +
@@ -553,6 +551,7 @@ contract LiquidityBorrowingManager is
             borrowing.saleToken,
             borrowing.holdToken
         );
+        bool underLiquidation;
         {
             // Calculate collateral balance and validate caller
             uint256 accLoanRatePerSeconds = holdTokenRateInfo.accLoanRatePerSeconds;
@@ -563,8 +562,9 @@ contract LiquidityBorrowingManager is
                 borrowing.dailyRateCollateralBalance,
                 accLoanRatePerSeconds
             );
+            underLiquidation = collateralBalance < 0;
 
-            (msg.sender != borrowing.borrower && collateralBalance >= 0).revertError(
+            (msg.sender != borrowing.borrower && !underLiquidation).revertError(
                 ErrLib.ErrorCode.INVALID_CALLER
             );
 
@@ -581,7 +581,7 @@ contract LiquidityBorrowingManager is
         }
         // Check if it's an emergency repayment
         if (params.isEmergency) {
-            (collateralBalance >= 0).revertError(ErrLib.ErrorCode.FORBIDDEN);
+            (!underLiquidation).revertError(ErrLib.ErrorCode.FORBIDDEN);
             (
                 uint256 removedAmt,
                 uint256 feesAmt,
@@ -984,6 +984,9 @@ contract LiquidityBorrowingManager is
         }
 
         holdTokenRateInfo.totalBorrowed += cache.borrowedAmount;
+        (holdTokenRateInfo.totalBorrowed > type(uint160).max).revertError(
+            ErrLib.ErrorCode.TOO_MUCH_TOTAL_BORROW
+        );
     }
 
     /**
@@ -1058,12 +1061,13 @@ contract LiquidityBorrowingManager is
         uint256 borrowedAmount,
         uint256 currentDailyRate
     ) private pure returns (uint256 everySecond) {
-        //unchecked {
-        everySecond = FullMath.mulDivRoundingUp(
-            borrowedAmount,
-            currentDailyRate * Constants.COLLATERAL_BALANCE_PRECISION,
-            1 days * Constants.BP
-        );
+        unchecked {
+            everySecond = FullMath.mulDivRoundingUp(
+                borrowedAmount,
+                currentDailyRate * Constants.COLLATERAL_BALANCE_PRECISION,
+                1 days * Constants.BP
+            );
+        }
     }
 
     function _getFees(
