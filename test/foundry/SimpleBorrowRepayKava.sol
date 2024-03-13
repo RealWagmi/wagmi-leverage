@@ -21,7 +21,7 @@ import { Constants } from "../../contracts/libraries/Constants.sol";
 
 import { console } from "forge-std/console.sol";
 
-contract AmountsRoundingUpForLiquidityTest is Test, HelperContract {
+contract SimpleBorrowRepayKava is Test, HelperContract {
     IERC20 USDT = IERC20(0x919C1c267BC06a7039e03fcc2eF738525769109c);
     IERC20 ODIN = IERC20(0x851feE47C6588506277c439A7526aE58cD1d15e5);
     // wagmi kava
@@ -43,7 +43,7 @@ contract AmountsRoundingUpForLiquidityTest is Test, HelperContract {
         calculateAmountsToSwapTestFork = vm.createFork("kava", 8394603);
         vm.label(address(USDT), "USDt");
         vm.label(address(ODIN), "ODIN");
-        vm.label(address(this), "AmountsRoundingUpForLiquidityTest");
+        vm.label(address(this), "SimpleBorrowRepayKava");
         vm.label(address(NONFUNGIBLE_POSITION_MANAGER_ADDRESS), "NONFUNGIBLE_POSITION_MANAGER");
         vm.label(alice, "Alice");
     }

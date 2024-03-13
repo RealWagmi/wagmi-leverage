@@ -28,34 +28,34 @@ contract ChartDebug is Test, HelperContract {
         );
     }
 
-    function test_chart() public view {
-        PositionEffectivityChart.LoanInfo[] memory loans = new PositionEffectivityChart.LoanInfo[](
-            1
-        );
-        loans[0] = PositionEffectivityChart.LoanInfo({
-            liquidity: 259095985768043040667,
-            tokenId: 149
-        });
-        (
-            PositionEffectivityChart.LoansData[] memory loansChartData,
-            PositionEffectivityChart.Chart[2] memory aggressiveModeProfitLine,
-            PositionEffectivityChart.Chart[] memory chart
-        ) = chartContract.createChart(false, loans, 50, 50);
-        for (uint256 i = 0; i < loansChartData.length; i++) {
-            console.log("amount:", loansChartData[i].amount);
-            console.log("minPrice:", loansChartData[i].minPrice);
-            console.log("maxPrice:", loansChartData[i].maxPrice);
-        }
+    // function test_chart() public view {
+    //     PositionEffectivityChart.LoanInfo[] memory loans = new PositionEffectivityChart.LoanInfo[](
+    //         1
+    //     );
+    //     loans[0] = PositionEffectivityChart.LoanInfo({
+    //         liquidity: 259095985768043040667,
+    //         tokenId: 149
+    //     });
+    //     (
+    //         PositionEffectivityChart.LoansData[] memory loansChartData,
+    //         PositionEffectivityChart.Chart[2] memory aggressiveModeProfitLine,
+    //         PositionEffectivityChart.Chart[] memory chart
+    //     ) = chartContract.createChart(false, loans, 50, 50);
+    //     for (uint256 i = 0; i < loansChartData.length; i++) {
+    //         console.log("amount:", loansChartData[i].amount);
+    //         console.log("minPrice:", loansChartData[i].minPrice);
+    //         console.log("maxPrice:", loansChartData[i].maxPrice);
+    //     }
 
-        for (uint256 i = 0; i < aggressiveModeProfitLine.length; i++) {
-            console.log("price0:", aggressiveModeProfitLine[i].x);
-            console.logInt(aggressiveModeProfitLine[i].y);
-        }
-        for (uint256 i = 0; i < chart.length; i++) {
-            console.log("{x:", chart[i].x);
-            console.log(",y:");
-            console.logInt(chart[i].y);
-            console.log("},");
-        }
-    }
+    //     for (uint256 i = 0; i < aggressiveModeProfitLine.length; i++) {
+    //         console.log("price0:", aggressiveModeProfitLine[i].x);
+    //         console.logInt(aggressiveModeProfitLine[i].y);
+    //     }
+    //     for (uint256 i = 0; i < chart.length; i++) {
+    //         console.log("{x:", chart[i].x);
+    //         console.log(",y:");
+    //         console.logInt(chart[i].y);
+    //         console.log("},");
+    //     }
+    // }
 }

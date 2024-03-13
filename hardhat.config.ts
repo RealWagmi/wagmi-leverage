@@ -31,7 +31,7 @@ const COMPILER_SETTINGS = {
     evmVersion: "paris",
     optimizer: {
       enabled: true,
-      runs: 9999,
+      runs: 999,
     },
     metadata: {
       bytecodeHash: 'none',

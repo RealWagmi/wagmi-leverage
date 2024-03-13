@@ -311,22 +311,23 @@ contract ContractTest is Test, HelperContract {
         borrowingManager.borrow(createBorrowParams(tokenId, minLiqAmt), block.timestamp + 1);
         bytes32[] memory key = borrowingManager.getBorrowingKeysForTokenId(tokenId);
 
-        // borrowingManager.borrow(createBorrowParams(tokenId, minLiqAmt), block.timestamp + 1);
+        borrowingManager.borrow(createBorrowParams(tokenId, minLiqAmt), block.timestamp + 1);
 
-        // borrowingManager.borrow(createBorrowParams(tokenId, minLiqAmt), block.timestamp + 1);
+        borrowingManager.borrow(createBorrowParams(tokenId, minLiqAmt), block.timestamp + 1);
 
-        // borrowingManager.borrow(createBorrowParams(tokenId, minLiqAmt), block.timestamp + 1);
+        borrowingManager.borrow(createBorrowParams(tokenId, minLiqAmt), block.timestamp + 1);
 
         //  repay tokens
 
         uint24 poolfeeTiers = 500;
         uint256 dexIndx = 0;
+        address secondToken = address(WETH);
 
         ILiquidityManager.FlashLoanParams[]
             memory flashLoanParams = new ILiquidityManager.FlashLoanParams[](1);
         flashLoanParams[0] = ILiquidityManager.FlashLoanParams({
             protocol: 1, //uniswap
-            data: abi.encode(poolfeeTiers, dexIndx)
+            data: abi.encode(poolfeeTiers, secondToken, dexIndx)
         });
 
         ILiquidityManager.FlashLoanRoutes memory routes = ILiquidityManager.FlashLoanRoutes({

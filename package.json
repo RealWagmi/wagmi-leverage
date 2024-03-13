@@ -2,9 +2,11 @@
   "name": "wagmi-leverage",
   "scripts": {
     "compile": "hardhat clean && hardhat compile",
+    "test:all": "npx hardhat test --show-stack-traces --typecheck && forge test -vvv --ffi",
     "test": "npx hardhat test --show-stack-traces --typecheck",
     "test:fulltraceError": "npx hardhat test --vv --typecheck",
     "test:forge": "forge test -vvv --ffi --mt $test_function",
+    "test:forge:all": "forge test -vvv --ffi",
     "test:coverage": "npx hardhat coverage  --testfiles 'test/*.ts'",
     "deploy": "npx hardhat run ./scripts/deploy.ts --network $npm_config_network",
     "user-info": "npx hardhat run ./scripts/info.ts --network $npm_config_network",

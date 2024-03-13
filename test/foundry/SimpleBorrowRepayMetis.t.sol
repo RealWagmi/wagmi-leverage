@@ -21,7 +21,7 @@ import { Constants } from "../../contracts/libraries/Constants.sol";
 
 import { console } from "forge-std/console.sol";
 
-contract LBMdebugFull is Test, HelperContract {
+contract SimpleBorrowRepayMetis is Test, HelperContract {
     address constant NONFUNGIBLE_POSITION_MANAGER_ADDRESS =
         0xA7E119Cf6c8f5Be29Ca82611752463f0fFcb1B02;
     address constant UNISWAP_V3_FACTORY = 0x8112E18a34b63964388a3B2984037d6a2EFE5B8A;
@@ -38,7 +38,7 @@ contract LBMdebugFull is Test, HelperContract {
         vm.label(address(WAGMI), "WAGMI");
         vm.label(address(WMETIS), "WMETIS");
         vm.label(address(USDT), "USDT");
-        vm.label(address(this), "LBMdebugFull");
+        vm.label(address(this), "SimpleBorrowRepayMetis");
         vm.label(address(NONFUNGIBLE_POSITION_MANAGER_ADDRESS), "NONFUNGIBLE_POSITION_MANAGER");
         deal(address(WMETIS), alice, 100_000_000e18);
         address lightQuoter = address(new LightQuoterV3());
@@ -76,7 +76,7 @@ contract LBMdebugFull is Test, HelperContract {
         vm.label(alice, "Alice");
     }
 
-    function test_lbmfull() public {
+    function test_SimpleBorrowRepay() public {
         uint256 tokenId = 183;
         address ownerPositionManager = INonfungiblePositionManager(
             NONFUNGIBLE_POSITION_MANAGER_ADDRESS
