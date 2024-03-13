@@ -117,6 +117,11 @@ async function main() {
     // const vaultAddress = await borrowingManager.VAULT_ADDRESS();
     // console.log(`Vault  deployed to ${vaultAddress}`);
 
+    // const LiquidityBorrowingManager = await ethers.getContractFactory("LiquidityBorrowingManager");
+    // const borrowingManager = LiquidityBorrowingManager.attach("");
+    // await borrowingManager.updateSettings(5, [lightQuoter.address]);
+
+
     // await hardhat.run("verify:verify", {
     //     address: borrowingManager.address,
     //     constructorArguments: [
