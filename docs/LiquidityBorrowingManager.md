@@ -1038,7 +1038,7 @@ event UpdateSettingsByOwner(enum IOwnerSettings.ITEM _item, uint256[] values)
 ### InvalidLiquidityAmount
 
 ```solidity
-error InvalidLiquidityAmount(uint256 tokenId, uint128 liquidity)
+error InvalidLiquidityAmount(uint256 tokenId, uint128 max, uint128 min, uint128 liquidity)
 ```
 
 
@@ -1050,6 +1050,8 @@ error InvalidLiquidityAmount(uint256 tokenId, uint128 liquidity)
 | Name | Type | Description |
 |---|---|---|
 | tokenId | uint256 | undefined |
+| max | uint128 | undefined |
+| min | uint128 | undefined |
 | liquidity | uint128 | undefined |
 
 ### InvalidRestoredLiquidity

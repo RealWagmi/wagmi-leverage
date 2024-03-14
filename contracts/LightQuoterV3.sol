@@ -11,19 +11,6 @@ import { AmountsLiquidity } from "./libraries/AmountsLiquidity.sol";
 
 // import "hardhat/console.sol";
 
-interface IZapinCaller {
-    function VAULT_ADDRESS() external view returns (address);
-
-    function _getPairBalance(
-        address tokenA,
-        address tokenB
-    ) external view returns (uint256 balanceA, uint256 balanceB);
-}
-
-interface IZapinCallersVault {
-    function getBalances(address[] memory tokens) external view returns (uint256[] memory balances);
-}
-
 contract LightQuoterV3 is ILightQuoterV3 {
     using SafeCast for uint256;
 
@@ -109,17 +96,6 @@ contract LightQuoterV3 is ILightQuoterV3 {
         balance = abi.decode(data, (uint256));
     }
 
-    function _getVaultBalance(
-        bool zeroForIn,
-        address swapPool
-    ) private view returns (uint256 vaultBalance) {
-        address saleToken = zeroForIn
-            ? IUniswapV3Pool(swapPool).token1()
-            : IUniswapV3Pool(swapPool).token0();
-        address vault = IZapinCaller(msg.sender).VAULT_ADDRESS();
-        vaultBalance = getBalanceOf(saleToken, vault);
-    }
-
     function calculateExactZapIn(
         CalculateExactZapInParams memory params
     ) external view returns (uint256 swapAmountIn, uint256 calcAmountIn, uint256 calcAmountOut) {
@@ -128,7 +104,6 @@ contract LightQuoterV3 is ILightQuoterV3 {
         uint160 sqrtRatioBX96 = TickMath.getSqrtRatioAtTick(params.tickUpper);
         SwapCache memory cache;
         _prepareSwapCache(params.zeroForIn, params.swapPool, cache);
-        params.tokenOutBalance += _getVaultBalance(params.zeroForIn, params.swapPool);
 
         (calcAmountIn, calcAmountOut) = _calculateAmounts(
             params.zeroForIn,
@@ -168,7 +143,7 @@ contract LightQuoterV3 is ILightQuoterV3 {
                 );
 
                 if (calcAmountOut == 0 || calcAmountIn > params.tokenInBalance - amountIn) {
-                    amountInNext = (amountIn * 800) / 1000;
+                    amountInNext = (amountIn * 900) / 1000;
                 } else {
                     (, amountInNext, ) = _simulateSwap(false, -calcAmountOut.toInt256(), cache);
                 }

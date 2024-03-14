@@ -21,6 +21,7 @@ async function main() {
     // let UNISWAP_V3_POOL_INIT_CODE_HASH_0 = "";
     // let UNISWAP_V3_FACTORY_1 = "";
     // let UNISWAP_V3_POOL_INIT_CODE_HASH_1 = "";
+    // let AAVE_POOL_ADDRESS_PROVIDER = "";
     // if (network === "kava") {
     //     dexName0 = "wagmi";
     //     dexName1 = "kinetix";
@@ -39,10 +40,11 @@ async function main() {
     //     UNISWAP_V3_POOL_INIT_CODE_HASH_0 = "0xe34f199b19b2b4f47f68442619d555527d244f78a3297ea89325f843f87b8b54";
     //     UNISWAP_V3_FACTORY_1 = "0x1af415a1EbA07a4986a52B6f2e7dE7003D82231e";
     //     UNISWAP_V3_POOL_INIT_CODE_HASH_1 = "0xe34f199b19b2b4f47f68442619d555527d244f78a3297ea89325f843f87b8b54";
+    //     AAVE_POOL_ADDRESS_PROVIDER = "0xa97684ead0e402dC232d5A977953DF7ECBaB3CDb";
     // }
 
     // const FlashLoanAggregatorFactory = await ethers.getContractFactory("FlashLoanAggregator");
-    // const flashLoanAggregator = await FlashLoanAggregatorFactory.deploy(UNISWAP_V3_FACTORY_0, UNISWAP_V3_POOL_INIT_CODE_HASH_0, dexName0);
+    // const flashLoanAggregator = await FlashLoanAggregatorFactory.deploy(AAVE_POOL_ADDRESS_PROVIDER, UNISWAP_V3_FACTORY_0, UNISWAP_V3_POOL_INIT_CODE_HASH_0, dexName0);
     // await flashLoanAggregator.deployed();
     // console.log(`[${dexName0}] FlashLoanAggregator  deployed to ${flashLoanAggregator.address}`);
     // await sleep(5000);
@@ -113,13 +115,19 @@ async function main() {
     // await positionEffectivityChart.deployed();
     // console.log(`PositionEffectivityChart  deployed to ${positionEffectivityChart.address}`);
 
-    // await sleep(30000);
+
     // const vaultAddress = await borrowingManager.VAULT_ADDRESS();
     // console.log(`Vault  deployed to ${vaultAddress}`);
 
+    // await sleep(5000);
+
     // const LiquidityBorrowingManager = await ethers.getContractFactory("LiquidityBorrowingManager");
-    // const borrowingManager = LiquidityBorrowingManager.attach("");
-    // await borrowingManager.updateSettings(5, [lightQuoter.address]);
+    // const borrowingManager = LiquidityBorrowingManager.attach("0x7C261c6c2F43ec86fbc8DA48505fDF12D66193c9");
+    // await flashLoanAggregator.setWagmiLeverageAddress("0x7C261c6c2F43ec86fbc8DA48505fDF12D66193c9");
+    // await sleep(5000);
+    // await borrowingManager.updateSettings(4, [flashLoanAggregator.address]);
+
+    // await sleep(30000);
 
 
     // await hardhat.run("verify:verify", {
@@ -139,7 +147,7 @@ async function main() {
 
     // await hardhat.run("verify:verify", {
     //     address: flashLoanAggregator.address,
-    //     constructorArguments: [UNISWAP_V3_FACTORY_0, UNISWAP_V3_POOL_INIT_CODE_HASH_0, dexName0]
+    //     constructorArguments: [AAVE_POOL_ADDRESS_PROVIDER, UNISWAP_V3_FACTORY_0, UNISWAP_V3_POOL_INIT_CODE_HASH_0, dexName0]
     // });
 
     // await hardhat.run("verify:verify", {

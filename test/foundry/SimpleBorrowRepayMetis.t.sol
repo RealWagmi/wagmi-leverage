@@ -31,6 +31,7 @@ contract SimpleBorrowRepayMetis is Test, HelperContract {
     address constant WAGMI = 0xaf20f5f19698f1D19351028cd7103B63D30DE7d7;
     address constant USDT = 0xbB06DCA3AE6887fAbF931640f67cab3e3a16F4dC;
     address constant WMETIS = 0x75cb093E4D61d2A2e65D8e0BBb01DE8d89b53481;
+    address constant AAVE_POOL_ADDRESS_PROVIDER = 0xB9FABd7500B2C6781c35Dd48d54f81fc2299D7AF;
     LiquidityBorrowingManager borrowingManager;
 
     function setUp() public {
@@ -43,6 +44,7 @@ contract SimpleBorrowRepayMetis is Test, HelperContract {
         deal(address(WMETIS), alice, 100_000_000e18);
         address lightQuoter = address(new LightQuoterV3());
         FlashLoanAggregator flashLoanAggregator = new FlashLoanAggregator(
+            AAVE_POOL_ADDRESS_PROVIDER,
             UNISWAP_V3_FACTORY,
             UNISWAP_V3_POOL_INIT_CODE_HASH,
             "wagmi"

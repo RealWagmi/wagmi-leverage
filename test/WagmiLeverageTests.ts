@@ -1,4 +1,5 @@
 import { ethers, network } from "hardhat";
+import { defaultAbiCoder } from 'ethers/lib/utils'
 import { expect } from "chai";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { encodePath } from "./testsHelpers/path";
@@ -60,6 +61,7 @@ describe("WagmiLeverageTests", () => {
     const UNISWAP_V3_POOL_INIT_CODE_HASH = "0xe34f199b19b2b4f47f68442619d555527d244f78a3297ea89325f843f87b8b54"; /// Mainnet, Goerli, Arbitrum, Optimism, Polygon
     const SWAP_ROUTER_ADDRESS = "0xE592427A0AEce92De3Edee1F18E0157C05861564";
     const COLLATERAL_BALANCE_PRECISION = BigNumber.from("1000000000000000000");
+    const AAVE_POOL_ADDRESS_PROVIDER = "0x2f39d218133AFaB8F2B819B1066c7E434Ad94E9e";
 
     let owner: SignerWithAddress;
     let alice: SignerWithAddress;
@@ -94,9 +96,9 @@ describe("WagmiLeverageTests", () => {
             flashLoanParams: [],
         };
 
-        USDT = await ethers.getContractAt("IERC20", USDT_ADDRESS);
-        WETH = await ethers.getContractAt("IERC20", WETH_ADDRESS);
-        WBTC = await ethers.getContractAt("IERC20", WBTC_ADDRESS);
+        USDT = await ethers.getContractAt("@openzeppelin/contracts/token/ERC20/IERC20.sol:IERC20", USDT_ADDRESS) as IERC20;
+        WETH = await ethers.getContractAt("@openzeppelin/contracts/token/ERC20/IERC20.sol:IERC20", WETH_ADDRESS) as IERC20;
+        WBTC = await ethers.getContractAt("@openzeppelin/contracts/token/ERC20/IERC20.sol:IERC20", WBTC_ADDRESS) as IERC20;
         pool500_WETH_USDT = await ethers.getContractAt("IUniswapV3Pool", WETH_USDT_500_POOL_ADDRESS);
         pool500_WBTC_WETH = await ethers.getContractAt("IUniswapV3Pool", WBTC_WETH_500_POOL_ADDRESS);
         nonfungiblePositionManager = await ethers.getContractAt(
@@ -109,7 +111,7 @@ describe("WagmiLeverageTests", () => {
         lightQuoter = await LightQuoterV3Factory.deploy();
 
         const FlashLoanAggregatorFactory = await ethers.getContractFactory("FlashLoanAggregator");
-        flashLoanAggregator = await FlashLoanAggregatorFactory.deploy(UNISWAP_V3_FACTORY, UNISWAP_V3_POOL_INIT_CODE_HASH, "uniswap");
+        flashLoanAggregator = await FlashLoanAggregatorFactory.deploy(AAVE_POOL_ADDRESS_PROVIDER, UNISWAP_V3_FACTORY, UNISWAP_V3_POOL_INIT_CODE_HASH, "uniswap");
 
         const LiquidityBorrowingManager = await ethers.getContractFactory("LiquidityBorrowingManager");
         borrowingManager = await LiquidityBorrowingManager.deploy(
@@ -1438,77 +1440,84 @@ describe("WagmiLeverageTests", () => {
     });
 
 
-    // it("repay borrowing and restore liquidity using an external swap will be successful", async () => {
-    //     let borrowingKey = (await borrowingManager.getBorrowingKeysForBorrower(bob.address))[1];
-    //     const deadline = (await time.latest()) + 60;
+    it("repay borrowing and restore liquidity using a flash loan will be successful", async () => {
+        let borrowingKey = (await borrowingManager.getBorrowingKeysForBorrower(bob.address))[1];
+        const deadline = (await time.latest()) + 60;
 
-    //     let amountIn = ethers.utils.parseUnits("0.01", 18);
+        let flashLoanParams: ILiquidityManager.FlashLoanParamsStruct[] = new Array(2);
+        const poolfeeTiers = 3000;
+        const secondToken = WBTC_ADDRESS;
+        const dexIndx = 0;
+        let data = defaultAbiCoder.encode(['uint24', 'address', 'uint256'], [poolfeeTiers, secondToken, dexIndx]);
 
-    //     let swap_params = ethers.utils.defaultAbiCoder.encode(
-    //         ["address", "address", "uint256", "uint256"],
-    //         [WETH_ADDRESS, USDT_ADDRESS, amountIn, 0]
-    //     );
-    //     swapData = swapIface.encodeFunctionData("swap", [swap_params]);
+        flashLoanParams[0] = {
+            protocol: 1, //uniswap
+            data: data
+        };
 
-    //     let swapParams: IApproveSwapAndPay.SwapParamsStruct = {
-    //         swapTarget: aggregatorMock.address,
-    //         maxGasForCall: 0,
-    //         swapData: swapData,
-    //     };
+        flashLoanParams[1] = {
+            protocol: 2, //aave
+            data: "0x"
+        };
 
-    //     let params: ILiquidityBorrowingManager.RepayParamsStruct = {
-    //         returnOnlyHoldToken: true,
-    //         isEmergency: false,
-    //         internalSwapPoolfee: 500,
-    //         externalSwap: [swapParams],
-    //         borrowingKey: borrowingKey,
-    //         minHoldTokenOut: BigNumber.from(0),
-    //         minSaleTokenOut: BigNumber.from(0)
-    //     };
-    //     // borrower only
-    //     await expect(borrowingManager.connect(alice).repay(params, deadline)).to.be.reverted;
-    //     await borrowingManager.connect(bob).repay(params, deadline);
-    //     let rateInfo = await borrowingManager.getHoldTokenInfo(USDT_ADDRESS, WETH_ADDRESS);
-    //     expect(rateInfo.totalBorrowed).to.be.equal(0);
+        flashRoutes = {
+            strict: false,
+            flashLoanParams: flashLoanParams,
+        };
 
-    //     // WBTC_WETH
-    //     borrowingKey = (await borrowingManager.getBorrowingKeysForBorrower(bob.address))[0];
-    //     // external swap
-    //     amountIn = ethers.utils.parseUnits("0.001", 8);
-    //     swap_params = ethers.utils.defaultAbiCoder.encode(
-    //         ["address", "address", "uint256", "uint256"],
-    //         [WBTC_ADDRESS, WETH_ADDRESS, amountIn, 0]
-    //     );
-    //     swapData = swapIface.encodeFunctionData("swap", [swap_params]);
+        let params: ILiquidityBorrowingManager.RepayParamsStruct = {
+            isEmergency: false,
+            routes: flashRoutes,
+            borrowingKey: borrowingKey,
+            minHoldTokenOut: BigNumber.from(0),
+            minSaleTokenOut: BigNumber.from(0)
+        };
 
-    //     swapParams = {
-    //         swapTarget: aggregatorMock.address,
-    //         maxGasForCall: 0,
-    //         swapData: swapData,
-    //     };
 
-    //     params = {
-    //         returnOnlyHoldToken: true,
-    //         isEmergency: false,
-    //         internalSwapPoolfee: 500,
-    //         externalSwap: [swapParams],
-    //         borrowingKey: borrowingKey,
-    //         minHoldTokenOut: BigNumber.from(0),
-    //         minSaleTokenOut: BigNumber.from(0)
-    //     };
-    //     await expect(borrowingManager.connect(alice).repay(params, deadline)).to.be.reverted;
-    //     await borrowingManager.connect(bob).repay(params, deadline);
+        // borrower only
+        await expect(borrowingManager.connect(alice).repay(params, deadline)).to.be.reverted;
+        await borrowingManager.connect(bob).repay(params, deadline);
+        let rateInfo = await borrowingManager.getHoldTokenInfo(USDT_ADDRESS, WETH_ADDRESS);
+        expect(rateInfo.totalBorrowed).to.be.equal(0);
 
-    //     rateInfo = await borrowingManager.getHoldTokenInfo(WETH_ADDRESS, WBTC_ADDRESS);
-    //     expect(rateInfo.totalBorrowed).to.be.equal(0);
-    //     expect(await borrowingManager.getLenderCreditsCount(nftpos[0].tokenId)).to.be.equal(0);
-    //     expect(await borrowingManager.getLenderCreditsCount(nftpos[1].tokenId)).to.be.equal(0);
-    //     expect(await borrowingManager.getLenderCreditsCount(nftpos[2].tokenId)).to.be.equal(0);
-    //     expect(await borrowingManager.getLenderCreditsCount(nftpos[3].tokenId)).to.be.equal(0);
-    //     expect(await borrowingManager.getLenderCreditsCount(nftpos[4].tokenId)).to.be.equal(0);
-    //     expect(await borrowingManager.getLenderCreditsCount(nftpos[5].tokenId)).to.be.equal(0);
-    //     expect(await borrowingManager.getBorrowerDebtsCount(bob.address)).to.be.equal(0);
-    // });
+        // WBTC_WETH
+        borrowingKey = (await borrowingManager.getBorrowingKeysForBorrower(bob.address))[0];
+
+        flashLoanParams[0] = {
+            protocol: 2, //aave
+            data: "0x"
+        };
+
+        flashLoanParams[1] = {
+            protocol: 1, //uniswap
+            data: data
+        };
+
+        flashRoutes = {
+            strict: false,
+            flashLoanParams: flashLoanParams,
+        };
+
+        params = {
+            isEmergency: false,
+            routes: flashRoutes,
+            borrowingKey: borrowingKey,
+            minHoldTokenOut: BigNumber.from(0),
+            minSaleTokenOut: BigNumber.from(0)
+        };
+        await expect(borrowingManager.connect(alice).repay(params, deadline)).to.be.reverted;
+        await borrowingManager.connect(bob).repay(params, deadline);
+
+        rateInfo = await borrowingManager.getHoldTokenInfo(WETH_ADDRESS, WBTC_ADDRESS);
+        expect(rateInfo.totalBorrowed).to.be.equal(0);
+        expect(await borrowingManager.getLenderCreditsCount(nftpos[0].tokenId)).to.be.equal(0);
+        expect(await borrowingManager.getLenderCreditsCount(nftpos[1].tokenId)).to.be.equal(0);
+        expect(await borrowingManager.getLenderCreditsCount(nftpos[2].tokenId)).to.be.equal(0);
+        expect(await borrowingManager.getLenderCreditsCount(nftpos[3].tokenId)).to.be.equal(0);
+        expect(await borrowingManager.getLenderCreditsCount(nftpos[4].tokenId)).to.be.equal(0);
+        expect(await borrowingManager.getLenderCreditsCount(nftpos[5].tokenId)).to.be.equal(0);
+        expect(await borrowingManager.getBorrowerDebtsCount(bob.address)).to.be.equal(0);
+    });
 
     it("Vault test should be successful", async () => {
         const balances = await vault.getBalances([USDT_ADDRESS, WETH_ADDRESS]);

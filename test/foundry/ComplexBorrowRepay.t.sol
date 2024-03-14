@@ -11,10 +11,12 @@ import { HelperContract } from "../testsHelpers/HelperContract.sol";
 import { INonfungiblePositionManager } from "contracts/interfaces/INonfungiblePositionManager.sol";
 import { LiquidityManager } from "contracts/abstract/LiquidityManager.sol";
 import { IApproveSwapAndPay, ILiquidityManager, ILiquidityBorrowingManager } from "contracts/interfaces/ILiquidityBorrowingManager.sol";
+import { TransferHelper } from "contracts/libraries/TransferHelper.sol";
 
 import { console } from "forge-std/console.sol";
 
 contract ComplexBorrowRepay is Test, HelperContract {
+    using TransferHelper for address;
     address constant NONFUNGIBLE_POSITION_MANAGER_ADDRESS =
         0xA7E119Cf6c8f5Be29Ca82611752463f0fFcb1B02;
     address constant UNISWAP_V3_FACTORY = 0x8112E18a34b63964388a3B2984037d6a2EFE5B8A;
@@ -23,7 +25,9 @@ contract ComplexBorrowRepay is Test, HelperContract {
     address constant alice = 0x0FAB28472D94737c63856033Fd7B936EbB9050A4;
     address constant WAGMI = 0xaf20f5f19698f1D19351028cd7103B63D30DE7d7;
     address constant USDT = 0xbB06DCA3AE6887fAbF931640f67cab3e3a16F4dC;
+    address constant AAVE_POOL_ADDRESS_PROVIDER = 0xB9FABd7500B2C6781c35Dd48d54f81fc2299D7AF;
     LiquidityBorrowingManager borrowingManager;
+    FlashLoanAggregator flashLoanAggregator;
 
     function setUp() public {
         vm.createSelectFork("metis", 13428428);
@@ -33,7 +37,8 @@ contract ComplexBorrowRepay is Test, HelperContract {
         vm.label(address(NONFUNGIBLE_POSITION_MANAGER_ADDRESS), "NONFUNGIBLE_POSITION_MANAGER");
         deal(address(WAGMI), alice, 100_000_000e18);
         address lightQuoter = address(new LightQuoterV3());
-        FlashLoanAggregator flashLoanAggregator = new FlashLoanAggregator(
+        flashLoanAggregator = new FlashLoanAggregator(
+            AAVE_POOL_ADDRESS_PROVIDER,
             UNISWAP_V3_FACTORY,
             UNISWAP_V3_POOL_INIT_CODE_HASH,
             "wagmi"
@@ -84,7 +89,7 @@ contract ComplexBorrowRepay is Test, HelperContract {
         _maxApproveIfNecessary(address(WAGMI), address(borrowingManager), type(uint256).max);
 
         ILiquidityManager.LoanInfo memory loanInfo = ILiquidityManager.LoanInfo({
-            liquidity: 87161523697251899, //127161523697251899,
+            liquidity: 138953943293338389,
             tokenId: tokenId
         });
 
@@ -115,7 +120,7 @@ contract ComplexBorrowRepay is Test, HelperContract {
                 holdToken: address(WAGMI),
                 minHoldTokenOut: 0,
                 maxMarginDeposit: type(uint256).max,
-                maxDailyRate: 108905675429610427458,
+                maxDailyRate: type(uint256).max,
                 externalSwap: exSwapParams,
                 loans: loanInfoArrayMemory
             });
@@ -129,7 +134,7 @@ contract ComplexBorrowRepay is Test, HelperContract {
         uint24 poolfeeTiers0 = 10000; //usdt-wmetis
         uint24 poolfeeTiers1 = 1500; //usdt-weth
         uint256 wagmi = 0;
-        uint256 kinetix = 1;
+        //uint256 kinetix = 1;
         uint256 dexIndx = wagmi;
         address secondToken0 = 0x75cb093E4D61d2A2e65D8e0BBb01DE8d89b53481; // wmetis  pool usdt-wmetis
         address secondToken1 = 0x420000000000000000000000000000000000000A; // weth   pool usdt-weth
@@ -158,8 +163,138 @@ contract ComplexBorrowRepay is Test, HelperContract {
                 minHoldTokenOut: 0,
                 minSaleTokenOut: 0
             });
+        // 1000 USDT from Vault
+        deal(address(USDT), borrowingManager.VAULT_ADDRESS(), 1000e6);
         borrowingManager.repay(AliceRepayingParams, block.timestamp + 60);
 
         vm.stopPrank();
+    }
+
+    uint256 balanceBefore;
+
+    function test_FlashLoanAggregator_UniV3_AAVE() public {
+        deal(address(USDT), address(this), 1000e18);
+        flashLoanAggregator.setWagmiLeverageAddress(address(this));
+
+        bool zeroForSaleToken = address(USDT) < address(WAGMI);
+        LiquidityManager.LoanInfo memory loan;
+        uint24 poolfeeTiers = 10000; //usdt-wmetis
+        address secondToken = 0x75cb093E4D61d2A2e65D8e0BBb01DE8d89b53481; // wmetis  pool usdt-wmetis
+        uint256 wagmi = 0;
+        // uint256 kinetix = 1;
+        uint256 dexIndx = wagmi;
+
+        ILiquidityManager.FlashLoanParams[]
+            memory flashLoanParams = new ILiquidityManager.FlashLoanParams[](3);
+
+        flashLoanParams[0] = ILiquidityManager.FlashLoanParams({
+            protocol: 1, //uniswap
+            data: abi.encode(poolfeeTiers, secondToken, dexIndx)
+        });
+
+        flashLoanParams[1] = ILiquidityManager.FlashLoanParams({
+            protocol: 2, //aave
+            data: "0x"
+        });
+
+        ILiquidityManager.FlashLoanRoutes memory routes = ILiquidityManager.FlashLoanRoutes({
+            strict: true,
+            flashLoanParams: flashLoanParams
+        });
+        ILiquidityManager.Amounts memory amounts;
+
+        uint256 maxUsdtAmt = flashLoanAggregator.checkAaveFlashReserve(address(USDT));
+        bytes memory data = abi.encode(
+            ILiquidityManager.CallbackData({
+                zeroForSaleToken: zeroForSaleToken,
+                fee: 0,
+                tickLower: 0,
+                tickUpper: 0,
+                saleToken: address(USDT),
+                holdToken: 0x75cb093E4D61d2A2e65D8e0BBb01DE8d89b53481,
+                holdTokenDebt: 0,
+                vaultBodyDebt: 0,
+                vaultFeeDebt: 0,
+                amounts: amounts,
+                loan: loan,
+                routes: routes
+            })
+        );
+        balanceBefore = address(USDT).getBalance();
+        flashLoanAggregator.flashLoan(maxUsdtAmt, data);
+    }
+
+    function test_FlashLoanAggregator_AAVE_UniV3() public {
+        deal(address(USDT), address(this), 1000e18);
+        flashLoanAggregator.setWagmiLeverageAddress(address(this));
+
+        bool zeroForSaleToken = address(USDT) < address(WAGMI);
+        LiquidityManager.LoanInfo memory loan;
+        uint24 poolfeeTiers = 10000; //usdt-wmetis
+        address secondToken = 0x75cb093E4D61d2A2e65D8e0BBb01DE8d89b53481; // wmetis  pool usdt-wmetis
+        uint256 wagmi = 0;
+        // uint256 kinetix = 1;
+        uint256 dexIndx = wagmi;
+
+        ILiquidityManager.FlashLoanParams[]
+            memory flashLoanParams = new ILiquidityManager.FlashLoanParams[](3);
+
+        flashLoanParams[0] = ILiquidityManager.FlashLoanParams({
+            protocol: 2, //aave
+            data: "0x"
+        });
+
+        flashLoanParams[1] = ILiquidityManager.FlashLoanParams({
+            protocol: 1, //uniswap
+            data: abi.encode(poolfeeTiers, secondToken, dexIndx)
+        });
+
+        ILiquidityManager.FlashLoanRoutes memory routes = ILiquidityManager.FlashLoanRoutes({
+            strict: true,
+            flashLoanParams: flashLoanParams
+        });
+        ILiquidityManager.Amounts memory amounts;
+
+        uint256 maxUsdtAmt = flashLoanAggregator.checkAaveFlashReserve(address(USDT));
+
+        // console.log("maxUsdtAmt", maxUsdtAmt);
+        bytes memory data = abi.encode(
+            ILiquidityManager.CallbackData({
+                zeroForSaleToken: zeroForSaleToken,
+                fee: 0,
+                tickLower: 0,
+                tickUpper: 0,
+                saleToken: address(USDT),
+                holdToken: 0x75cb093E4D61d2A2e65D8e0BBb01DE8d89b53481,
+                holdTokenDebt: 0,
+                vaultBodyDebt: 0,
+                vaultFeeDebt: 0,
+                amounts: amounts,
+                loan: loan,
+                routes: routes
+            })
+        );
+        balanceBefore = address(USDT).getBalance();
+        //aave
+        flashLoanAggregator.flashLoan(maxUsdtAmt, data);
+        balanceBefore = address(USDT).getBalance();
+        //aave+uniswap
+        // 1000 USDT from Uniswap pool
+        maxUsdtAmt = flashLoanAggregator.checkAaveFlashReserve(address(USDT)) + 1000 * 1e6;
+        flashLoanAggregator.flashLoan(maxUsdtAmt, data);
+    }
+
+    function wagmiLeverageFlashCallback(
+        uint256 bodyAmt,
+        uint256 feeAmt,
+        bytes calldata data
+    ) external {
+        ILiquidityManager.CallbackData memory decodedData = abi.decode(
+            data,
+            (ILiquidityManager.CallbackData)
+        );
+        uint256 balanceAfter = decodedData.saleToken.getBalance();
+        assertEq(balanceAfter, balanceBefore + bodyAmt);
+        decodedData.saleToken.safeTransfer(address(flashLoanAggregator), bodyAmt + feeAmt);
     }
 }

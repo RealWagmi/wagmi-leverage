@@ -39,6 +39,7 @@ contract ContractTest is Test, HelperContract {
     /// Mainnet, Goerli, Arbitrum, Optimism, Polygon
     address constant alice = 0x70997970C51812dc3A010C7d01b50e0d17dc79C8;
     address constant bob = 0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC;
+    address constant AAVE_POOL_ADDRESS_PROVIDER = 0x2f39d218133AFaB8F2B819B1066c7E434Ad94E9e;
     AggregatorMock aggregatorMock;
     LiquidityBorrowingManager borrowingManager;
     LightQuoterV3 lightQuoterV3;
@@ -57,6 +58,7 @@ contract ContractTest is Test, HelperContract {
         aggregatorMock = new AggregatorMock(UNISWAP_V3_QUOTER_V2);
         lightQuoterV3 = new LightQuoterV3();
         FlashLoanAggregator flashLoanAggregator = new FlashLoanAggregator(
+            AAVE_POOL_ADDRESS_PROVIDER,
             UNISWAP_V3_FACTORY,
             UNISWAP_V3_POOL_INIT_CODE_HASH,
             "uniswap"

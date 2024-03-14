@@ -126,7 +126,7 @@ export async function hackDonor(donorAddress: string, recipients: string[], asse
     await impersonateAccount(donorAddress);
     let donor = ethers.provider.getSigner(donorAddress);
     for (const asset of assets) {
-        const TOKEN: IERC20 = await ethers.getContractAt("IERC20", asset.tokenAddress);
+        const TOKEN: IERC20 = await ethers.getContractAt("@openzeppelin/contracts/token/ERC20/IERC20.sol:IERC20", asset.tokenAddress) as IERC20;
         for (const recipient of recipients) {
             await TOKEN.connect(donor).transfer(recipient, asset.amount);
         }
@@ -135,13 +135,13 @@ export async function hackDonor(donorAddress: string, recipients: string[], asse
 
 export async function maxApprove(signer: SignerWithAddress, spenderAddress: string, erc20tokens: string[]) {
     for (const token of erc20tokens) {
-        const erc20: IERC20 = await ethers.getContractAt("IERC20", token);
+        const erc20: IERC20 = await ethers.getContractAt("@openzeppelin/contracts/token/ERC20/IERC20.sol:IERC20", token) as IERC20;
         await erc20.connect(signer).approve(spenderAddress, constants.MaxUint256);
     }
 }
 
 export async function getERC20Balance(tokenAddress: string, account: string): Promise<BigNumber> {
-    const TOKEN: IERC20 = await ethers.getContractAt("IERC20", tokenAddress);
+    const TOKEN: IERC20 = await ethers.getContractAt("@openzeppelin/contracts/token/ERC20/IERC20.sol:IERC20", tokenAddress) as IERC20;
     return TOKEN.balanceOf(account);
 }
 
@@ -171,7 +171,7 @@ export async function swap(
     trader: SignerWithAddress,
     router: ISwapRouter
 ) {
-    const TOKENIN: IERC20 = await ethers.getContractAt("IERC20", tokenIn);
+    const TOKENIN: IERC20 = await ethers.getContractAt("@openzeppelin/contracts/token/ERC20/IERC20.sol:IERC20", tokenIn) as IERC20;
 
     const timestamp = await time.latest();
     await TOKENIN.connect(trader).approve(router.address, amountIn);

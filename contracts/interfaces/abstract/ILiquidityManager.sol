@@ -63,6 +63,8 @@ interface ILiquidityManager {
     struct CallbackData {
         bool zeroForSaleToken;
         uint24 fee;
+        int24 tickLower;
+        int24 tickUpper;
         address saleToken;
         address holdToken;
         uint256 holdTokenDebt;

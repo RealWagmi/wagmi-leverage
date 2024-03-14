@@ -71,7 +71,7 @@ abstract contract LiquidityManager is
         _;
     }
 
-    error InvalidLiquidityAmount(uint256 tokenId, uint128 liquidity);
+    error InvalidLiquidityAmount(uint256 tokenId, uint128 max, uint128 min, uint128 liquidity);
     error InvalidTokens(uint256 tokenId);
     error NotApproved(uint256 tokenId);
     error InvalidRestoredLiquidity(
@@ -190,7 +190,12 @@ abstract contract LiquidityManager is
             // Check borrowed liquidity validity
             uint128 minLiquidityAmt = _getMinLiquidityAmt(cache.tickLower, cache.tickUpper);
             if (loan.liquidity > cache.liquidity || loan.liquidity < minLiquidityAmt) {
-                revert InvalidLiquidityAmount(loan.tokenId, loan.liquidity);
+                revert InvalidLiquidityAmount(
+                    loan.tokenId,
+                    cache.liquidity,
+                    minLiquidityAmt,
+                    loan.liquidity
+                );
             }
             if (entranceFeeBps > 0) {
                 uint256 entranceFeeAmt = FullMath.mulDivRoundingUp(
@@ -222,33 +227,36 @@ abstract contract LiquidityManager is
     }
 
     /**
-     * @dev Calculates the amount of tokens to swap based on the given parameters.
-     * @param zeroForIn Boolean indicating whether the swap is zero-for-in or not.
-     * @param liquidity The amount of liquidity.
-     * @param saleTokenBalance The balance of the sale token.
-     * @param holdTokenBalance The balance of the hold token.
-     * @param cache The NftPositionCache struct containing relevant token and fee information.
-     * @param amounts The Amounts struct to store the calculated amounts.
-     * @return amountIn The amount of token to be swapped in.
+     * @notice Calculates the amounts to be swapped using a quoter contract.
+     * @dev This function utilizes a static call to the quoter contract to determine the swap amounts without affecting the blockchain state.
+     * @param zeroForIn A boolean to indicate if we're swapping the token at index 0 in the pool.
+     * @param pool The address of the Uniswap V3 pool involved in the swap.
+     * @param liquidity The amount of liquidity to provide to the pool.
+     * @param tickLower The lower tick range for the position.
+     * @param tickUpper The upper tick range for the position.
+     * @param saleTokenBalance The balance of the token intended to sell.
+     * @param holdTokenBalance The balance of the token not being sold (held).
+     * @param amounts A struct to receive the calculated amounts of tokens involved in the swap.
+     * @return amountIn The computed amount of input tokens that needs to be swapped.
      */
     function _calculateAmountsToSwap(
         bool zeroForIn,
+        address pool,
         uint128 liquidity,
+        int24 tickLower,
+        int24 tickUpper,
         uint256 saleTokenBalance,
         uint256 holdTokenBalance,
-        NftPositionCache memory cache,
         Amounts memory amounts
     ) private view returns (uint256 amountIn) {
-        address pool = computePoolAddress(cache.holdToken, cache.saleToken, cache.fee);
-
         (, bytes memory data) = lightQuoterV3Address.staticcall(
             abi.encodeWithSelector(
                 ILightQuoterV3.calculateExactZapIn.selector,
                 ILightQuoterV3.CalculateExactZapInParams({
                     swapPool: pool,
                     zeroForIn: zeroForIn,
-                    tickLower: cache.tickLower,
-                    tickUpper: cache.tickUpper,
+                    tickLower: tickLower,
+                    tickUpper: tickUpper,
                     liquidityExactAmount: liquidity,
                     tokenInBalance: holdTokenBalance,
                     tokenOutBalance: saleTokenBalance
@@ -304,7 +312,7 @@ abstract contract LiquidityManager is
                         cache.holdToken,
                         cache.fee
                     );
-                    // Calculate the hold token amount to be used for swapping
+
                     (amounts.amount0, amounts.amount1) = AmountsLiquidity
                         .getAmountsRoundingUpForLiquidity(
                             sqrtPriceX96,
@@ -314,39 +322,21 @@ abstract contract LiquidityManager is
                         );
                 }
 
-                if (params.routes.flashLoanParams.length == 0) {
-                    uint256 holdTokenAmountIn = _calculateAmountsToSwap(
-                        !params.zeroForSaleToken,
-                        loan.liquidity,
-                        saleTokenBalance,
-                        holdTokenBalance,
-                        cache,
-                        amounts
-                    );
-
-                    if (holdTokenAmountIn > 0) {
-                        saleTokenBalance += _v3SwapExact(
-                            v3SwapExactParams({
-                                isExactInput: true,
-                                fee: cache.fee,
-                                tokenIn: cache.holdToken,
-                                tokenOut: cache.saleToken,
-                                amount: holdTokenAmountIn
-                            })
-                        );
-                    }
-                }
-
                 uint256 saleTokenAmt = params.zeroForSaleToken ? amounts.amount0 : amounts.amount1;
-
+                // If balance is low, perform a flash loan to meet the liquidity requirements
                 if (saleTokenBalance < saleTokenAmt) {
+                    unchecked {
+                        saleTokenAmt -= saleTokenBalance;
+                    }
                     Vault(VAULT_ADDRESS).vaultFlash(
                         cache.saleToken,
-                        saleTokenAmt - saleTokenBalance,
+                        saleTokenAmt,
                         abi.encode(
                             CallbackData({
                                 zeroForSaleToken: params.zeroForSaleToken,
                                 fee: cache.fee,
+                                tickLower: cache.tickLower,
+                                tickUpper: cache.tickUpper,
                                 saleToken: cache.saleToken,
                                 holdToken: cache.holdToken,
                                 holdTokenDebt: cache.holdTokenDebt > holdTokenBalance
@@ -361,7 +351,7 @@ abstract contract LiquidityManager is
                         )
                     );
                 } else {
-                    // Increase liquidity and transfer liquidity owner reward
+                    // Increase liquidity directly without using a flash loan
                     _increaseLiquidity(loan, amounts.amount0, amounts.amount1);
                 }
             }
@@ -387,42 +377,88 @@ abstract contract LiquidityManager is
         uint256 feeAmt,
         bytes calldata data
     ) external onlyTrustedCallers {
+        // Decoding the callback data to extract loan details and swap information
         CallbackData memory decodedData = abi.decode(data, (CallbackData));
+        // Retrieve the current balance of the sale token
         uint256 saleTokenBalance = _getBalance(decodedData.saleToken);
-
+        // Calculate the sale token amount needed based on the encoded data
         uint256 saleTokenAmt = decodedData.zeroForSaleToken
             ? decodedData.amounts.amount0
             : decodedData.amounts.amount1;
-
+        // If the token balance is less than required, try to get more tokens through a flash loan or swap
         if (saleTokenBalance < saleTokenAmt) {
-            IFlashLoanAggregator(flashLoanAggregatorAddress).flashLoan(
-                saleTokenAmt - saleTokenBalance,
-                abi.encode(
-                    CallbackData({
-                        zeroForSaleToken: decodedData.zeroForSaleToken,
+            // When there are no more routes left or the sender is the flash loan aggregator
+            if (
+                decodedData.routes.flashLoanParams.length == 0 ||
+                msg.sender == flashLoanAggregatorAddress
+            ) {
+                // Compute the pool address using provided tokens and fee
+                address pool = computePoolAddress(
+                    decodedData.holdToken,
+                    decodedData.saleToken,
+                    decodedData.fee
+                );
+                // Calculate the amount needed for swapping hold tokens to sale tokens
+                uint256 holdTokenAmountIn = _calculateAmountsToSwap(
+                    !decodedData.zeroForSaleToken,
+                    pool,
+                    decodedData.loan.liquidity,
+                    decodedData.tickLower,
+                    decodedData.tickUpper,
+                    saleTokenBalance,
+                    decodedData.holdTokenDebt,
+                    decodedData.amounts
+                );
+                // Perform the actual Uniswap V3 swap
+                saleTokenBalance += _v3SwapExact(
+                    v3SwapExactParams({
+                        isExactInput: true,
                         fee: decodedData.fee,
-                        saleToken: decodedData.saleToken,
-                        holdToken: decodedData.holdToken,
-                        holdTokenDebt: decodedData.holdTokenDebt,
-                        vaultBodyDebt: bodyAmt,
-                        vaultFeeDebt: feeAmt,
-                        amounts: decodedData.amounts,
-                        loan: decodedData.loan,
-                        routes: decodedData.routes
+                        tokenIn: decodedData.holdToken,
+                        tokenOut: decodedData.saleToken,
+                        amount: holdTokenAmountIn
                     })
-                )
-            );
-        } else {
-            _increaseLiquidity(
-                decodedData.loan,
-                decodedData.amounts.amount0,
-                decodedData.amounts.amount1
-            );
-            uint256 amountToPay = bodyAmt +
-                feeAmt +
-                decodedData.vaultBodyDebt +
-                decodedData.vaultFeeDebt;
-
+                );
+            } else {
+                unchecked {
+                    saleTokenAmt -= saleTokenBalance;
+                }
+                // Initiate another flash loan if additional funds are required
+                IFlashLoanAggregator(flashLoanAggregatorAddress).flashLoan(
+                    saleTokenAmt,
+                    abi.encode(
+                        CallbackData({
+                            zeroForSaleToken: decodedData.zeroForSaleToken,
+                            fee: decodedData.fee,
+                            tickLower: decodedData.tickLower,
+                            tickUpper: decodedData.tickUpper,
+                            saleToken: decodedData.saleToken,
+                            holdToken: decodedData.holdToken,
+                            holdTokenDebt: decodedData.holdTokenDebt,
+                            vaultBodyDebt: bodyAmt,
+                            vaultFeeDebt: feeAmt,
+                            amounts: decodedData.amounts,
+                            loan: decodedData.loan,
+                            routes: decodedData.routes
+                        })
+                    )
+                );
+                return; // Exit the function to wait for the new flash loan callback
+            }
+        }
+        // Add liquidity to the Uniswap position after obtaining the required tokens
+        _increaseLiquidity(
+            decodedData.loan,
+            decodedData.amounts.amount0,
+            decodedData.amounts.amount1
+        );
+        // Calculate the total amount to pay back for the flash loan(s)
+        uint256 amountToPay = bodyAmt +
+            feeAmt +
+            decodedData.vaultBodyDebt +
+            decodedData.vaultFeeDebt;
+        if (amountToPay > 0) {
+            // Swap tokens to repay the flash loan
             uint256 holdTokenAmtIn = _v3SwapExact(
                 v3SwapExactParams({
                     isExactInput: false,
@@ -432,13 +468,17 @@ abstract contract LiquidityManager is
                     amount: amountToPay
                 })
             );
+            decodedData.holdTokenDebt -= decodedData.zeroForSaleToken
+                ? decodedData.amounts.amount1
+                : decodedData.amounts.amount0;
 
+            // Check for strict route adherence, revert the transaction if conditions are not met
             (decodedData.routes.strict && holdTokenAmtIn > decodedData.holdTokenDebt).revertError(
                 ErrLib.ErrorCode.SWAP_AFTER_FLASH_LOAN_FAILED
             );
-
+            // Deduct platform fees and transfer owed amounts to the vault and/or the flash loan aggregator
             if (msg.sender == flashLoanAggregatorAddress) {
-                _chargePlatformFees(decodedData.holdToken, decodedData.vaultFeeDebt);
+                _chargePlatformFees(decodedData.saleToken, decodedData.vaultFeeDebt);
                 _pay(
                     decodedData.saleToken,
                     address(this),
@@ -452,7 +492,8 @@ abstract contract LiquidityManager is
                     bodyAmt + feeAmt
                 );
             } else {
-                _chargePlatformFees(decodedData.holdToken, feeAmt);
+                // Charge only the standard flash loan fee and pay the vault
+                _chargePlatformFees(decodedData.saleToken, feeAmt);
                 _pay(decodedData.saleToken, address(this), VAULT_ADDRESS, bodyAmt + feeAmt);
             }
         }

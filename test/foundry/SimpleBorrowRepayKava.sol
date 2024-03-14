@@ -33,6 +33,7 @@ contract SimpleBorrowRepayKava is Test, HelperContract {
     bytes32 constant UNISWAP_V3_POOL_INIT_CODE_HASH =
         0x30146866f3a846fe3c636beb2756dbd24cf321bc52c9113c837c21f47470dfeb;
     address constant alice = 0x1D8D3417d1d41AAc899A43C3592eAfC504634171;
+    address constant AAVE_POOL_ADDRESS_PROVIDER = address(0);
     // LiquidityBorrowingManager borrowingManager;
 
     uint256 roundingUpTestFork;
@@ -108,6 +109,7 @@ contract SimpleBorrowRepayKava is Test, HelperContract {
         vm.selectFork(roundingUpTestFork);
         address lightQuoter = address(new LightQuoterV3());
         FlashLoanAggregator flashLoanAggregator = new FlashLoanAggregator(
+            AAVE_POOL_ADDRESS_PROVIDER,
             UNISWAP_V3_FACTORY,
             UNISWAP_V3_POOL_INIT_CODE_HASH,
             "wagmi"
@@ -158,6 +160,7 @@ contract SimpleBorrowRepayKava is Test, HelperContract {
         vm.selectFork(calculateAmountsToSwapTestFork);
         address lightQuoter = address(new LightQuoterV3());
         FlashLoanAggregator flashLoanAggregator = new FlashLoanAggregator(
+            AAVE_POOL_ADDRESS_PROVIDER,
             UNISWAP_V3_FACTORY,
             UNISWAP_V3_POOL_INIT_CODE_HASH,
             "wagmi"

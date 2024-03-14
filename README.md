@@ -51,8 +51,8 @@ The "repay" function is used to repay a loan. The position is closed either by t
 |------| ------- | -----| -----|
 | 1 | uniswap | KAVA | ✅ |
 | 1 | uniswap | ARBITRUM | ✅ |
-| 2 | aave | KAVA | soon |
-| 2 | aave | ARBITRUM | soon |
+| 2 | aave | KAVA | ❌ |
+| 2 | aave | ARBITRUM | ✅ |
 
 ##
 
@@ -70,7 +70,7 @@ The "repay" function is used to repay a loan. The position is closed either by t
 | KAVA | 2222 | LightQuoterV3 | [0xCa4526D9d02A7Bb005d850c2176E8aE30B970149](https://kavascan.com/address/0xCa4526D9d02A7Bb005d850c2176E8aE30B970149) |
 | KAVA | 2222 | FlashLoanAggregator | [0x57b647530B718103B05751278C4835B068FDC491](https://kavascan.com/address/0x57b647530B718103B05751278C4835B068FDC491) |
 | ARBITRUM | 42161 | LightQuoterV3 | [0xc9418FeA1921B3ae936a27aad24E6D5b25e84beF](https://arbiscan.io/address/0xc9418FeA1921B3ae936a27aad24E6D5b25e84beF) |
-| ARBITRUM | 42161 | FlashLoanAggregator | [0x0BB7f1b8aE4C2C80Ef58c56cab2D07A76fD5C547](https://arbiscan.io/address/0x0BB7f1b8aE4C2C80Ef58c56cab2D07A76fD5C547) |
+| ARBITRUM | 42161 | FlashLoanAggregator | [0xAbC215b09553ee370Bc5cCB7f2DE83a9d7521FA5](https://arbiscan.io/address/0xAbC215b09553ee370Bc5cCB7f2DE83a9d7521FA5) |
 ##
 
 | V3 | Network | ChainId | Contract | Address |
