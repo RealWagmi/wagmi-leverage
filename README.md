@@ -69,8 +69,8 @@ The "repay" function is used to repay a loan. The position is closed either by t
 |------| ------- | -----| -----|
 | KAVA | 2222 | LightQuoterV3 | [0xCa4526D9d02A7Bb005d850c2176E8aE30B970149](https://kavascan.com/address/0xCa4526D9d02A7Bb005d850c2176E8aE30B970149) |
 | KAVA | 2222 | FlashLoanAggregator | [0x57b647530B718103B05751278C4835B068FDC491](https://kavascan.com/address/0x57b647530B718103B05751278C4835B068FDC491) |
-| ARBITRUM | 42161 | LightQuoterV3 | [0xc9418FeA1921B3ae936a27aad24E6D5b25e84beF](https://arbiscan.io/address/0xc9418FeA1921B3ae936a27aad24E6D5b25e84beF) |
-| ARBITRUM | 42161 | FlashLoanAggregator | [0xAbC215b09553ee370Bc5cCB7f2DE83a9d7521FA5](https://arbiscan.io/address/0xAbC215b09553ee370Bc5cCB7f2DE83a9d7521FA5) |
+| ARBITRUM | 42161 | LightQuoterV3 | [0xf88199222a1A734398cF55469Ba19B21d70BA4c7](https://arbiscan.io/address/0xf88199222a1A734398cF55469Ba19B21d70BA4c7) |
+| ARBITRUM | 42161 | FlashLoanAggregator | [0x25993fF2a53036dbf771CC3B5218165dB795456b](https://arbiscan.io/address/0x25993fF2a53036dbf771CC3B5218165dB795456b) |
 ##
 
 | V3 | Network | ChainId | Contract | Address |
@@ -81,8 +81,8 @@ The "repay" function is used to repay a loan. The position is closed either by t
 | Kinetix | KAVA | 2222 | LiquidityBorrowingManager | [0x5037de5B646AF604f964Dd86c0D9719459122454](https://kavascan.com/address/0x5037de5B646AF604f964Dd86c0D9719459122454) |
 | Kinetix | KAVA | 2222 | Vault| [0x7D05964F271Cb30a2DD18DcE7363e1155a5bA1Ff](https://kavascan.com/address/0x7D05964F271Cb30a2DD18DcE7363e1155a5bA1Ff) |
 | Kinetix | KAVA | 2222 | PositionEffectivityChart| [0x8c5863C690e99e4625789f7ebb7374b5CD091895](https://kavascan.com/address/0x8c5863C690e99e4625789f7ebb7374b5CD091895) |
-| Uniswap | ARBITRUM | 42161 | LiquidityBorrowingManager | [0x7C261c6c2F43ec86fbc8DA48505fDF12D66193c9](https://arbiscan.io/address/0x7C261c6c2F43ec86fbc8DA48505fDF12D66193c9) |
-| Uniswap | ARBITRUM | 42161 | Vault| [0x72f25285541F8D553d03fd65A8122a80Fc5d722A](https://arbiscan.io/address/0x72f25285541F8D553d03fd65A8122a80Fc5d722A) |
+| Uniswap | ARBITRUM | 42161 | LiquidityBorrowingManager | [0x37526F5302A47f6527bE7Eea62B131A773979151](https://arbiscan.io/address/0x37526F5302A47f6527bE7Eea62B131A773979151) |
+| Uniswap | ARBITRUM | 42161 | Vault| [0xb45e7ECD9310cCe1f21c2993BdC29498A862Fa5E](https://arbiscan.io/address/0xb45e7ECD9310cCe1f21c2993BdC29498A862Fa5E) |
 | Uniswap | ARBITRUM | 42161 | PositionEffectivityChart| [0x6Aa98EAD889D8B78C8E369D5139Abd4A720eBE89](https://arbiscan.io/address/0x6Aa98EAD889D8B78C8E369D5139Abd4A720eBE89) |
 
 
