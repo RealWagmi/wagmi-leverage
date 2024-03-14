@@ -49,17 +49,13 @@ The "repay" function is used to repay a loan. The position is closed either by t
 
 | indx | Protocol | Network | supported |
 |------| ------- | -----| -----|
-| 1 | uniswap | KAVA | ✅ |
 | 1 | uniswap | ARBITRUM | ✅ |
-| 2 | aave | KAVA | ❌ |
 | 2 | aave | ARBITRUM | ✅ |
 
 ##
 
 | Network | V3 | dexIndex |
 |------| ------- | -----|
-| KAVA | wagmi | 0 |
-| KAVA | kinetix | 1 |
 | ARBITRUM | uniswap | 0 |
 | ARBITRUM | sushi | 1 |
 
@@ -67,20 +63,12 @@ The "repay" function is used to repay a loan. The position is closed either by t
 
 | Network | ChainId | Contract | Address |
 |------| ------- | -----| -----|
-| KAVA | 2222 | LightQuoterV3 | [0xCa4526D9d02A7Bb005d850c2176E8aE30B970149](https://kavascan.com/address/0xCa4526D9d02A7Bb005d850c2176E8aE30B970149) |
-| KAVA | 2222 | FlashLoanAggregator | [0x57b647530B718103B05751278C4835B068FDC491](https://kavascan.com/address/0x57b647530B718103B05751278C4835B068FDC491) |
 | ARBITRUM | 42161 | LightQuoterV3 | [0xf88199222a1A734398cF55469Ba19B21d70BA4c7](https://arbiscan.io/address/0xf88199222a1A734398cF55469Ba19B21d70BA4c7) |
 | ARBITRUM | 42161 | FlashLoanAggregator | [0x25993fF2a53036dbf771CC3B5218165dB795456b](https://arbiscan.io/address/0x25993fF2a53036dbf771CC3B5218165dB795456b) |
 ##
 
 | V3 | Network | ChainId | Contract | Address |
 |------|------| ------- | -----| -----|
-| Wagmi | KAVA | 2222 | LiquidityBorrowingManager | [0x180cBA6501ECc1E64D66Cf9658ad8BBF5B821deF](https://kavascan.com/address/0x180cBA6501ECc1E64D66Cf9658ad8BBF5B821deF) |
-| Wagmi | KAVA | 2222 | Vault| [0x5cBa9B2c6a7004C120481ACa72ab4CA75E516AED](https://kavascan.com/address/0x5cBa9B2c6a7004C120481ACa72ab4CA75E516AED) |
-| Wagmi | KAVA | 2222 | PositionEffectivityChart| [0x89792C7b478cf25220EE7fCF0F445Ea134A992f4](https://kavascan.com/address/0x89792C7b478cf25220EE7fCF0F445Ea134A992f4) |
-| Kinetix | KAVA | 2222 | LiquidityBorrowingManager | [0x5037de5B646AF604f964Dd86c0D9719459122454](https://kavascan.com/address/0x5037de5B646AF604f964Dd86c0D9719459122454) |
-| Kinetix | KAVA | 2222 | Vault| [0x7D05964F271Cb30a2DD18DcE7363e1155a5bA1Ff](https://kavascan.com/address/0x7D05964F271Cb30a2DD18DcE7363e1155a5bA1Ff) |
-| Kinetix | KAVA | 2222 | PositionEffectivityChart| [0x8c5863C690e99e4625789f7ebb7374b5CD091895](https://kavascan.com/address/0x8c5863C690e99e4625789f7ebb7374b5CD091895) |
 | Uniswap | ARBITRUM | 42161 | LiquidityBorrowingManager | [0x37526F5302A47f6527bE7Eea62B131A773979151](https://arbiscan.io/address/0x37526F5302A47f6527bE7Eea62B131A773979151) |
 | Uniswap | ARBITRUM | 42161 | Vault| [0xb45e7ECD9310cCe1f21c2993BdC29498A862Fa5E](https://arbiscan.io/address/0xb45e7ECD9310cCe1f21c2993BdC29498A862Fa5E) |
 | Uniswap | ARBITRUM | 42161 | PositionEffectivityChart| [0x6Aa98EAD889D8B78C8E369D5139Abd4A720eBE89](https://arbiscan.io/address/0x6Aa98EAD889D8B78C8E369D5139Abd4A720eBE89) |
