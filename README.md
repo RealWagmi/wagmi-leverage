@@ -10,16 +10,14 @@ npm run test:all
 ```
 
 
-Wagmi Leverage is a landing protocol without liquidation or price oracles. The trader pays for the time to hold the position and only he can decide when to close it.
+Wagmi Leverage is a leverage product, built on concentrated liquidity without a price-based liquidation or price oracles. This system caters to liquidity providers and traders(borrowers). The trader pays for the time to hold the position as long as he wants as long as interest is paid.
 
-### borrow
+### Liquidity Providers (LPs): 
+Wagmi enhances yields for V3 liquidity providers by offsetting impermanent loss. LPs can earn yield even when their liquidity position is out of range. When not utilized for trading, their liquidity position is lent to traders/borrowers, earning them higher yields through premiums and trading fees​​.
 
-The "borrow" function allows a user to borrow tokens by providing collateral and taking out loans.
-The trader opens a long position by borrowing liquidity from Uniswap V3 and converting it into a pair of tokens. One of these tokens will be swapped into the desired "holdToken". The tokens will be stored until the position is closed. The margin is calculated based on the requirement to restore liquidity with any price movement. The trader pays for the time the position is held.
+### Traders: 
+Traders on Wagmi can margin long or short any pair without the risk of forced price-based liquidations. Even if their position is underwater, they are only required to pay premiums to LPs to maintain their position. This model gives traders access to high leverage on every asset and eliminates the concern of forced liquidations​​.
 
-### repay
-
-The "repay" function is used to repay a loan. The position is closed either by the trader or by the liquidator if the trader has not paid for holding the position and the liquidation time has arrived. The borrowed positions from liquidation providers are restored using the held token, and the remaining tokens are sent to the caller. In the event of liquidation, the liquidity provider whose liquidity is present in the trader's position can use the emergency mode to withdraw their liquidity. In this case, they will receive hold tokens, and liquidity will not be restored in the Uniswap pool.
 
 
 ## Dev docs
