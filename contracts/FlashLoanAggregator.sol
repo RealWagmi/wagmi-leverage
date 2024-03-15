@@ -219,7 +219,6 @@ contract FlashLoanAggregator is
             address pool = _getUniswapV3Pool(decodedData.saleToken, flashLoanParams[0].data);
 
             (uint256 flashAmount0, uint256 flashAmount1) = _maxUniPoolFlashAmt(
-                decodedData.zeroForSaleToken,
                 decodedData.saleToken,
                 pool,
                 amount
@@ -301,7 +300,6 @@ contract FlashLoanAggregator is
 
     /**
      * @dev Calculates the maximum flash loan amount for a given token and pool.
-     * @param zeroForSaleToken Boolean indicating whether the token is the "for sale" token.
      * @param token The address of the token.
      * @param pool The address of the Uniswap V3 pool.
      * @param amount The desired flash loan amount.
@@ -313,7 +311,6 @@ contract FlashLoanAggregator is
      * If `zeroForSaleToken` is true, `flashAmount0` will be set to `flashAmt`, otherwise `flashAmount1` will be set to `flashAmt`.
      */
     function _maxUniPoolFlashAmt(
-        bool zeroForSaleToken,
         address token,
         address pool,
         uint256 amount
@@ -322,6 +319,9 @@ contract FlashLoanAggregator is
         if (flashAmt == 0 || IUniswapV3Pool(pool).liquidity() == 0) {
             revert FlashLoanZeroLiquidity(pool);
         }
+        address token0 = IUniswapV3Pool(pool).token0();
+        bool zeroForSaleToken = token0 == token;
+
         flashAmt = flashAmt > amount ? amount : flashAmt;
         (flashAmount0, flashAmount1) = zeroForSaleToken
             ? (flashAmt, uint256(0))
@@ -591,7 +591,6 @@ contract FlashLoanAggregator is
                 address pool = _getUniswapV3Pool(decodedData.saleToken, flashParams.data);
 
                 (uint256 flashAmount0, uint256 flashAmount1) = _maxUniPoolFlashAmt(
-                    decodedData.zeroForSaleToken,
                     decodedData.saleToken,
                     pool,
                     decodedDataExt.amount - flashBalance
