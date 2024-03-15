@@ -62,7 +62,7 @@ Traders on Wagmi can margin long or short any pair without the risk of forced pr
 | Network | ChainId | Contract | Address |
 |------| ------- | -----| -----|
 | ARBITRUM | 42161 | LightQuoterV3 | [0xf88199222a1A734398cF55469Ba19B21d70BA4c7](https://arbiscan.io/address/0xf88199222a1A734398cF55469Ba19B21d70BA4c7) |
-| ARBITRUM | 42161 | FlashLoanAggregator | [0x25993fF2a53036dbf771CC3B5218165dB795456b](https://arbiscan.io/address/0x25993fF2a53036dbf771CC3B5218165dB795456b) |
+| ARBITRUM | 42161 | FlashLoanAggregator | [0xB81f4edA702eB09959477Afa22e71b05e33F2E21](https://arbiscan.io/address/0xB81f4edA702eB09959477Afa22e71b05e33F2E21) |
 ##
 
 | V3 | Network | ChainId | Contract | Address |
