@@ -228,24 +228,6 @@ contract LiquidityBorrowingManager is
     }
 
     /**
-     * @dev Returns the number of loans associated with a given NonfungiblePositionManager tokenId.
-     * @param tokenId The ID of the token.
-     * @return count The total number of loans associated with the tokenId.
-     */
-    function getLenderCreditsCount(uint256 tokenId) external view returns (uint256 count) {
-        count = tokenIdToBorrowingKeys[tokenId].length();
-    }
-
-    /**
-     * @dev Returns the number of borrowings for a given borrower.
-     * @param borrower The address of the borrower.
-     * @return count The total number of borrowings for the borrower.
-     */
-    function getBorrowerDebtsCount(address borrower) external view returns (uint256 count) {
-        count = userBorrowingKeys[borrower].length();
-    }
-
-    /**
      * @dev Returns the current daily rate for holding token.
      * @param saleToken The address of the token being sold.
      * @param holdToken The address of the token being held.
@@ -929,6 +911,7 @@ contract LiquidityBorrowingManager is
                     amount: saleTokenBalance
                 })
             );
+            (_getBalance(params.saleToken) > 0).revertError(ErrLib.ErrorCode.TOO_LOW_LIQUIDITY);
         }
 
         // Ensure that the received holdToken balance meets the minimum required

@@ -171,10 +171,6 @@ interface ILiquidityBorrowingManager is
         address borrower
     ) external view returns (BorrowingInfoExt[] memory extinfo);
 
-    function getLenderCreditsCount(uint256 tokenId) external view returns (uint256 count);
-
-    function getBorrowerDebtsCount(address borrower) external view returns (uint256 count);
-
     function getLiquidationBonus(
         address token,
         uint256 borrowedAmount,

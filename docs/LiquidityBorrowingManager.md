@@ -253,28 +253,6 @@ function flashLoanAggregatorAddress() external view returns (address)
 |---|---|---|
 | _0 | address | undefined |
 
-### getBorrowerDebtsCount
-
-```solidity
-function getBorrowerDebtsCount(address borrower) external view returns (uint256 count)
-```
-
-
-
-*Returns the number of borrowings for a given borrower.*
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| borrower | address | The address of the borrower. |
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| count | uint256 | The total number of borrowings for the borrower. |
-
 ### getBorrowerDebtsInfo
 
 ```solidity
@@ -386,28 +364,6 @@ function getHoldTokenInfo(address saleToken, address holdToken) external view re
 | Name | Type | Description |
 |---|---|---|
 | holdTokenRateInfo | IDailyRateAndCollateral.TokenInfo | The structured data containing detailed information for the hold token. |
-
-### getLenderCreditsCount
-
-```solidity
-function getLenderCreditsCount(uint256 tokenId) external view returns (uint256 count)
-```
-
-
-
-*Returns the number of loans associated with a given NonfungiblePositionManager tokenId.*
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| tokenId | uint256 | The ID of the token. |
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| count | uint256 | The total number of loans associated with the tokenId. |
 
 ### getLenderCreditsInfo
 
