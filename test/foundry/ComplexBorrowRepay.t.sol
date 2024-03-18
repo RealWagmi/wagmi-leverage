@@ -12,6 +12,7 @@ import { INonfungiblePositionManager } from "contracts/interfaces/INonfungiblePo
 import { LiquidityManager } from "contracts/abstract/LiquidityManager.sol";
 import { IApproveSwapAndPay, ILiquidityManager, ILiquidityBorrowingManager } from "contracts/interfaces/ILiquidityBorrowingManager.sol";
 import { TransferHelper } from "contracts/libraries/TransferHelper.sol";
+import "contracts//libraries/ErrLib.sol";
 
 import { console } from "forge-std/console.sol";
 
@@ -73,8 +74,55 @@ contract ComplexBorrowRepay is Test, HelperContract {
         vm.label(alice, "Alice");
     }
 
+    function _mintPosition(uint256 tokenId) private {
+        INonfungiblePositionManager nftPositionManager = INonfungiblePositionManager(
+            NONFUNGIBLE_POSITION_MANAGER_ADDRESS
+        );
+
+        address bob = 0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC;
+        deal(bob, 1000 ether);
+        deal(address(WAGMI), bob, 2000000e18);
+        deal(address(USDT), bob, 20000e6);
+        vm.startPrank(bob);
+
+        _maxApproveIfNecessary(
+            address(USDT),
+            NONFUNGIBLE_POSITION_MANAGER_ADDRESS,
+            type(uint256).max
+        );
+        _maxApproveIfNecessary(
+            address(WAGMI),
+            NONFUNGIBLE_POSITION_MANAGER_ADDRESS,
+            type(uint256).max
+        );
+        (, , , , uint24 fee, int24 tickLower, int24 tickUpper, , , , , ) = nftPositionManager
+            .positions(tokenId);
+        console.log("fee", fee);
+        console.logInt(tickLower);
+        console.logInt(tickUpper);
+        INonfungiblePositionManager.MintParams memory mintParams = INonfungiblePositionManager
+            .MintParams({
+                token0: address(WAGMI),
+                token1: address(USDT),
+                fee: fee,
+                tickLower: tickLower,
+                tickUpper: tickUpper,
+                amount0Desired: 2000000e18,
+                amount1Desired: 10000e6,
+                amount0Min: 0,
+                amount1Min: 0,
+                recipient: bob,
+                deadline: block.timestamp + 60
+            });
+
+        nftPositionManager.mint{ value: 1 ether }(mintParams);
+        vm.stopPrank();
+        console.log("minted");
+    }
+
     function test_ComplexBorrowRepay() public {
         uint256 tokenId = 143;
+
         address ownerPositionManager = INonfungiblePositionManager(
             NONFUNGIBLE_POSITION_MANAGER_ADDRESS
         ).ownerOf(tokenId);
@@ -125,7 +173,14 @@ contract ComplexBorrowRepay is Test, HelperContract {
                 loans: loanInfoArrayMemory
             });
 
+        vm.expectRevert(abi.encodeWithSelector(ErrLib.RevertErrorCode.selector, 13));
         borrowingManager.borrow(AliceBorrowingParams, block.timestamp + 60);
+        vm.stopPrank();
+
+        _mintPosition(tokenId);
+        vm.startPrank(alice);
+        borrowingManager.borrow(AliceBorrowingParams, block.timestamp + 60);
+
         bytes32[] memory AliceBorrowingKeys = borrowingManager.getBorrowingKeysForBorrower(
             address(alice)
         );

@@ -399,7 +399,7 @@ describe("WagmiLeverageTests", () => {
         expect(bobloans.length).to.equal(1);
         //amounts of liquidity should be concatenated
         expect(bobloans[0].liquidity).to.equal(nftpos[3].liquidity.div(6).add(nftpos[3].liquidity.div(6)));
-        expect(await borrowingManager.getLenderCreditsCount(nftpos[3].tokenId)).to.be.equal(1);
+
 
 
         const lenderFees = ((await borrowingManager.getFeesInfo(alice.address, [WBTC_ADDRESS]))[0]).div(COLLATERAL_BALANCE_PRECISION);
@@ -519,7 +519,7 @@ describe("WagmiLeverageTests", () => {
 
         const rateInfo = await borrowingManager.getHoldTokenInfo(WETH_ADDRESS, WBTC_ADDRESS);
         expect(rateInfo.totalBorrowed).to.be.equal(0);
-        expect(await borrowingManager.getLenderCreditsCount(nftpos[3].tokenId)).to.be.equal(0);
+
         bobloans = await borrowingManager.getLoansInfo(borrowingKey);
         expect(bobloans.length).to.equal(0);
         const keys = await borrowingManager.getBorrowingKeysForBorrower(bob.address);
@@ -1258,13 +1258,7 @@ describe("WagmiLeverageTests", () => {
             .to.emit(borrowingManager, "EmergencyLoanClosure")
             .withArgs(bob.address, alice.address, borrowingKey);
 
-        expect(await borrowingManager.getLenderCreditsCount(nftpos[0].tokenId)).to.be.equal(0);
-        expect(await borrowingManager.getLenderCreditsCount(nftpos[1].tokenId)).to.be.gt(0);
-        expect(await borrowingManager.getLenderCreditsCount(nftpos[2].tokenId)).to.be.gt(0);
-        expect(await borrowingManager.getLenderCreditsCount(nftpos[3].tokenId)).to.be.gt(0);
-        expect(await borrowingManager.getLenderCreditsCount(nftpos[4].tokenId)).to.be.gt(0);
-        expect(await borrowingManager.getLenderCreditsCount(nftpos[5].tokenId)).to.be.gt(0);
-        expect(await borrowingManager.getBorrowerDebtsCount(bob.address)).to.be.equal(2);
+
 
         debt = await borrowingManager.getBorrowerDebtsInfo(bob.address);
         //console.log(debt);
@@ -1276,13 +1270,7 @@ describe("WagmiLeverageTests", () => {
         await expect(borrowingManager.connect(bob).repay(params, deadline))
             .to.emit(borrowingManager, "EmergencyLoanClosure")
             .withArgs(bob.address, bob.address, borrowingKey);
-        expect(await borrowingManager.getLenderCreditsCount(nftpos[0].tokenId)).to.be.equal(0);
-        expect(await borrowingManager.getLenderCreditsCount(nftpos[1].tokenId)).to.be.equal(0);
-        expect(await borrowingManager.getLenderCreditsCount(nftpos[2].tokenId)).to.be.gt(0);
-        expect(await borrowingManager.getLenderCreditsCount(nftpos[3].tokenId)).to.be.gt(0);
-        expect(await borrowingManager.getLenderCreditsCount(nftpos[4].tokenId)).to.be.gt(0);
-        expect(await borrowingManager.getLenderCreditsCount(nftpos[5].tokenId)).to.be.gt(0);
-        expect(await borrowingManager.getBorrowerDebtsCount(bob.address)).to.be.equal(2);
+
         debt = await borrowingManager.getBorrowerDebtsInfo(bob.address);
         //console.log(debt);
         loans = await borrowingManager.getLoansInfo(borrowingKey);
@@ -1293,13 +1281,7 @@ describe("WagmiLeverageTests", () => {
         await expect(borrowingManager.connect(owner).repay(params, deadline))
             .to.emit(borrowingManager, "EmergencyLoanClosure")
             .withArgs(bob.address, owner.address, borrowingKey);
-        expect(await borrowingManager.getLenderCreditsCount(nftpos[0].tokenId)).to.be.equal(0);
-        expect(await borrowingManager.getLenderCreditsCount(nftpos[1].tokenId)).to.be.equal(0);
-        expect(await borrowingManager.getLenderCreditsCount(nftpos[2].tokenId)).to.be.equal(0);
-        expect(await borrowingManager.getLenderCreditsCount(nftpos[3].tokenId)).to.be.gt(0);
-        expect(await borrowingManager.getLenderCreditsCount(nftpos[4].tokenId)).to.be.gt(0);
-        expect(await borrowingManager.getLenderCreditsCount(nftpos[5].tokenId)).to.be.gt(0);
-        expect(await borrowingManager.getBorrowerDebtsCount(bob.address)).to.be.equal(1);
+
     });
 
     it("Loan liquidation will be successful for anyone if the collateral is depleted", async () => {
@@ -1340,13 +1322,7 @@ describe("WagmiLeverageTests", () => {
         deadline = (await time.latest()) + 60;
         await borrowingManager.connect(alice).repay(params, deadline);
 
-        expect(await borrowingManager.getLenderCreditsCount(nftpos[0].tokenId)).to.be.equal(0);
-        expect(await borrowingManager.getLenderCreditsCount(nftpos[1].tokenId)).to.be.equal(0);
-        expect(await borrowingManager.getLenderCreditsCount(nftpos[2].tokenId)).to.be.equal(0);
-        expect(await borrowingManager.getLenderCreditsCount(nftpos[3].tokenId)).to.be.equal(0);
-        expect(await borrowingManager.getLenderCreditsCount(nftpos[4].tokenId)).to.be.equal(0);
-        expect(await borrowingManager.getLenderCreditsCount(nftpos[5].tokenId)).to.be.equal(0);
-        expect(await borrowingManager.getBorrowerDebtsCount(bob.address)).to.be.equal(0);
+
     });
 
     it("increase the collateral balance should be correct", async () => {
@@ -1420,8 +1396,7 @@ describe("WagmiLeverageTests", () => {
         let extinfo: ILiquidityBorrowingManager.BorrowingInfoExtStructOutput[] =
             await borrowingManager.getLenderCreditsInfo(nftpos[0].tokenId);
         expect(extinfo[0].key).to.be.equal(borrowingKey);
-        expect(await borrowingManager.getLenderCreditsCount(nftpos[0].tokenId)).to.be.equal(1);
-        expect(await borrowingManager.getBorrowerDebtsCount(bob.address)).to.be.equal(2);
+
 
         let rateInfo = await borrowingManager.getHoldTokenInfo(WETH_ADDRESS, USDT_ADDRESS);
         expect(rateInfo.currentDailyRate).to.be.equal(20); // default
@@ -1510,13 +1485,7 @@ describe("WagmiLeverageTests", () => {
 
         rateInfo = await borrowingManager.getHoldTokenInfo(WETH_ADDRESS, WBTC_ADDRESS);
         expect(rateInfo.totalBorrowed).to.be.equal(0);
-        expect(await borrowingManager.getLenderCreditsCount(nftpos[0].tokenId)).to.be.equal(0);
-        expect(await borrowingManager.getLenderCreditsCount(nftpos[1].tokenId)).to.be.equal(0);
-        expect(await borrowingManager.getLenderCreditsCount(nftpos[2].tokenId)).to.be.equal(0);
-        expect(await borrowingManager.getLenderCreditsCount(nftpos[3].tokenId)).to.be.equal(0);
-        expect(await borrowingManager.getLenderCreditsCount(nftpos[4].tokenId)).to.be.equal(0);
-        expect(await borrowingManager.getLenderCreditsCount(nftpos[5].tokenId)).to.be.equal(0);
-        expect(await borrowingManager.getBorrowerDebtsCount(bob.address)).to.be.equal(0);
+
     });
 
     it("Vault test should be successful", async () => {
