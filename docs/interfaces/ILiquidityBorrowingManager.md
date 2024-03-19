@@ -356,7 +356,7 @@ function getLenderCreditsInfo(uint256 tokenId) external view returns (struct ILi
 ### getLiquidationBonus
 
 ```solidity
-function getLiquidationBonus(address token, uint256 borrowedAmount, uint256 times) external view returns (uint256 liquidationBonus)
+function getLiquidationBonus(address token, uint256 borrowedAmount) external view returns (uint256 liquidationBonus)
 ```
 
 
@@ -369,7 +369,6 @@ function getLiquidationBonus(address token, uint256 borrowedAmount, uint256 time
 |---|---|---|
 | token | address | undefined |
 | borrowedAmount | uint256 | undefined |
-| times | uint256 | undefined |
 
 #### Returns
 

@@ -173,8 +173,7 @@ interface ILiquidityBorrowingManager is
 
     function getLiquidationBonus(
         address token,
-        uint256 borrowedAmount,
-        uint256 times
+        uint256 borrowedAmount
     ) external view returns (uint256 liquidationBonus);
 
     function getHoldTokenInfo(

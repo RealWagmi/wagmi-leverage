@@ -390,7 +390,7 @@ Retrieves the borrowing information for a specific NonfungiblePositionManager to
 ### getLiquidationBonus
 
 ```solidity
-function getLiquidationBonus(address token, uint256 borrowedAmount, uint256 times) external view returns (uint256 liquidationBonus)
+function getLiquidationBonus(address token, uint256 borrowedAmount) external view returns (uint256 liquidationBonus)
 ```
 
 
@@ -403,7 +403,6 @@ function getLiquidationBonus(address token, uint256 borrowedAmount, uint256 time
 |---|---|---|
 | token | address | The address of the token. |
 | borrowedAmount | uint256 | The amount of tokens borrowed. |
-| times | uint256 | The times factor to apply to the liquidation bonus calculation. |
 
 #### Returns
 

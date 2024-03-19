@@ -274,13 +274,11 @@ contract LiquidityBorrowingManager is
      * @dev Calculates the liquidation bonus for a given token, borrowed amount, and times factor.
      * @param token The address of the token.
      * @param borrowedAmount The amount of tokens borrowed.
-     * @param times The times factor to apply to the liquidation bonus calculation.
      * @return liquidationBonus The calculated liquidation bonus.
      */
     function getLiquidationBonus(
         address token,
-        uint256 borrowedAmount,
-        uint256 times
+        uint256 borrowedAmount
     ) public view returns (uint256 liquidationBonus) {
         // Retrieve liquidation bonus for the given token
         Liquidation memory liq = liquidationBonusForToken[token];
@@ -296,7 +294,6 @@ contract LiquidityBorrowingManager is
             if (liquidationBonus < liq.minBonusAmount) {
                 liquidationBonus = liq.minBonusAmount;
             }
-            liquidationBonus *= (times > 0 ? times : 1);
         }
     }
 
@@ -403,17 +400,7 @@ contract LiquidityBorrowingManager is
                 holdTokenRateInfo
             );
         }
-        uint256 liquidationBonus;
-        {
-            // Adding borrowing key and loans information to storage
-            uint256 pushCounter = _addKeysAndLoansInfo(cache.borrowingKey, params.loans);
-            // Calculating liquidation bonus based on hold token, borrowed amount, and number of used loans
-            liquidationBonus = getLiquidationBonus(
-                params.holdToken,
-                cache.borrowedAmount,
-                pushCounter
-            );
-        }
+
         uint256 marginDeposit;
         // positive slippage
         if (cache.holdTokenBalance > cache.borrowedAmount) {
@@ -429,6 +416,11 @@ contract LiquidityBorrowingManager is
                 ErrLib.ErrorCode.TOO_BIG_MARGIN_DEPOSIT
             );
         }
+
+        // Adding borrowing key and loans information to storage
+        _addKeysAndLoansInfo(cache.borrowingKey, params.loans);
+        // Calculating liquidation bonus based on hold token, borrowed amount, and number of used loans
+        uint256 liquidationBonus = getLiquidationBonus(params.holdToken, cache.borrowedAmount);
 
         uint256 amountToPay;
         unchecked {
@@ -802,10 +794,7 @@ contract LiquidityBorrowingManager is
      * @param borrowingKey The borrowing key to be added or updated.
      * @param sourceLoans An array of LoanInfo structs representing the loans to be associated with the borrowing key.
      */
-    function _addKeysAndLoansInfo(
-        bytes32 borrowingKey,
-        LoanInfo[] memory sourceLoans
-    ) private returns (uint256 pushCounter) {
+    function _addKeysAndLoansInfo(bytes32 borrowingKey, LoanInfo[] memory sourceLoans) private {
         // Get the storage reference to the loans array for the borrowing key
         LoanInfo[] storage loans = loansInfo[borrowingKey];
         // Iterate through the sourceLoans array
@@ -816,9 +805,6 @@ contract LiquidityBorrowingManager is
             if (tokenIdToBorrowingKeys[loan.tokenId].add(borrowingKey)) {
                 // Push the current loan to the loans array
                 loans.push(loan);
-                unchecked {
-                    pushCounter++;
-                }
             } else {
                 // If already exists, find the loan and update its liquidity
                 for (uint256 j; j < loans.length; ) {

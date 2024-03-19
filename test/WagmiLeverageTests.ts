@@ -229,7 +229,7 @@ describe("WagmiLeverageTests", () => {
 
     it("approve positionManager NFT and check event", async () => {
         expect(
-            await borrowingManager.getLiquidationBonus(WETH_ADDRESS, ethers.utils.parseUnits("100", 18), 1)
+            await borrowingManager.getLiquidationBonus(WETH_ADDRESS, ethers.utils.parseUnits("100", 18))
         ).to.be.equal(ethers.utils.parseUnits("1.5", 18));
         // UP LIQUIDATION_BONUS_FOR_TOKEN
         await borrowingManager.connect(owner).updateSettings(3, [WETH_ADDRESS, 69, 1000000]);
