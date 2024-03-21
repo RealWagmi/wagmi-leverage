@@ -9,6 +9,14 @@ abstract contract DailyRateAndCollateral is IDailyRateAndCollateral {
     /// pairKey => TokenInfo
     mapping(bytes32 => TokenInfo) internal holdTokenInfo;
 
+    /**
+     * @notice Adjusts the entrance fee basis points according to predefined rules.
+     * @dev This function normalizes the entrance fee basis points (BP). If the entrance fee is zero, it defaults to
+     *      `Constants.DEFAULT_ENTRANCE_FEE_BPS`. To disable entrance fees completely, the entrance fee BP should be set
+     *      to `Constants.MAX_ENTRANCE_FEE_BPS + 1`, which will reset the fee to zero. This function should only be used internally.
+     * @param entranceFeeBP The initial entrance fee in basis points proposed for a financial operation.
+     * @return The normalized entrance fee in basis points after applying the adjustment rules.
+     */
     function _checkEntranceFee(uint256 entranceFeeBP) internal pure returns (uint256) {
         if (entranceFeeBP == 0) {
             entranceFeeBP = Constants.DEFAULT_ENTRANCE_FEE_BPS;
@@ -39,15 +47,13 @@ abstract contract DailyRateAndCollateral is IDailyRateAndCollateral {
     }
 
     /**
-     * @notice This internal function updates the hold token rate information for the pair of sale token specified by `saleToken`
-     * and hold token specified by `holdToken`. It retrieves the existing hold token rate information from the `holdTokenInfo` mapping,
-     * including the current daily rate. If the current daily rate is not set, it defaults to `Constants.DEFAULT_DAILY_RATE`.
-     * If there are any existing borrowings for the hold token, the accumulated loan rate per second is updated based on the time
-     * difference since the last update and the current daily rate. Finally, the latest update timestamp is recorded for future calculations.
-     * @param saleToken The address of the sale token in the pair.
-     * @param holdToken The address of the hold token in the pair.
-     * @return currentDailyRate The updated current daily rate for the hold token.
-     * @return holdTokenRateInfo The struct containing the updated hold token rate information.
+     * @notice Updates the hold token rate information for a given pair of sale and hold tokens
+     * @dev This internal function updates the `accLoanRatePerSeconds` and `latestUpTimestamp` in the `holdTokenInfo` mapping.
+     *      It also returns the latest `currentDailyRate` and the updated `holdTokenRateInfo` storage reference.
+     * @param saleToken The address of the sale token in the pair
+     * @param holdToken The address of the hold token in the pair
+     * @return currentDailyRate The current daily rate for the hold token after the update
+     * @return holdTokenRateInfo A storage reference to the hold token's rate info in the `holdTokenInfo` mapping
      */
     function _updateHoldTokenRateInfo(
         address saleToken,
@@ -61,18 +67,16 @@ abstract contract DailyRateAndCollateral is IDailyRateAndCollateral {
     }
 
     /**
-     * @notice This internal function calculates the collateral balance and current fees.
-     * If the `borrowedAmount` is greater than 0, it calculates the fees based on the difference between the current accumulated
-     * loan rate per second (`accLoanRatePerSeconds`) and the accumulated loan rate per share at the time of borrowing (`borrowingAccLoanRatePerShare`).
-     * The fees are calculated using the FullMath library's `mulDivRoundingUp()` function, rounding up the result to the nearest integer.
-     * The collateral balance is then calculated by subtracting the fees from the daily rate collateral at the time of borrowing (`borrowingDailyRateCollateral`).
-     * Both the collateral balance and fees are returned as the function's output.
-     * @param borrowedAmount The amount borrowed.
-     * @param borrowingAccLoanRatePerShare The accumulated loan rate per share at the time of borrowing.
-     * @param borrowingDailyRateCollateral The daily rate collateral at the time of borrowing.
-     * @param accLoanRatePerSeconds The current accumulated loan rate per second.
-     * @return collateralBalance The calculated collateral balance after deducting fees.
-     * @return currentFees The calculated fees for the borrowing operation.
+     * @notice Calculates the collateral balance and current fees for a borrowing operation.
+     * @dev If there is a borrowed amount, this function computes the accrued fees since the time of borrowing. It uses full precision math
+     *      for fee calculations, rounding up the result. The collateral balance is then updated by subtracting the fees from the initial
+     *      daily rate collateral value.
+     * @param borrowedAmount The principal amount that was borrowed.
+     * @param borrowingAccLoanRatePerShare The accumulated loan rate per share at the time when the amount was borrowed.
+     * @param borrowingDailyRateCollateral The total collateral balance associated with the daily rate at the time of borrowing.
+     * @param accLoanRatePerSeconds The latest available accumulated loan rate per second.
+     * @return collateralBalance The updated collateral balance after accounting for the accrued fees.
+     * @return currentFees The total fees accrued since the time of borrowing.
      */
     function _calculateCollateralBalance(
         uint256 borrowedAmount,
@@ -90,6 +94,18 @@ abstract contract DailyRateAndCollateral is IDailyRateAndCollateral {
         }
     }
 
+    /**
+     * @notice Retrieves the hash key and TokenInfo information for a holder token associated with a sale token.
+     * @dev This function computes the unique pair key using `Keys.computePairKey` for the provided `saleToken`
+     *      and `holdToken` and fetches the corresponding `TokenInfo`. If the current daily rate for the hold token
+     *      is zero, it defaults to `Constants.DEFAULT_DAILY_RATE`. It then calculates and updates the time weighted rate
+     *      if there has been any borrowing against the hold token. Lastly, it updates the `latestUpTimestamp` to the current
+     *      block timestamp.
+     * @param saleToken The address of the sale token that is being used in association with a hold token.
+     * @param holdToken The address of the hold token whose information is being retrieved.
+     * @return key A bytes32 type representing the unique pair key for the sale token and hold token.
+     * @return holdTokenRateInfo A `TokenInfo` struct containing rate information for the hold token.
+     */
     function _getHTInfo(
         address saleToken,
         address holdToken
