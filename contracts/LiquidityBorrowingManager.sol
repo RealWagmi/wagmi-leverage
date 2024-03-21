@@ -685,7 +685,7 @@ contract LiquidityBorrowingManager is
             LoanInfo memory loan = loans[i];
             // Get the owner address of the loan's token ID using the underlyingPositionManager contract.
             address creditor = _getOwnerOf(loan.tokenId);
-            // Check if the owner of the loan's token ID is equal to the `msg.sender`.
+            // if the Pos-NFT has not been burned.
             if (creditor != address(0)) {
                 // Update the liquidity cache based on the loan information.
                 _upNftPositionCache(zeroForSaleToken, loan, cache);
@@ -730,7 +730,7 @@ contract LiquidityBorrowingManager is
             LoanInfo memory loan = loans[i];
             // Get the owner address of the loan's token ID using the underlyingPositionManager contract.
             address creditor = _getOwnerOf(loan.tokenId);
-            // Check if the owner of the loan's token ID is equal to the `msg.sender`.
+            // if the Pos-NFT has not been burned.
             if (creditor == msg.sender) {
                 // If the owner matches the `msg.sender`, replace the current loan with the last loan in the loans array
                 // and remove the last element.
