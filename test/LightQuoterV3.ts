@@ -5,10 +5,10 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { LightQuoterV3, IQuoterV2 } from "../typechain-types";
 
 describe("LightQuoterV3", function () {
-  const UNISWAP_V3_QUOTER_V2 = "0x61fFE014bA17989E743c5F6cB21bF9697530B21e";
-  const WETH_USDT_500_POOL_ADDRESS = "0x11b815efB8f581194ae79006d24E0d814B7697F6";
-  const WETH_ADDRESS = "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2"; // DECIMALS 18  token0
-  const USDT_ADDRESS = "0xdAC17F958D2ee523a2206206994597C13D831ec7"; // DECIMALS 6 token1
+  const UNISWAP_V3_QUOTER_V2 = "0xB048Bbc1Ee6b733FFfCFb9e9CeF7375518e25997";
+  const WETH_USDT_500_POOL_ADDRESS = "0xBe141893E4c6AD9272e8C04BAB7E6a10604501a5";
+  const WETH_ADDRESS = "0x2170Ed0880ac9A755fd29B2688956BD959F933F8"; // DECIMALS 18  token0
+  const USDT_ADDRESS = "0x55d398326f99059fF775485246999027B3197955"; // DECIMALS 6 token1
 
   let owner: SignerWithAddress;
   let lightQuoter: LightQuoterV3;
@@ -38,6 +38,7 @@ describe("LightQuoterV3", function () {
     };
 
     let [amountOutIQuoterV2, sqrtPriceX96AfterIQuoterV2, ,] = await quoter.callStatic.quoteExactInputSingle(paramsIQuoterV2);
+    console.log("amountOutIQuoterV2", amountOutIQuoterV2.toString());
 
     expect(sqrtPriceX96After).to.equal(sqrtPriceX96AfterIQuoterV2);
     expect(amountOut).to.equal(amountOutIQuoterV2);

@@ -228,7 +228,7 @@ abstract contract ApproveSwapAndPay is IApproveSwapAndPay {
      * @param amount1Delta The change in token1 balance resulting from the swap.
      * @param data Additional data required for processing the swap, encoded as `(uint24, address, address)`.
      */
-    function uniswapV3SwapCallback(
+    function pancakeV3SwapCallback(
         int256 amount0Delta,
         int256 amount1Delta,
         bytes calldata data

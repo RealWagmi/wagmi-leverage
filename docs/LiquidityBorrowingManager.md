@@ -568,6 +568,24 @@ function owner() external view returns (address)
 |---|---|---|
 | _0 | address | undefined |
 
+### pancakeV3SwapCallback
+
+```solidity
+function pancakeV3SwapCallback(int256 amount0Delta, int256 amount1Delta, bytes data) external nonpayable
+```
+
+
+
+*Callback function invoked by Uniswap V3 swap. This function is called when a swap is executed on a Uniswap V3 pool. It performs the necessary validations and payment processing. Requirements: - The swap must not entirely fall within 0-liquidity regions, as it is not supported. - The caller must be the expected Uniswap V3 pool contract.*
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| amount0Delta | int256 | The change in token0 balance resulting from the swap. |
+| amount1Delta | int256 | The change in token1 balance resulting from the swap. |
+| data | bytes | Additional data required for processing the swap, encoded as `(uint24, address, address)`. |
+
 ### platformFeesBP
 
 ```solidity
@@ -693,24 +711,6 @@ The Nonfungible Position Manager contract.
 | Name | Type | Description |
 |---|---|---|
 | _0 | contract INonfungiblePositionManager | undefined |
-
-### uniswapV3SwapCallback
-
-```solidity
-function uniswapV3SwapCallback(int256 amount0Delta, int256 amount1Delta, bytes data) external nonpayable
-```
-
-
-
-*Callback function invoked by Uniswap V3 swap. This function is called when a swap is executed on a Uniswap V3 pool. It performs the necessary validations and payment processing. Requirements: - The swap must not entirely fall within 0-liquidity regions, as it is not supported. - The caller must be the expected Uniswap V3 pool contract.*
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| amount0Delta | int256 | The change in token0 balance resulting from the swap. |
-| amount1Delta | int256 | The change in token1 balance resulting from the swap. |
-| data | bytes | Additional data required for processing the swap, encoded as `(uint24, address, address)`. |
 
 ### updateHoldTokenDailyRate
 

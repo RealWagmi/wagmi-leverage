@@ -9,7 +9,7 @@ import { SwapMath } from "./vendor0.8/uniswap/SwapMath.sol";
 import { BitMath } from "./vendor0.8/uniswap/BitMath.sol";
 import { AmountsLiquidity } from "./libraries/AmountsLiquidity.sol";
 
-// import "hardhat/console.sol";
+import "hardhat/console.sol";
 
 contract LightQuoterV3 is ILightQuoterV3 {
     using SafeCast for uint256;
@@ -211,8 +211,10 @@ contract LightQuoterV3 is ILightQuoterV3 {
     ) private view {
         (uint160 sqrtPriceX96, int24 tick, , , , uint8 feeProtocol, ) = IUniswapV3Pool(swapPool)
             .slot0();
+        console.log("tick");
         cache.zeroForOne = zeroForOne;
         cache.liquidityStart = IUniswapV3Pool(swapPool).liquidity();
+        console.log("liquidityStart", cache.liquidityStart);
         cache.feeProtocol = zeroForOne ? (feeProtocol % 16) : (feeProtocol >> 4);
         cache.fee = IUniswapV3Pool(swapPool).fee();
         cache.tickSpacing = IUniswapV3Pool(swapPool).tickSpacing();

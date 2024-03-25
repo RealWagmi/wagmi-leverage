@@ -294,6 +294,10 @@ contract FlashLoanAggregator is
         return true;
     }
 
+    function pancakeV3FlashCallback(uint256 fee0, uint256 fee1, bytes calldata data) external {
+        _excuteCallback(fee0 + fee1, data);
+    }
+
     function uniswapV3FlashCallback(uint256 fee0, uint256 fee1, bytes calldata data) external {
         _excuteCallback(fee0 + fee1, data);
     }

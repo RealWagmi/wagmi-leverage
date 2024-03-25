@@ -28,7 +28,7 @@ const COMPILER_SETTINGS = {
   version: '0.8.23',
   settings: {
     viaIR: true,
-    evmVersion: "paris",
+    //evmVersion: "paris",
     optimizer: {
       enabled: true,
       runs: 999,
@@ -76,7 +76,7 @@ const config: HardhatUserConfig = {
         version: '0.8.23',
         settings: {
           viaIR: true,
-          evmVersion: "paris",
+          //evmVersion: "paris",
           optimizer: {
             enabled: true,
             runs: 200
@@ -94,10 +94,10 @@ const config: HardhatUserConfig = {
   networks: {
     hardhat: {
       //hardfork: "istanbul",
-      chainId: 1,
+      chainId: 56,
       forking: {
-        url: "https://rpc.ankr.com/eth",
-        blockNumber: 17329500,
+        url: "https://rpc.ankr.com/bsc",
+        blockNumber: 37275800,
       },
       allowBlocksWithSameTimestamp: true,
       allowUnlimitedContractSize: false,
