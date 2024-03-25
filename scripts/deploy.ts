@@ -1,4 +1,5 @@
 import hardhat, { ethers } from "hardhat";
+const { constants } = ethers;
 
 async function sleep(ms: number) {
     return new Promise((resolve) => setTimeout(resolve, ms));
@@ -21,7 +22,7 @@ async function main() {
     let UNISWAP_V3_POOL_INIT_CODE_HASH_0 = "";
     let UNISWAP_V3_FACTORY_1 = "";
     let UNISWAP_V3_POOL_INIT_CODE_HASH_1 = "";
-    let AAVE_POOL_ADDRESS_PROVIDER = "";
+    let AAVE_POOL_ADDRESS_PROVIDER = constants.AddressZero;
     if (network === "kava") {
         dexName0 = "wagmi";
         dexName1 = "kinetix";
@@ -57,8 +58,8 @@ async function main() {
     // const NONFUNGIBLE_POSITION_MANAGER_ADDRESS = "0x8dB08eD2b460643974C64BE42087903470Df6a54";
     // const UNISWAP_V3_POOL_INIT_CODE_HASH = "0xe34f199b19b2b4f47f68442619d555527d244f78a3297ea89325f843f87b8b54";
     // const UNISWAP_V3_FACTORY = "0x2dBB6254231C5569B6A4313c6C1F5Fe1340b35C2";
-    // const LIGHT_QUOTER_V3 = "0xCa4526D9d02A7Bb005d850c2176E8aE30B970149";
-    // const FLASH_LOAN_AGGREGATOR_ADDRESS = "0x57b647530B718103B05751278C4835B068FDC491";
+    // const LIGHT_QUOTER_V3 = "0x1C9B724cBd7683c80226cE35a39F9127950ABb95";
+    // const FLASH_LOAN_AGGREGATOR_ADDRESS = "0x487b4ce942FC6CED5C7E4e62351aC6a3f686ca0F";
 
     // wagmi kava
     // https://github.com/RealWagmi/v3_core
@@ -66,8 +67,8 @@ async function main() {
     // const NONFUNGIBLE_POSITION_MANAGER_ADDRESS = "0xa9aF508A15fc3B75763A9e536505FFE1F884D12C";
     // const UNISWAP_V3_POOL_INIT_CODE_HASH = "0x30146866f3a846fe3c636beb2756dbd24cf321bc52c9113c837c21f47470dfeb";
     // const UNISWAP_V3_FACTORY = "0x0e0Ce4D450c705F8a0B6Dd9d5123e3df2787D16B";
-    // const LIGHT_QUOTER_V3 = "0xCa4526D9d02A7Bb005d850c2176E8aE30B970149";
-    // const FLASH_LOAN_AGGREGATOR_ADDRESS = "0x57b647530B718103B05751278C4835B068FDC491";
+    // const LIGHT_QUOTER_V3 = "0x1C9B724cBd7683c80226cE35a39F9127950ABb95";
+    // const FLASH_LOAN_AGGREGATOR_ADDRESS = "0x487b4ce942FC6CED5C7E4e62351aC6a3f686ca0F";
 
     /// wagmi Metis
     // const dexname ="wagmi"

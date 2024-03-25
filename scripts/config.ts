@@ -2,8 +2,8 @@
 export default {
     borrowingManagerAddress: {
         ["kava"]: {
-            ["wagmi"]: "0x17A2349B3530F3b6082116D2B223edd5862bC3ac",
-            ["kinetix"]: "0x43b2fcD81b8dC2A94Cf1eF645EDac763400551a1"
+            ["wagmi"]: "0x509C3dc2f8e0ED449CEc8c766A9F5A94E1768d80",
+            ["kinetix"]: "0xEb4A370Ff9F67080828e21B7395dFA91E38472F4"
         },
         ["metis"]:
         {
