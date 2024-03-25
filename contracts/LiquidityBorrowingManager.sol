@@ -10,7 +10,7 @@ import "./interfaces/ILiquidityBorrowingManager.sol";
 import { EnumerableSet } from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
 /**
- * WAGMI Leverage Protocol v2.0 beta
+ * WAGMI Leverage Protocol v2.0
  * wagmi.com                                                
  * 
     /  |  _  /  | /      \  /      \ /  \     /  |/      | 

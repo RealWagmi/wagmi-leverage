@@ -541,7 +541,6 @@ contract FlashLoanAggregator is
             for (uint256 i = 0; i < debtsLength; ) {
                 // Terminate early if we hit an empty creditor slot
                 if (decodedDataExt.debts[i].creditor == address(0)) {
-                    debtsLength = i;
                     break;
                 }
                 unchecked {

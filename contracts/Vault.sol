@@ -16,16 +16,18 @@ import { TransferHelper } from "./libraries/TransferHelper.sol";
 contract Vault is Ownable, IVault {
     using TransferHelper for address;
 
-    uint24 private immutable maxFlashFee;
+    uint24 internal constant MAX_FLASH_FEE = 10000; // 1.00%
+
+    uint24 private immutable defaultFlashFee;
 
     mapping(address => uint24) public flashFeeForToken;
 
-    constructor(uint24 _maxFlashFee) {
-        maxFlashFee = _maxFlashFee;
+    constructor(uint24 _defaultFlashFee) {
+        defaultFlashFee = _defaultFlashFee;
     }
 
     function setFlashFee(address token, uint24 flashFee) external onlyOwner {
-        require(flashFee <= maxFlashFee, "V-FE");
+        require(flashFee <= MAX_FLASH_FEE, "V-FE");
         flashFeeForToken[token] = flashFee;
     }
 
@@ -37,7 +39,7 @@ contract Vault is Ownable, IVault {
         if (amount > 0) {
             uint24 flashFee = flashFeeForToken[token];
             if (flashFee == 0) {
-                flashFee = maxFlashFee;
+                flashFee = defaultFlashFee;
             }
             feeAmt = FullMath.mulDivRoundingUp(amount, flashFee, 1e6);
             token.safeTransfer(msg.sender, amount);
