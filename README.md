@@ -50,7 +50,7 @@ Traders on Wagmi can margin long or short any pair without the risk of forced pr
 | BSC | 56 | LightQuoterV3 | [0xC49c177736107fD8351ed6564136B9ADbE5B1eC3](https://bscscan.com/address/0xC49c177736107fD8351ed6564136B9ADbE5B1eC3) |
 | BSC | 56 | FlashLoanAggregator | [0xe1f435DfcD6969Ae22E96AAB56D5bA1BC837B1d5](https://bscscan.com/address/0xe1f435DfcD6969Ae22E96AAB56D5bA1BC837B1d5) |
 | ARBITRUM | 42161 | LightQuoterV3 | [0xCaDD693F005A5af8bF7Afa2BF45DFA8d61053DB6](https://arbiscan.io/address/0xCaDD693F005A5af8bF7Afa2BF45DFA8d61053DB6) |
-| ARBITRUM | 42161 | FlashLoanAggregator | [0x923e559a12d856f3217b715fE98a7a07CabD6Ed7](https://arbiscan.io/address/0x923e559a12d856f3217b715fE98a7a07CabD6Ed7) |
+| ARBITRUM | 42161 | FlashLoanAggregator | [0xAB4bc49175003EBdc7BD6bFae4afC700b185FdA9](https://arbiscan.io/address/0xAB4bc49175003EBdc7BD6bFae4afC700b185FdA9) |
 ##
 
 | Network | ChainId | Contract | Address |
