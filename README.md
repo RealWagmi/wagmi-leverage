@@ -66,11 +66,11 @@ Traders on Wagmi can margin long or short any pair without the risk of forced pr
 | Network | ChainId | Contract | Address |
 |------| ------- | -----| -----|
 | KAVA | 2222 | LightQuoterV3 | [0x1C9B724cBd7683c80226cE35a39F9127950ABb95](https://kavascan.com/address/0x1C9B724cBd7683c80226cE35a39F9127950ABb95) |
-| KAVA | 2222 | FlashLoanAggregator | [0x487b4ce942FC6CED5C7E4e62351aC6a3f686ca0F](https://kavascan.com/address/0x487b4ce942FC6CED5C7E4e62351aC6a3f686ca0F) |
+| KAVA | 2222 | FlashLoanAggregator | [0x923e559a12d856f3217b715fE98a7a07CabD6Ed7](https://kavascan.com/address/0x923e559a12d856f3217b715fE98a7a07CabD6Ed7) |
 | ARBITRUM | 42161 | LightQuoterV3 | [0x4948f07aCEF9958eb03f1F46f5A949594f2dA2D9](https://arbiscan.io/address/0x4948f07aCEF9958eb03f1F46f5A949594f2dA2D9) |
-| ARBITRUM | 42161 | FlashLoanAggregator | [0x9f665a1476Afe20637393b61Dc4ce8c6d1108b0A](https://arbiscan.io/address/0x9f665a1476Afe20637393b61Dc4ce8c6d1108b0A) |
+| ARBITRUM | 42161 | FlashLoanAggregator | [0xAB4bc49175003EBdc7BD6bFae4afC700b185FdA9](https://arbiscan.io/address/0xAB4bc49175003EBdc7BD6bFae4afC700b185FdA9) |
 | METIS | 1088 | LightQuoterV3 | [0x3963793a9FB287Ac83aE3eAe849Ef35c98E4CE98](https://explorer.metis.io/address/0x3963793a9FB287Ac83aE3eAe849Ef35c98E4CE98) |
-| METIS | 1088 | FlashLoanAggregator | [0x071805686cA276BA9Cc90485bD2a2D363959e971](https://explorer.metis.io/address/0x071805686cA276BA9Cc90485bD2a2D363959e971) |
+| METIS | 1088 | FlashLoanAggregator | [0xCC096c9eFafbf8062F3Bf9894D08E9E912850E1d](https://explorer.metis.io/address/0xCC096c9eFafbf8062F3Bf9894D08E9E912850E1d) |
 
 ##
 

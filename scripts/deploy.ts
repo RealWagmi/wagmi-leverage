@@ -20,6 +20,7 @@ async function main() {
     // let V3_FACTORY: string[] = [];
     // let V3_POOL_INIT_CODE_HASH: string[] = [];
     // let AAVE_POOL_ADDRESS_PROVIDER = constants.AddressZero;
+    // let borrowingManagerAddresses: string[] = [];
     // if (network === "kava") {
     //     dexNames = ["wagmi", "kinetix"];
     //     V3_FACTORY = [
@@ -31,10 +32,13 @@ async function main() {
     //         "0xe34f199b19b2b4f47f68442619d555527d244f78a3297ea89325f843f87b8b54"
     //     ];
 
+    //     // borrowingManagerAddresses = ["0x509C3dc2f8e0ED449CEc8c766A9F5A94E1768d80", "0xEb4A370Ff9F67080828e21B7395dFA91E38472F4"];
+
     // } else if (network === "metis") {
     //     dexNames = ["wagmi"];
     //     V3_FACTORY = ["0x8112E18a34b63964388a3B2984037d6a2EFE5B8A"];
     //     V3_POOL_INIT_CODE_HASH = ["0x30146866f3a846fe3c636beb2756dbd24cf321bc52c9113c837c21f47470dfeb"];
+    //     // borrowingManagerAddresses = ["0x9ac33eeccF1c88c4aC13d800D6e5aa4C75C6125c"];
 
     // } else if (network === "arbitrum") {
     //     dexNames = ["uniswap", "sushi", "pancake"];
@@ -49,6 +53,7 @@ async function main() {
     //         "0x6ce8eb472fa82df5469c6ab6d485f17c3ad13c8cd7af59b3d4a8026c5ce0f7e2"
     //     ];
     //     AAVE_POOL_ADDRESS_PROVIDER = "0xa97684ead0e402dC232d5A977953DF7ECBaB3CDb";
+    //     // borrowingManagerAddresses = ["0xda57F8C3466d42D58B505ED9121F348210Ac78A4", "0xF0F3FC7Da32D49BaB7730142817B2B2111427dc1", "0x4a7d1Bd77557461aBa23b74bF41153034524107b"];
     // }
 
     // const FlashLoanAggregatorFactory = await ethers.getContractFactory("FlashLoanAggregator");
@@ -60,6 +65,18 @@ async function main() {
     //     await flashLoanAggregator.addUniswapV3Dex(V3_FACTORY[i], V3_POOL_INIT_CODE_HASH[i], dexNames[i]);
     //     console.log(`add [${dexNames[i]}] UniswapV3Dex to flashLoanAggregator`);
     // }
+    // // for (const element of borrowingManagerAddresses) {
+    // //     await sleep(10000);
+    // //     await flashLoanAggregator.setWagmiLeverageAddress(element);
+    // //     console.log(`[${element}] setWagmiLeverageAddress flashLoanAggregator`);
+    // //     await sleep(10000);
+
+    // //     const LiquidityBorrowingManager = await ethers.getContractFactory("LiquidityBorrowingManager");
+    // //     const borrowingManager = LiquidityBorrowingManager.attach(element);
+
+    // //     await borrowingManager.updateSettings(4, [flashLoanAggregator.address]);
+    // //     console.log(`[${element}] updateSettings`);
+    // // }
 
     // Kinetix.finance kava
     // https://github.com/kinetixfi/v3-deploy-scripts/blob/main/state.json
