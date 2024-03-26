@@ -27,10 +27,10 @@ Traders on Wagmi can margin long or short any pair without the risk of forced pr
 
 ### V2.0
 
-| indx | Protocol | Network | supported |
+| indx | Protocol |BSC | ARBITRUM |
 |------| ------- | -----| -----|
-| 1 | uniswap | BSC | ✅ |
-| 2 | aave | BSC | ✅ |
+| 1 | uniswap | ✅ | ✅ |
+| 2 | aave | ✅ | ✅ |
 
 ##
 
@@ -39,6 +39,9 @@ Traders on Wagmi can margin long or short any pair without the risk of forced pr
 | BSC | pancake | 0 |
 | BSC | uniswap | 1 |
 | BSC | sushi | 2 |
+| ARBITRUM | uniswap | 0 |
+| ARBITRUM | sushi | 1 |
+| ARBITRUM | pancake | 2 |
 
 ##
 
@@ -46,13 +49,18 @@ Traders on Wagmi can margin long or short any pair without the risk of forced pr
 |------| ------- | -----| -----|
 | BSC | 56 | LightQuoterV3 | [0xC49c177736107fD8351ed6564136B9ADbE5B1eC3](https://bscscan.com/address/0xC49c177736107fD8351ed6564136B9ADbE5B1eC3) |
 | BSC | 56 | FlashLoanAggregator | [0x259308E7d8557e4Ba192De1aB8Cf7e0E21896442](https://bscscan.com/address/0x259308E7d8557e4Ba192De1aB8Cf7e0E21896442) |
+| ARBITRUM | 42161 | LightQuoterV3 | [0xCaDD693F005A5af8bF7Afa2BF45DFA8d61053DB6](https://arbiscan.io/address/0xCaDD693F005A5af8bF7Afa2BF45DFA8d61053DB6) |
+| ARBITRUM | 42161 | FlashLoanAggregator | [0x9f665a1476Afe20637393b61Dc4ce8c6d1108b0A](https://arbiscan.io/address/0x9f665a1476Afe20637393b61Dc4ce8c6d1108b0A) |
 ##
 
-| V3 | Network | ChainId | Contract | Address |
-|------|------| ------- | -----| -----|
-| pancake | BSC | 56 | LiquidityBorrowingManager | [0x7228b8110d9A85BD6740bE03677Eb6deDe0546a8](https://bscscan.com/address/0x7228b8110d9A85BD6740bE03677Eb6deDe0546a8) |
-| pancake | BSC | 56 | Vault| [0x7D9A602ff2582C1111C47134914415Ba4F1323A5](https://bscscan.com/address/0x7D9A602ff2582C1111C47134914415Ba4F1323A5) |
-| pancake | BSC | 56 | PositionEffectivityChart| [0x141cB6458c8090B23539083C6545070D2ce4EF87](https://bscscan.com/address/0x141cB6458c8090B23539083C6545070D2ce4EF87) |
+| Network | ChainId | Contract | Address |
+|------| ------- | -----| -----|
+| BSC | 56 | LiquidityBorrowingManager | [0x7228b8110d9A85BD6740bE03677Eb6deDe0546a8](https://bscscan.com/address/0x7228b8110d9A85BD6740bE03677Eb6deDe0546a8) |
+| BSC | 56 | Vault| [0x7D9A602ff2582C1111C47134914415Ba4F1323A5](https://bscscan.com/address/0x7D9A602ff2582C1111C47134914415Ba4F1323A5) |
+| BSC | 56 | PositionEffectivityChart| [0x141cB6458c8090B23539083C6545070D2ce4EF87](https://bscscan.com/address/0x141cB6458c8090B23539083C6545070D2ce4EF87) |
+| ARBITRUM | 42161 | LiquidityBorrowingManager | [0x4a7d1Bd77557461aBa23b74bF41153034524107b](https://bscscan.com/address/0x4a7d1Bd77557461aBa23b74bF41153034524107b) |
+| ARBITRUM | 42161 | Vault| [0xC7e051C6A1dA34E6aE8171DB3de38515388D85f8](https://bscscan.com/address/0xC7e051C6A1dA34E6aE8171DB3de38515388D85f8) |
+| ARBITRUM | 42161 | PositionEffectivityChart| [0x521C2d8Be14060B7617c2E2597eE9b52A995E65F](https://bscscan.com/address/0x521C2d8Be14060B7617c2E2597eE9b52A995E65F) |
 
 ##
 
