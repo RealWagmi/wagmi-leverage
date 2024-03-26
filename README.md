@@ -45,10 +45,10 @@ Traders on Wagmi can margin long or short any pair without the risk of forced pr
 
 ### V2.0
 
-| indx | Protocol | Network | supported |
+| indx | Protocol | KAVA | ARBITRUM |
 |------| ------- | -----| -----|
-| 1 | uniswap | KAVA | ✅ |
-| 2 | aave | KAVA | ❌ |
+| 1 | uniswap | ✅ | ✅ |
+| 2 | aave | ❌ | ✅ |
 
 ##
 
@@ -56,6 +56,9 @@ Traders on Wagmi can margin long or short any pair without the risk of forced pr
 |------| ------- | -----|
 | KAVA | wagmi | 0 |
 | KAVA | kinetix | 1 |
+| ARBITRUM | uniswap | 0 |
+| ARBITRUM | sushi | 1 |
+| ARBITRUM | pancake | 2 |
 
 ##
 
@@ -63,6 +66,8 @@ Traders on Wagmi can margin long or short any pair without the risk of forced pr
 |------| ------- | -----| -----|
 | KAVA | 2222 | LightQuoterV3 | [0x1C9B724cBd7683c80226cE35a39F9127950ABb95](https://kavascan.com/address/0x1C9B724cBd7683c80226cE35a39F9127950ABb95) |
 | KAVA | 2222 | FlashLoanAggregator | [0x487b4ce942FC6CED5C7E4e62351aC6a3f686ca0F](https://kavascan.com/address/0x487b4ce942FC6CED5C7E4e62351aC6a3f686ca0F) |
+| ARBITRUM | 42161 | LightQuoterV3 | [0x4948f07aCEF9958eb03f1F46f5A949594f2dA2D9](https://arbiscan.io/address/0x4948f07aCEF9958eb03f1F46f5A949594f2dA2D9) |
+| ARBITRUM | 42161 | FlashLoanAggregator | [0x9f665a1476Afe20637393b61Dc4ce8c6d1108b0A](https://arbiscan.io/address/0x9f665a1476Afe20637393b61Dc4ce8c6d1108b0A) |
 ##
 
 | V3 | Network | ChainId | Contract | Address |
@@ -73,6 +78,12 @@ Traders on Wagmi can margin long or short any pair without the risk of forced pr
 | kinetix | KAVA | 2222 | LiquidityBorrowingManager | [0xEb4A370Ff9F67080828e21B7395dFA91E38472F4](https://kavascan.com/address/0xEb4A370Ff9F67080828e21B7395dFA91E38472F4) |
 | kinetix | KAVA | 2222 | Vault| [0x18FB4c6c62301145384e893Bd71e32a78c4A81D3](https://kavascan.com/address/0x18FB4c6c62301145384e893Bd71e32a78c4A81D3) |
 | kinetix | KAVA | 2222 | PositionEffectivityChart| [0x3753D5B59ce749c277e8698fcB2875535781F843](https://kavascan.com/address/0x3753D5B59ce749c277e8698fcB2875535781F843) |
+| uniswap | ARBITRUM | 42161 | LiquidityBorrowingManager | [0xda57F8C3466d42D58B505ED9121F348210Ac78A4](https://arbiscan.io/address/0xda57F8C3466d42D58B505ED9121F348210Ac78A4) |
+| uniswap | ARBITRUM | 42161 | Vault| [0xc69F42f9aE0f6B6Ae5cF5766Ab47b57f7966EcDA](https://arbiscan.io/address/0xc69F42f9aE0f6B6Ae5cF5766Ab47b57f7966EcDA) |
+| uniswap | ARBITRUM | 42161 | PositionEffectivityChart| [0x195b6dC59aDaB228347f4509b7ABd1f530ee88Bb](https://arbiscan.io/address/0x195b6dC59aDaB228347f4509b7ABd1f530ee88Bb) |
+| sushi | ARBITRUM | 42161 | LiquidityBorrowingManager | [0xF0F3FC7Da32D49BaB7730142817B2B2111427dc1](https://arbiscan.io/address/0xF0F3FC7Da32D49BaB7730142817B2B2111427dc1) |
+| sushi | ARBITRUM | 42161 | Vault| [0x5429f799c11aEF099863a941802073510e83BB1A](https://arbiscan.io/address/0x5429f799c11aEF099863a941802073510e83BB1A) |
+| sushi | ARBITRUM | 42161 | PositionEffectivityChart| [0x2f08131C0a668a1224FB21DF177B83B5AF3c6968](https://arbiscan.io/address/0x2f08131C0a668a1224FB21DF177B83B5AF3c6968) |
 
 
 ##

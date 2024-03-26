@@ -11,46 +11,55 @@ async function main() {
 
     console.log(`[${network}] deployer address: ${deployer.address}`);
 
-    const LightQuoterV3Factory = await ethers.getContractFactory("LightQuoterV3");
-    const lightQuoter = await LightQuoterV3Factory.deploy();
-    await lightQuoter.deployed();
-    console.log(`LightQuoterV3  deployed to ${lightQuoter.address}`);
-    await sleep(10000);
-    let dexName0 = "";
-    let dexName1 = "";
-    let UNISWAP_V3_FACTORY_0 = "";
-    let UNISWAP_V3_POOL_INIT_CODE_HASH_0 = "";
-    let UNISWAP_V3_FACTORY_1 = "";
-    let UNISWAP_V3_POOL_INIT_CODE_HASH_1 = "";
-    let AAVE_POOL_ADDRESS_PROVIDER = constants.AddressZero;
-    if (network === "kava") {
-        dexName0 = "wagmi";
-        dexName1 = "kinetix";
-        UNISWAP_V3_FACTORY_0 = "0x0e0Ce4D450c705F8a0B6Dd9d5123e3df2787D16B";//wagmi
-        UNISWAP_V3_POOL_INIT_CODE_HASH_0 = "0x30146866f3a846fe3c636beb2756dbd24cf321bc52c9113c837c21f47470dfeb";//wagmi
-        UNISWAP_V3_FACTORY_1 = "0x2dBB6254231C5569B6A4313c6C1F5Fe1340b35C2";//kinetix
-        UNISWAP_V3_POOL_INIT_CODE_HASH_1 = "0xe34f199b19b2b4f47f68442619d555527d244f78a3297ea89325f843f87b8b54";//kinetix
-    } else if (network === "metis") {
-        dexName0 = "wagmi";
-        UNISWAP_V3_FACTORY_0 = "0x8112E18a34b63964388a3B2984037d6a2EFE5B8A";
-        UNISWAP_V3_POOL_INIT_CODE_HASH_0 = "0x30146866f3a846fe3c636beb2756dbd24cf321bc52c9113c837c21f47470dfeb";
-    } else if (network === "arbitrum") {
-        dexName0 = "uniswap";
-        dexName1 = "sushi";
-        UNISWAP_V3_FACTORY_0 = "0x1F98431c8aD98523631AE4a59f267346ea31F984";
-        UNISWAP_V3_POOL_INIT_CODE_HASH_0 = "0xe34f199b19b2b4f47f68442619d555527d244f78a3297ea89325f843f87b8b54";
-        UNISWAP_V3_FACTORY_1 = "0x1af415a1EbA07a4986a52B6f2e7dE7003D82231e";
-        UNISWAP_V3_POOL_INIT_CODE_HASH_1 = "0xe34f199b19b2b4f47f68442619d555527d244f78a3297ea89325f843f87b8b54";
-        AAVE_POOL_ADDRESS_PROVIDER = "0xa97684ead0e402dC232d5A977953DF7ECBaB3CDb";
-    }
+    // const LightQuoterV3Factory = await ethers.getContractFactory("LightQuoterV3");
+    // const lightQuoter = await LightQuoterV3Factory.deploy();
+    // await lightQuoter.deployed();
+    // console.log(`LightQuoterV3  deployed to ${lightQuoter.address}`);
+    // await sleep(10000);
+    // let dexNames: string[] = [];
+    // let V3_FACTORY: string[] = [];
+    // let V3_POOL_INIT_CODE_HASH: string[] = [];
+    // let AAVE_POOL_ADDRESS_PROVIDER = constants.AddressZero;
+    // if (network === "kava") {
+    //     dexNames = ["wagmi", "kinetix"];
+    //     V3_FACTORY = [
+    //         "0x0e0Ce4D450c705F8a0B6Dd9d5123e3df2787D16B",
+    //         "0x2dBB6254231C5569B6A4313c6C1F5Fe1340b35C2"
+    //     ];
+    //     V3_POOL_INIT_CODE_HASH = [
+    //         "0x30146866f3a846fe3c636beb2756dbd24cf321bc52c9113c837c21f47470dfeb",
+    //         "0xe34f199b19b2b4f47f68442619d555527d244f78a3297ea89325f843f87b8b54"
+    //     ];
 
-    const FlashLoanAggregatorFactory = await ethers.getContractFactory("FlashLoanAggregator");
-    const flashLoanAggregator = await FlashLoanAggregatorFactory.deploy(AAVE_POOL_ADDRESS_PROVIDER, UNISWAP_V3_FACTORY_0, UNISWAP_V3_POOL_INIT_CODE_HASH_0, dexName0);
-    await flashLoanAggregator.deployed();
-    console.log(`[${dexName0}] FlashLoanAggregator  deployed to ${flashLoanAggregator.address}`);
-    await sleep(5000);
-    await flashLoanAggregator.addUniswapV3Dex(UNISWAP_V3_FACTORY_1, UNISWAP_V3_POOL_INIT_CODE_HASH_1, dexName1);
-    console.log(`add [${dexName1}] UniswapV3Dex to flashLoanAggregator`);
+    // } else if (network === "metis") {
+    //     dexNames = ["wagmi"];
+    //     V3_FACTORY = ["0x8112E18a34b63964388a3B2984037d6a2EFE5B8A"];
+    //     V3_POOL_INIT_CODE_HASH = ["0x30146866f3a846fe3c636beb2756dbd24cf321bc52c9113c837c21f47470dfeb"];
+
+    // } else if (network === "arbitrum") {
+    //     dexNames = ["uniswap", "sushi", "pancake"];
+    //     V3_FACTORY = [
+    //         "0x1F98431c8aD98523631AE4a59f267346ea31F984",
+    //         "0x1af415a1EbA07a4986a52B6f2e7dE7003D82231e",
+    //         "0x41ff9AA7e16B8B1a8a8dc4f0eFacd93D02d071c9"
+    //     ];
+    //     V3_POOL_INIT_CODE_HASH = [
+    //         "0xe34f199b19b2b4f47f68442619d555527d244f78a3297ea89325f843f87b8b54",
+    //         "0xe34f199b19b2b4f47f68442619d555527d244f78a3297ea89325f843f87b8b54",
+    //         "0x6ce8eb472fa82df5469c6ab6d485f17c3ad13c8cd7af59b3d4a8026c5ce0f7e2"
+    //     ];
+    //     AAVE_POOL_ADDRESS_PROVIDER = "0xa97684ead0e402dC232d5A977953DF7ECBaB3CDb";
+    // }
+
+    // const FlashLoanAggregatorFactory = await ethers.getContractFactory("FlashLoanAggregator");
+    // const flashLoanAggregator = await FlashLoanAggregatorFactory.deploy(AAVE_POOL_ADDRESS_PROVIDER, V3_FACTORY[0], V3_POOL_INIT_CODE_HASH[0], dexNames[0]);
+    // await flashLoanAggregator.deployed();
+    // console.log(`[${dexNames[0]}] FlashLoanAggregator  deployed to ${flashLoanAggregator.address}`);
+    // await sleep(5000);
+    // for (let i = 1; i < dexNames.length; i++) {
+    //     await flashLoanAggregator.addUniswapV3Dex(V3_FACTORY[i], V3_POOL_INIT_CODE_HASH[i], dexNames[i]);
+    //     console.log(`add [${dexNames[i]}] UniswapV3Dex to flashLoanAggregator`);
+    // }
 
     // Kinetix.finance kava
     // https://github.com/kinetixfi/v3-deploy-scripts/blob/main/state.json
@@ -79,36 +88,37 @@ async function main() {
 
     // sushi arbitrum
     // https://github.com/sushiswap/v3-periphery/tree/master/deployments
+    // const dexname = "sushi"
     // const NONFUNGIBLE_POSITION_MANAGER_ADDRESS = "0xF0cBce1942A68BEB3d1b73F0dd86C8DCc363eF49";
     // const UNISWAP_V3_POOL_INIT_CODE_HASH = "0xe34f199b19b2b4f47f68442619d555527d244f78a3297ea89325f843f87b8b54";
     // const UNISWAP_V3_FACTORY = "0x1af415a1EbA07a4986a52B6f2e7dE7003D82231e";
-    // const LIGHT_QUOTER_V3 = "0xED5162725277a9f836Af4e56D83e14085692f921";
-    // const FLASH_LOAN_AGGREGATOR_ADDRESS = "0x0BB7f1b8aE4C2C80Ef58c56cab2D07A76fD5C547";
+    // const LIGHT_QUOTER_V3 = "0x4948f07aCEF9958eb03f1F46f5A949594f2dA2D9";
+    // const FLASH_LOAN_AGGREGATOR_ADDRESS = "0x9f665a1476Afe20637393b61Dc4ce8c6d1108b0A";
 
     /// Uniswap Mainnet, Goerli, Arbitrum, Optimism, Polygon
-    const dexname = "uniswap"
-    const NONFUNGIBLE_POSITION_MANAGER_ADDRESS = "0xC36442b4a4522E871399CD717aBDD847Ab11FE88";
-    const UNISWAP_V3_POOL_INIT_CODE_HASH = "0xe34f199b19b2b4f47f68442619d555527d244f78a3297ea89325f843f87b8b54";
-    const UNISWAP_V3_FACTORY = "0x1F98431c8aD98523631AE4a59f267346ea31F984";
-    const LIGHT_QUOTER_V3 = lightQuoter.address;
-    const FLASH_LOAN_AGGREGATOR_ADDRESS = flashLoanAggregator.address;
+    // const dexname = "uniswap"
+    // const NONFUNGIBLE_POSITION_MANAGER_ADDRESS = "0xC36442b4a4522E871399CD717aBDD847Ab11FE88";
+    // const UNISWAP_V3_POOL_INIT_CODE_HASH = "0xe34f199b19b2b4f47f68442619d555527d244f78a3297ea89325f843f87b8b54";
+    // const UNISWAP_V3_FACTORY = "0x1F98431c8aD98523631AE4a59f267346ea31F984";
+    // const LIGHT_QUOTER_V3 = lightQuoter.address;
+    // const FLASH_LOAN_AGGREGATOR_ADDRESS = flashLoanAggregator.address;
 
 
-    const LiquidityBorrowingManager = await ethers.getContractFactory("LiquidityBorrowingManager");
-    const borrowingManager = await LiquidityBorrowingManager.deploy(
-        NONFUNGIBLE_POSITION_MANAGER_ADDRESS,
-        FLASH_LOAN_AGGREGATOR_ADDRESS,
-        LIGHT_QUOTER_V3,
-        UNISWAP_V3_FACTORY,
-        UNISWAP_V3_POOL_INIT_CODE_HASH
-    );
-    await borrowingManager.deployed();
-    console.log(`[${dexname}] LiquidityBorrowingManager  deployed to ${borrowingManager.address}`);
-    await sleep(5000);
+    // const LiquidityBorrowingManager = await ethers.getContractFactory("LiquidityBorrowingManager");
+    // const borrowingManager = await LiquidityBorrowingManager.deploy(
+    //     NONFUNGIBLE_POSITION_MANAGER_ADDRESS,
+    //     FLASH_LOAN_AGGREGATOR_ADDRESS,
+    //     LIGHT_QUOTER_V3,
+    //     UNISWAP_V3_FACTORY,
+    //     UNISWAP_V3_POOL_INIT_CODE_HASH
+    // );
+    // await borrowingManager.deployed();
+    // console.log(`[${dexname}] LiquidityBorrowingManager  deployed to ${borrowingManager.address}`);
+    // await sleep(5000);
     // const FlashLoanAggregatorFactory = await ethers.getContractFactory("FlashLoanAggregator");
     // const flashLoanAggregator = FlashLoanAggregatorFactory.attach(FLASH_LOAN_AGGREGATOR_ADDRESS);
-    await flashLoanAggregator.setWagmiLeverageAddress(borrowingManager.address);
-    console.log(`setWagmiLeverageAddress flashLoanAggregator`);
+    // await flashLoanAggregator.setWagmiLeverageAddress(borrowingManager.address);
+    // console.log(`setWagmiLeverageAddress flashLoanAggregator`);
 
     // await sleep(5000);
     // const PositionEffectivityChart = await ethers.getContractFactory("PositionEffectivityChart");
@@ -117,13 +127,13 @@ async function main() {
     // console.log(`PositionEffectivityChart  deployed to ${positionEffectivityChart.address}`);
 
 
-    const vaultAddress = await borrowingManager.VAULT_ADDRESS();
-    console.log(`Vault  deployed to ${vaultAddress}`);
+    // const vaultAddress = await borrowingManager.VAULT_ADDRESS();
+    // console.log(`Vault  deployed to ${vaultAddress}`);
 
-    await sleep(5000);
+    // await sleep(5000);
 
-    await borrowingManager.updateSettings(2, ["0x3c1Cb7D4c0ce0dc72eDc7Ea06acC866e62a8f1d8"]);
-    console.log(`operator added`);
+    // await borrowingManager.updateSettings(2, ["0x3c1Cb7D4c0ce0dc72eDc7Ea06acC866e62a8f1d8"]);
+    // console.log(`operator added`);
 
     // const LiquidityBorrowingManager = await ethers.getContractFactory("LiquidityBorrowingManager");
     // const borrowingManager = LiquidityBorrowingManager.attach("0x7C261c6c2F43ec86fbc8DA48505fDF12D66193c9");
@@ -134,25 +144,28 @@ async function main() {
     // await sleep(30000);
 
 
-    await hardhat.run("verify:verify", {
-        address: borrowingManager.address,
-        constructorArguments: [
-            NONFUNGIBLE_POSITION_MANAGER_ADDRESS,
-            FLASH_LOAN_AGGREGATOR_ADDRESS,
-            LIGHT_QUOTER_V3,
-            UNISWAP_V3_FACTORY,
-            UNISWAP_V3_POOL_INIT_CODE_HASH]
-    });
+    // await hardhat.run("verify:verify", {
+    //     address: borrowingManager.address,
+    //     constructorArguments: [
+    //         NONFUNGIBLE_POSITION_MANAGER_ADDRESS,
+    //         FLASH_LOAN_AGGREGATOR_ADDRESS,
+    //         LIGHT_QUOTER_V3,
+    //         UNISWAP_V3_FACTORY,
+    //         UNISWAP_V3_POOL_INIT_CODE_HASH]
+    // });
+    // await sleep(5000);
 
-    await hardhat.run("verify:verify", {
-        address: lightQuoter.address,
-        constructorArguments: []
-    });
+    // await hardhat.run("verify:verify", {
+    //     address: lightQuoter.address,
+    //     constructorArguments: []
+    // });
+    // await sleep(5000);
 
-    await hardhat.run("verify:verify", {
-        address: flashLoanAggregator.address,
-        constructorArguments: [AAVE_POOL_ADDRESS_PROVIDER, UNISWAP_V3_FACTORY_0, UNISWAP_V3_POOL_INIT_CODE_HASH_0, dexName0]
-    });
+    // await hardhat.run("verify:verify", {
+    //     address: flashLoanAggregator.address,
+    //     constructorArguments: [AAVE_POOL_ADDRESS_PROVIDER, V3_FACTORY[0], V3_POOL_INIT_CODE_HASH[0], dexNames[0]]
+    // });
+    // await sleep(5000);
 
     // await hardhat.run("verify:verify", {
     //     address: positionEffectivityChart.address,
@@ -161,11 +174,12 @@ async function main() {
     //         UNISWAP_V3_FACTORY,
     //         UNISWAP_V3_POOL_INIT_CODE_HASH]
     // });
+    // await sleep(5000);
 
-    await hardhat.run("verify:verify", {
-        address: vaultAddress,
-        constructorArguments: [10000]
-    });
+    // await hardhat.run("verify:verify", {
+    //     address: vaultAddress,
+    //     constructorArguments: [6900]
+    // });
     // curl -X GET "https://kavascan.com/api?module=contract&action=verify_via_sourcify&addressHash=${borrowingManager.address}" -H "accept: application/json"
 
     console.log("done!");
