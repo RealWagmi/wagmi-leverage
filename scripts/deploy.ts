@@ -80,11 +80,12 @@ async function main() {
     // const FLASH_LOAN_AGGREGATOR_ADDRESS = "0x487b4ce942FC6CED5C7E4e62351aC6a3f686ca0F";
 
     /// wagmi Metis
-    // const dexname ="wagmi"
+    // const dexname = "wagmi"
     // const NONFUNGIBLE_POSITION_MANAGER_ADDRESS = "0xA7E119Cf6c8f5Be29Ca82611752463f0fFcb1B02";
     // const UNISWAP_V3_POOL_INIT_CODE_HASH = "0x30146866f3a846fe3c636beb2756dbd24cf321bc52c9113c837c21f47470dfeb";
     // const UNISWAP_V3_FACTORY = "0x8112E18a34b63964388a3B2984037d6a2EFE5B8A";
-    // const LIGHT_QUOTER_V3 = "0x5A9fd95e3f865d416bb77b49d1Cca8109FcAbfE5";
+    // const LIGHT_QUOTER_V3 = lightQuoter.address;
+    // const FLASH_LOAN_AGGREGATOR_ADDRESS = flashLoanAggregator.address;
 
     // sushi arbitrum
     // https://github.com/sushiswap/v3-periphery/tree/master/deployments
