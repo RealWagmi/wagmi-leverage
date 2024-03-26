@@ -54,6 +54,20 @@ async function main() {
     //     ];
     //     AAVE_POOL_ADDRESS_PROVIDER = "0xa97684ead0e402dC232d5A977953DF7ECBaB3CDb";
     //     // borrowingManagerAddresses = ["0xda57F8C3466d42D58B505ED9121F348210Ac78A4", "0xF0F3FC7Da32D49BaB7730142817B2B2111427dc1", "0x4a7d1Bd77557461aBa23b74bF41153034524107b"];
+    // } else if (network === "base") {
+    //     dexNames = ["uniswap", "sushi", "pancake"];
+    //     V3_FACTORY = [
+    //         "0x33128a8fC17869897dcE68Ed026d694621f6FDfD",
+    //         "0xc35DADB65012eC5796536bD9864eD8773aBc74C4",
+    //         "0x41ff9AA7e16B8B1a8a8dc4f0eFacd93D02d071c9"
+    //     ];
+    //     V3_POOL_INIT_CODE_HASH = [
+    //         "0xe34f199b19b2b4f47f68442619d555527d244f78a3297ea89325f843f87b8b54",
+    //         "0xe34f199b19b2b4f47f68442619d555527d244f78a3297ea89325f843f87b8b54",
+    //         "0x6ce8eb472fa82df5469c6ab6d485f17c3ad13c8cd7af59b3d4a8026c5ce0f7e2"
+    //     ];
+    //     AAVE_POOL_ADDRESS_PROVIDER = "0xe20fCBdBfFC4Dd138cE8b2E6FBb6CB49777ad64D";
+    //     // borrowingManagerAddresses = ["0xda57F8C3466d42D58B505ED9121F348210Ac78A4", "0xF0F3FC7Da32D49BaB7730142817B2B2111427dc1", "0x4a7d1Bd77557461aBa23b74bF41153034524107b"];
     // }
 
     // const FlashLoanAggregatorFactory = await ethers.getContractFactory("FlashLoanAggregator");
@@ -113,12 +127,29 @@ async function main() {
     // const LIGHT_QUOTER_V3 = "0x4948f07aCEF9958eb03f1F46f5A949594f2dA2D9";
     // const FLASH_LOAN_AGGREGATOR_ADDRESS = "0x9f665a1476Afe20637393b61Dc4ce8c6d1108b0A";
 
+    // sushi Base
+    // https://github.com/sushiswap/v3-periphery/tree/master/deployments
+    // const dexname = "sushi"
+    // const NONFUNGIBLE_POSITION_MANAGER_ADDRESS = "0x80C7DD17B01855a6D2347444a0FCC36136a314de";
+    // const UNISWAP_V3_POOL_INIT_CODE_HASH = "0xe34f199b19b2b4f47f68442619d555527d244f78a3297ea89325f843f87b8b54";
+    // const UNISWAP_V3_FACTORY = "0xc35DADB65012eC5796536bD9864eD8773aBc74C4";
+    // const LIGHT_QUOTER_V3 = "0xC49c177736107fD8351ed6564136B9ADbE5B1eC3";
+    // const FLASH_LOAN_AGGREGATOR_ADDRESS = flashLoanAggregator.address;
+
     /// Uniswap Mainnet, Goerli, Arbitrum, Optimism, Polygon
     // const dexname = "uniswap"
     // const NONFUNGIBLE_POSITION_MANAGER_ADDRESS = "0xC36442b4a4522E871399CD717aBDD847Ab11FE88";
     // const UNISWAP_V3_POOL_INIT_CODE_HASH = "0xe34f199b19b2b4f47f68442619d555527d244f78a3297ea89325f843f87b8b54";
     // const UNISWAP_V3_FACTORY = "0x1F98431c8aD98523631AE4a59f267346ea31F984";
     // const LIGHT_QUOTER_V3 = lightQuoter.address;
+    // const FLASH_LOAN_AGGREGATOR_ADDRESS = flashLoanAggregator.address;
+
+    /// Uniswap Base
+    // const dexname = "uniswap"
+    // const NONFUNGIBLE_POSITION_MANAGER_ADDRESS = "0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1";
+    // const UNISWAP_V3_POOL_INIT_CODE_HASH = "0xe34f199b19b2b4f47f68442619d555527d244f78a3297ea89325f843f87b8b54";
+    // const UNISWAP_V3_FACTORY = "0x33128a8fC17869897dcE68Ed026d694621f6FDfD";
+    // const LIGHT_QUOTER_V3 = "0xC49c177736107fD8351ed6564136B9ADbE5B1eC3";
     // const FLASH_LOAN_AGGREGATOR_ADDRESS = flashLoanAggregator.address;
 
 

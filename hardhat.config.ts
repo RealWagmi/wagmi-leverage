@@ -222,7 +222,7 @@ const config: HardhatUserConfig = {
         network: "base",
         chainId: 8453,
         urls: {
-          apiURL: "https://apibasescan.org/api",
+          apiURL: "https://api.basescan.org/api",
           browserURL: "https://basescan.org"
         }
       }
