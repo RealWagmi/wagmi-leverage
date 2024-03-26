@@ -214,6 +214,7 @@ contract FlashLoanAggregator is
         Protocol protocol = Protocol(flashLoanParams[0].protocol);
 
         Debt[] memory debts = new Debt[](flashLoanParams.length);
+        uint256 saleTokenBalance = decodedData.saleToken.getBalance();
 
         if (protocol == Protocol.UNISWAP) {
             address pool = _getUniswapV3Pool(decodedData.saleToken, flashLoanParams[0].data);
@@ -233,7 +234,7 @@ contract FlashLoanAggregator is
                         recipient: msg.sender,
                         amount: amount,
                         currentIndex: 0,
-                        prevBalance: 0,
+                        prevBalance: saleTokenBalance,
                         debts: debts,
                         originData: data
                     })
@@ -255,7 +256,7 @@ contract FlashLoanAggregator is
                         recipient: msg.sender,
                         amount: amount,
                         currentIndex: 0,
-                        prevBalance: 0,
+                        prevBalance: saleTokenBalance,
                         debts: debts,
                         originData: data
                     })
@@ -553,7 +554,7 @@ contract FlashLoanAggregator is
             decodedData.saleToken.safeTransfer(decodedDataExt.recipient, flashBalance);
             // Invoke the WagmiLeverage callback function with updated parameters
             IWagmiLeverageFlashCallback(decodedDataExt.recipient).wagmiLeverageFlashCallback(
-                flashBalance,
+                flashBalance < decodedDataExt.amount ? flashBalance : decodedDataExt.amount,
                 interest,
                 decodedDataExt.originData
             );
