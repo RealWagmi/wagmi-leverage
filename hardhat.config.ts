@@ -185,6 +185,15 @@ const config: HardhatUserConfig = {
       accounts: [`${process.env.PRIVATE_KEY}`],
       loggingEnabled: true,
     },
+    base: {
+      url: 'https://mainnet.base.org',
+      chainId: 8453,
+      gas: 'auto',
+      gasMultiplier: 1.2,
+      gasPrice: 'auto',
+      accounts: [`${process.env.PRIVATE_KEY}`],
+      loggingEnabled: true,
+    },
   },
   mocha: {
     timeout: 100000,
@@ -197,6 +206,7 @@ const config: HardhatUserConfig = {
       polygon: `${process.env.POLIGONSCAN_API_KEY}`,
       opera: `${process.env.FTMSCAN_API_KEY}`,
       arbitrumOne: `${process.env.ARBISCAN_API_KEY}`,
+      base: `${process.env.BASE_API_KEY}`,
       metis: "metis",
     },
     customChains: [
@@ -206,6 +216,14 @@ const config: HardhatUserConfig = {
         urls: {
           apiURL: "https://api.routescan.io/v2/network/mainnet/evm/1088/etherscan",
           browserURL: "https://andromeda-explorer.metis.io"
+        }
+      },
+      {
+        network: "base",
+        chainId: 8453,
+        urls: {
+          apiURL: "https://apibasescan.org/api",
+          browserURL: "https://basescan.org"
         }
       }
     ]
