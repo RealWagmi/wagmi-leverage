@@ -3,13 +3,14 @@ pragma solidity 0.8.23;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./interfaces/ILightQuoterV3.sol";
 import { IUniswapV3Pool } from "./interfaces/IUniswapV3Pool.sol";
+import { IPancakeV3PoolMinimal } from "./interfaces/IPancakeV3PoolMinimal.sol";
 import { SafeCast } from "./vendor0.8/uniswap/SafeCast.sol";
 import { TickMath } from "./vendor0.8/uniswap/TickMath.sol";
 import { SwapMath } from "./vendor0.8/uniswap/SwapMath.sol";
 import { BitMath } from "./vendor0.8/uniswap/BitMath.sol";
 import { AmountsLiquidity } from "./libraries/AmountsLiquidity.sol";
 
-import "hardhat/console.sol";
+// import "hardhat/console.sol";
 
 contract LightQuoterV3 is ILightQuoterV3 {
     using SafeCast for uint256;
@@ -18,7 +19,7 @@ contract LightQuoterV3 is ILightQuoterV3 {
 
     struct SwapCache {
         bool zeroForOne;
-        uint8 feeProtocol;
+        uint32 feeProtocol;
         uint128 liquidityStart;
         uint24 fee;
         int24 tickSpacing;
@@ -209,13 +210,13 @@ contract LightQuoterV3 is ILightQuoterV3 {
         address swapPool,
         SwapCache memory cache
     ) private view {
-        (uint160 sqrtPriceX96, int24 tick, , , , uint8 feeProtocol, ) = IUniswapV3Pool(swapPool)
-            .slot0();
-        console.log("tick");
+        (uint160 sqrtPriceX96, int24 tick, , , , uint32 feeProtocol, ) = IPancakeV3PoolMinimal(
+            swapPool
+        ).slot0();
+
         cache.zeroForOne = zeroForOne;
         cache.liquidityStart = IUniswapV3Pool(swapPool).liquidity();
-        console.log("liquidityStart", cache.liquidityStart);
-        cache.feeProtocol = zeroForOne ? (feeProtocol % 16) : (feeProtocol >> 4);
+        cache.feeProtocol = zeroForOne ? (feeProtocol % 65536) : (feeProtocol >> 16);
         cache.fee = IUniswapV3Pool(swapPool).fee();
         cache.tickSpacing = IUniswapV3Pool(swapPool).tickSpacing();
         cache.tick = tick;
@@ -295,10 +296,8 @@ contract LightQuoterV3 is ILightQuoterV3 {
 
             // if the protocol fee is on, calculate how much is owed, decrement feeAmount, and increment protocolFee
             if (cache.feeProtocol > 0) {
-                unchecked {
-                    uint256 delta = step.feeAmount / cache.feeProtocol;
-                    step.feeAmount -= delta;
-                }
+                uint256 delta = (step.feeAmount * cache.feeProtocol) / 10000;
+                step.feeAmount -= delta;
             }
 
             // shift tick if we reached the next price

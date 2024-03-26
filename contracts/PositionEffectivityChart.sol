@@ -2,6 +2,7 @@
 pragma solidity 0.8.23;
 
 import { IUniswapV3Pool } from "./interfaces/IUniswapV3Pool.sol";
+import { IPancakeV3PoolMinimal } from "./interfaces/IPancakeV3PoolMinimal.sol";
 import { TickMath } from "./vendor0.8/uniswap/TickMath.sol";
 import { AmountsLiquidity } from "./libraries/AmountsLiquidity.sol";
 import { FullMath, LiquidityAmounts } from "./vendor0.8/uniswap/LiquidityAmounts.sol";
@@ -51,7 +52,7 @@ contract PositionEffectivityChart {
     /// @dev The maximum value that can be returned from #getSqrtRatioAtTick. Equivalent to getSqrtRatioAtTick(MAX_TICK)
     uint160 internal constant MAX_SQRT_RATIO = 1461446703485210103287273052203988822378723970342;
 
-    address public immutable UNDERLYING_V3_FACTORY_ADDRESS;
+    address public immutable PANCAKE_V3_POOL_DEPLOYER;
     address public immutable UNDERLYING_POSITION_MANAGER_ADDRESS;
     bytes32 public immutable UNDERLYING_V3_POOL_INIT_CODE_HASH;
 
@@ -60,7 +61,7 @@ contract PositionEffectivityChart {
         address _v3FactoryAddress,
         bytes32 _v3PoolInitCodeHash
     ) {
-        UNDERLYING_V3_FACTORY_ADDRESS = _v3FactoryAddress;
+        PANCAKE_V3_POOL_DEPLOYER = _v3FactoryAddress;
         UNDERLYING_V3_POOL_INIT_CODE_HASH = _v3PoolInitCodeHash;
         UNDERLYING_POSITION_MANAGER_ADDRESS = _positionManagerAddress;
     }
@@ -305,8 +306,9 @@ contract PositionEffectivityChart {
         );
         {
             address poolAddress = computePoolAddress(cache.saleToken, cache.holdToken, cache.fee);
-            (cache.entrySqrtPriceX96, cache.entryTick, , , , , ) = IUniswapV3Pool(poolAddress)
-                .slot0();
+            (cache.entrySqrtPriceX96, cache.entryTick, , , , , ) = IPancakeV3PoolMinimal(
+                poolAddress
+            ).slot0();
 
             cache.lowerSqrtPriceX96 = TickMath.getSqrtRatioAtTick(tickLower);
             cache.upperSqrtPriceX96 = TickMath.getSqrtRatioAtTick(tickUpper);
@@ -366,7 +368,7 @@ contract PositionEffectivityChart {
                     keccak256(
                         abi.encodePacked(
                             hex"ff",
-                            UNDERLYING_V3_FACTORY_ADDRESS,
+                            PANCAKE_V3_POOL_DEPLOYER,
                             keccak256(abi.encode(tokenA, tokenB, fee)),
                             UNDERLYING_V3_POOL_INIT_CODE_HASH
                         )

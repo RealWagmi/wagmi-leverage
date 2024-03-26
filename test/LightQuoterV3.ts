@@ -38,7 +38,6 @@ describe("LightQuoterV3", function () {
     };
 
     let [amountOutIQuoterV2, sqrtPriceX96AfterIQuoterV2, ,] = await quoter.callStatic.quoteExactInputSingle(paramsIQuoterV2);
-    console.log("amountOutIQuoterV2", amountOutIQuoterV2.toString());
 
     expect(sqrtPriceX96After).to.equal(sqrtPriceX96AfterIQuoterV2);
     expect(amountOut).to.equal(amountOutIQuoterV2);

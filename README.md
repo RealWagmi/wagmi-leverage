@@ -6,7 +6,7 @@ git clone --recursive https://github.com/RealWagmi/wagmi-leverage.git
 npm install
 mv .env_example .env
 npm run compile
-npm run test:all
+npm run test
 ```
 
 
@@ -25,55 +25,34 @@ Traders on Wagmi can margin long or short any pair without the risk of forced pr
 
 ## Deployed
 
-### V1.5
-
-| Network | ChainId | Contract | Address |
-|------| ------- | -----| -----|
-| METIS | 1088 | LightQuoterV3 | [0x5A9fd95e3f865d416bb77b49d1Cca8109FcAbfE5](https://explorer.metis.io/address/0x5A9fd95e3f865d416bb77b49d1Cca8109FcAbfE5) |
-
-##
-
-
-
-| V3 | Network | ChainId | Contract | Address |
-|------|------| ------- | -----| -----|
-| Wagmi | METIS | 1088 | LiquidityBorrowingManager | [0x20fa274D00fF4917A13cD464FDbB200475B6EaBd](https://explorer.metis.io/address/0x20fa274D00fF4917A13cD464FDbB200475B6EaBd) |
-| Wagmi | METIS | 1088 | Vault| [0x5e0e38F49c89D2535D12459a3Cab40dB6D2f7fC9](https://explorer.metis.io/address/0x5e0e38F49c89D2535D12459a3Cab40dB6D2f7fC9) |
-| Wagmi | METIS | 1088 | PositionEffectivityChart| [0xbbF979671b95fB27Ab19d817Fc41E6F51D4a9Bf9](https://explorer.metis.io/address/0xbbF979671b95fB27Ab19d817Fc41E6F51D4a9Bf9) |
-
-##
-
 ### V2.0
 
 | indx | Protocol | Network | supported |
 |------| ------- | -----| -----|
-| 1 | uniswap | KAVA | ✅ |
-| 2 | aave | KAVA | ❌ |
+| 1 | uniswap | BSC | ✅ |
+| 2 | aave | BSC | ✅ |
 
 ##
 
 | Network | V3 | dexIndex |
 |------| ------- | -----|
-| KAVA | wagmi | 0 |
-| KAVA | kinetix | 1 |
+| BSC | pancake | 0 |
+| BSC | uniswap | 1 |
+| BSC | sushi | 2 |
 
 ##
 
 | Network | ChainId | Contract | Address |
 |------| ------- | -----| -----|
-| KAVA | 2222 | LightQuoterV3 | [0x1C9B724cBd7683c80226cE35a39F9127950ABb95](https://kavascan.com/address/0x1C9B724cBd7683c80226cE35a39F9127950ABb95) |
-| KAVA | 2222 | FlashLoanAggregator | [0x487b4ce942FC6CED5C7E4e62351aC6a3f686ca0F](https://kavascan.com/address/0x487b4ce942FC6CED5C7E4e62351aC6a3f686ca0F) |
+| BSC | 56 | LightQuoterV3 | [0xC49c177736107fD8351ed6564136B9ADbE5B1eC3](https://bscscan.com/address/0xC49c177736107fD8351ed6564136B9ADbE5B1eC3) |
+| BSC | 56 | FlashLoanAggregator | [0x259308E7d8557e4Ba192De1aB8Cf7e0E21896442](https://bscscan.com/address/0x259308E7d8557e4Ba192De1aB8Cf7e0E21896442) |
 ##
 
 | V3 | Network | ChainId | Contract | Address |
 |------|------| ------- | -----| -----|
-| wagmi | KAVA | 2222 | LiquidityBorrowingManager | [0x509C3dc2f8e0ED449CEc8c766A9F5A94E1768d80](https://kavascan.com/address/0x509C3dc2f8e0ED449CEc8c766A9F5A94E1768d80) |
-| wagmi | KAVA | 2222 | Vault| [0xAC253339AE3C75E2dbAB375Da8Bac9c19B6614f9](https://kavascan.com/address/0xAC253339AE3C75E2dbAB375Da8Bac9c19B6614f9) |
-| wagmi | KAVA | 2222 | PositionEffectivityChart| [0x8cf6FFDb1E544348988c151296911beF15A11E2a](https://kavascan.com/address/0x8cf6FFDb1E544348988c151296911beF15A11E2a) |
-| kinetix | KAVA | 2222 | LiquidityBorrowingManager | [0xEb4A370Ff9F67080828e21B7395dFA91E38472F4](https://kavascan.com/address/0xEb4A370Ff9F67080828e21B7395dFA91E38472F4) |
-| kinetix | KAVA | 2222 | Vault| [0x18FB4c6c62301145384e893Bd71e32a78c4A81D3](https://kavascan.com/address/0x18FB4c6c62301145384e893Bd71e32a78c4A81D3) |
-| kinetix | KAVA | 2222 | PositionEffectivityChart| [0x3753D5B59ce749c277e8698fcB2875535781F843](https://kavascan.com/address/0x3753D5B59ce749c277e8698fcB2875535781F843) |
-
+| pancake | BSC | 56 | LiquidityBorrowingManager | [0x7228b8110d9A85BD6740bE03677Eb6deDe0546a8](https://bscscan.com/address/0x7228b8110d9A85BD6740bE03677Eb6deDe0546a8) |
+| pancake | BSC | 56 | Vault| [0x7D9A602ff2582C1111C47134914415Ba4F1323A5](https://bscscan.com/address/0x7D9A602ff2582C1111C47134914415Ba4F1323A5) |
+| pancake | BSC | 56 | PositionEffectivityChart| [0x141cB6458c8090B23539083C6545070D2ce4EF87](https://bscscan.com/address/0x141cB6458c8090B23539083C6545070D2ce4EF87) |
 
 ##
 

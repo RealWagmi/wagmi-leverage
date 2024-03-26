@@ -19,12 +19,9 @@ contract $ApproveSwapAndPay is ApproveSwapAndPay {
     event return$_v3SwapExact(uint256 amountOut);
 
     constructor(
-        address _UNDERLYING_V3_FACTORY_ADDRESS,
+        address _PANCAKE_V3_POOL_DEPLOYER,
         bytes32 _UNDERLYING_V3_POOL_INIT_CODE_HASH
-    )
-        payable
-        ApproveSwapAndPay(_UNDERLYING_V3_FACTORY_ADDRESS, _UNDERLYING_V3_POOL_INIT_CODE_HASH)
-    {}
+    ) payable ApproveSwapAndPay(_PANCAKE_V3_POOL_DEPLOYER, _UNDERLYING_V3_POOL_INIT_CODE_HASH) {}
 
     function $_maxApproveIfNecessary(address token, address spender) external {
         super._maxApproveIfNecessary(token, spender);

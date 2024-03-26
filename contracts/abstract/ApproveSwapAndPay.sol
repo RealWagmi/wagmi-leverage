@@ -20,7 +20,7 @@ abstract contract ApproveSwapAndPay is IApproveSwapAndPay {
     uint160 internal constant MAX_SQRT_RATIO_SUB_ONE =
         1461446703485210103287273052203988822378723970341;
 
-    address public immutable UNDERLYING_V3_FACTORY_ADDRESS;
+    address public immutable PANCAKE_V3_POOL_DEPLOYER;
     bytes32 public immutable UNDERLYING_V3_POOL_INIT_CODE_HASH;
 
     ///     swapTarget   => (func.selector => is allowed)
@@ -28,11 +28,8 @@ abstract contract ApproveSwapAndPay is IApproveSwapAndPay {
 
     error SwapSlippageCheckError(uint256 expectedOut, uint256 receivedOut);
 
-    constructor(
-        address _UNDERLYING_V3_FACTORY_ADDRESS,
-        bytes32 _UNDERLYING_V3_POOL_INIT_CODE_HASH
-    ) {
-        UNDERLYING_V3_FACTORY_ADDRESS = _UNDERLYING_V3_FACTORY_ADDRESS;
+    constructor(address _PANCAKE_V3_POOL_DEPLOYER, bytes32 _UNDERLYING_V3_POOL_INIT_CODE_HASH) {
+        PANCAKE_V3_POOL_DEPLOYER = _PANCAKE_V3_POOL_DEPLOYER;
         UNDERLYING_V3_POOL_INIT_CODE_HASH = _UNDERLYING_V3_POOL_INIT_CODE_HASH;
     }
 
@@ -270,7 +267,7 @@ abstract contract ApproveSwapAndPay is IApproveSwapAndPay {
                     keccak256(
                         abi.encodePacked(
                             hex"ff",
-                            UNDERLYING_V3_FACTORY_ADDRESS,
+                            PANCAKE_V3_POOL_DEPLOYER,
                             keccak256(abi.encode(tokenA, tokenB, fee)),
                             UNDERLYING_V3_POOL_INIT_CODE_HASH
                         )

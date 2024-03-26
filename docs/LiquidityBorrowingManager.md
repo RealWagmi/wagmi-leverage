@@ -10,10 +10,10 @@
 
 ## Methods
 
-### UNDERLYING_V3_FACTORY_ADDRESS
+### PANCAKE_V3_POOL_DEPLOYER
 
 ```solidity
-function UNDERLYING_V3_FACTORY_ADDRESS() external view returns (address)
+function PANCAKE_V3_POOL_DEPLOYER() external view returns (address)
 ```
 
 

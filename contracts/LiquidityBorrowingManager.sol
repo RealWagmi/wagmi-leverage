@@ -60,14 +60,14 @@ contract LiquidityBorrowingManager is
         address _underlyingPositionManagerAddress,
         address _flashLoanAggregator,
         address _lightQuoterV3,
-        address _underlyingV3Factory,
+        address _pancakeV3PoolDeployer,
         bytes32 _underlyingV3PoolInitCodeHash
     )
         LiquidityManager(
             _underlyingPositionManagerAddress,
             _flashLoanAggregator,
             _lightQuoterV3,
-            _underlyingV3Factory,
+            _pancakeV3PoolDeployer,
             _underlyingV3PoolInitCodeHash
         )
     {}

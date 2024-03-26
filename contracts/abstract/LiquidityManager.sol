@@ -10,6 +10,7 @@ import { AmountsLiquidity } from "../libraries/AmountsLiquidity.sol";
 import "../interfaces/abstract/ILiquidityManager.sol";
 import "../interfaces/IWagmiLeverageFlashCallback.sol";
 import "../interfaces/IFlashLoanAggregator.sol";
+import { IPancakeV3PoolMinimal } from "../interfaces/IPancakeV3PoolMinimal.sol";
 
 abstract contract LiquidityManager is
     ApproveSwapAndPay,
@@ -42,16 +43,16 @@ abstract contract LiquidityManager is
      * @dev Contract constructor.
      * @param _underlyingPositionManagerAddress Address of the underlying position manager contract.
      * @param _lightQuoterV3 Address of the LightQuoterV3 contract.
-     * @param _underlyingV3Factory Address of the underlying V3 factory contract.
+     * @param _pancakeV3PoolDeployer Address of the underlying V3 factory contract.
      * @param _underlyingV3PoolInitCodeHash The init code hash of the underlying V3 pool.
      */
     constructor(
         address _underlyingPositionManagerAddress,
         address _flashLoanAggregator,
         address _lightQuoterV3,
-        address _underlyingV3Factory,
+        address _pancakeV3PoolDeployer,
         bytes32 _underlyingV3PoolInitCodeHash
-    ) ApproveSwapAndPay(_underlyingV3Factory, _underlyingV3PoolInitCodeHash) {
+    ) ApproveSwapAndPay(_pancakeV3PoolDeployer, _underlyingV3PoolInitCodeHash) {
         // Assign the underlying position manager contract address
         underlyingPositionManager = INonfungiblePositionManager(_underlyingPositionManagerAddress);
         // Assign the quoter contract address
@@ -533,7 +534,7 @@ abstract contract LiquidityManager is
             (tokenA, tokenB) = (tokenB, tokenA);
         }
         address poolAddress = computePoolAddress(tokenA, tokenB, fee);
-        (sqrtPriceX96, , , , , , ) = IUniswapV3Pool(poolAddress).slot0();
+        (sqrtPriceX96, , , , , , ) = IPancakeV3PoolMinimal(poolAddress).slot0();
     }
 
     /**
