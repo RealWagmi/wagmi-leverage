@@ -48,9 +48,9 @@ Traders on Wagmi can margin long or short any pair without the risk of forced pr
 | Network | ChainId | Contract | Address |
 |------| ------- | -----| -----|
 | BSC | 56 | LightQuoterV3 | [0xC49c177736107fD8351ed6564136B9ADbE5B1eC3](https://bscscan.com/address/0xC49c177736107fD8351ed6564136B9ADbE5B1eC3) |
-| BSC | 56 | FlashLoanAggregator | [0x259308E7d8557e4Ba192De1aB8Cf7e0E21896442](https://bscscan.com/address/0x259308E7d8557e4Ba192De1aB8Cf7e0E21896442) |
+| BSC | 56 | FlashLoanAggregator | [0xe1f435DfcD6969Ae22E96AAB56D5bA1BC837B1d5](https://bscscan.com/address/0xe1f435DfcD6969Ae22E96AAB56D5bA1BC837B1d5) |
 | ARBITRUM | 42161 | LightQuoterV3 | [0xCaDD693F005A5af8bF7Afa2BF45DFA8d61053DB6](https://arbiscan.io/address/0xCaDD693F005A5af8bF7Afa2BF45DFA8d61053DB6) |
-| ARBITRUM | 42161 | FlashLoanAggregator | [0x9f665a1476Afe20637393b61Dc4ce8c6d1108b0A](https://arbiscan.io/address/0x9f665a1476Afe20637393b61Dc4ce8c6d1108b0A) |
+| ARBITRUM | 42161 | FlashLoanAggregator | [0x923e559a12d856f3217b715fE98a7a07CabD6Ed7](https://arbiscan.io/address/0x923e559a12d856f3217b715fE98a7a07CabD6Ed7) |
 ##
 
 | Network | ChainId | Contract | Address |
@@ -58,9 +58,9 @@ Traders on Wagmi can margin long or short any pair without the risk of forced pr
 | BSC | 56 | LiquidityBorrowingManager | [0x7228b8110d9A85BD6740bE03677Eb6deDe0546a8](https://bscscan.com/address/0x7228b8110d9A85BD6740bE03677Eb6deDe0546a8) |
 | BSC | 56 | Vault| [0x7D9A602ff2582C1111C47134914415Ba4F1323A5](https://bscscan.com/address/0x7D9A602ff2582C1111C47134914415Ba4F1323A5) |
 | BSC | 56 | PositionEffectivityChart| [0x141cB6458c8090B23539083C6545070D2ce4EF87](https://bscscan.com/address/0x141cB6458c8090B23539083C6545070D2ce4EF87) |
-| ARBITRUM | 42161 | LiquidityBorrowingManager | [0x4a7d1Bd77557461aBa23b74bF41153034524107b](https://bscscan.com/address/0x4a7d1Bd77557461aBa23b74bF41153034524107b) |
-| ARBITRUM | 42161 | Vault| [0xC7e051C6A1dA34E6aE8171DB3de38515388D85f8](https://bscscan.com/address/0xC7e051C6A1dA34E6aE8171DB3de38515388D85f8) |
-| ARBITRUM | 42161 | PositionEffectivityChart| [0x521C2d8Be14060B7617c2E2597eE9b52A995E65F](https://bscscan.com/address/0x521C2d8Be14060B7617c2E2597eE9b52A995E65F) |
+| ARBITRUM | 42161 | LiquidityBorrowingManager | [0x4a7d1Bd77557461aBa23b74bF41153034524107b](https://arbiscan.io/address/0x4a7d1Bd77557461aBa23b74bF41153034524107b) |
+| ARBITRUM | 42161 | Vault| [0xC7e051C6A1dA34E6aE8171DB3de38515388D85f8](https://arbiscan.io/address/0xC7e051C6A1dA34E6aE8171DB3de38515388D85f8) |
+| ARBITRUM | 42161 | PositionEffectivityChart| [0x521C2d8Be14060B7617c2E2597eE9b52A995E65F](https://arbiscan.io/address/0x521C2d8Be14060B7617c2E2597eE9b52A995E65F) |
 
 ##
 
