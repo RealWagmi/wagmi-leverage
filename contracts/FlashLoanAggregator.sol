@@ -288,9 +288,10 @@ contract FlashLoanAggregator is
         address /*asset*/,
         uint256 /*amount*/,
         uint256 premium,
-        address /*initiator*/,
+        address initiator,
         bytes calldata data
     ) external override returns (bool) {
+        assert(initiator == address(this));
         _excuteCallback(premium, data);
         return true;
     }
