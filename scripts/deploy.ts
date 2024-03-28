@@ -32,7 +32,7 @@ async function main() {
     //         "0xe34f199b19b2b4f47f68442619d555527d244f78a3297ea89325f843f87b8b54"
     //     ];
 
-    //     // borrowingManagerAddresses = ["0x509C3dc2f8e0ED449CEc8c766A9F5A94E1768d80", "0xEb4A370Ff9F67080828e21B7395dFA91E38472F4"];
+    //     // borrowingManagerAddresses = ["0x74b1775afC80BF595fA4D50Fd939Ed1f78Faa397", "0x3683F2D48a4F9Bf087f3141455CDA81a2e60F168"];
 
     // } else if (network === "metis") {
     //     dexNames = ["wagmi"];
@@ -99,7 +99,7 @@ async function main() {
     // const UNISWAP_V3_POOL_INIT_CODE_HASH = "0xe34f199b19b2b4f47f68442619d555527d244f78a3297ea89325f843f87b8b54";
     // const UNISWAP_V3_FACTORY = "0x2dBB6254231C5569B6A4313c6C1F5Fe1340b35C2";
     // const LIGHT_QUOTER_V3 = "0x1C9B724cBd7683c80226cE35a39F9127950ABb95";
-    // const FLASH_LOAN_AGGREGATOR_ADDRESS = "0x487b4ce942FC6CED5C7E4e62351aC6a3f686ca0F";
+    // const FLASH_LOAN_AGGREGATOR_ADDRESS = "0x923e559a12d856f3217b715fE98a7a07CabD6Ed7";
 
     // wagmi kava
     // https://github.com/RealWagmi/v3_core
@@ -108,7 +108,7 @@ async function main() {
     // const UNISWAP_V3_POOL_INIT_CODE_HASH = "0x30146866f3a846fe3c636beb2756dbd24cf321bc52c9113c837c21f47470dfeb";
     // const UNISWAP_V3_FACTORY = "0x0e0Ce4D450c705F8a0B6Dd9d5123e3df2787D16B";
     // const LIGHT_QUOTER_V3 = "0x1C9B724cBd7683c80226cE35a39F9127950ABb95";
-    // const FLASH_LOAN_AGGREGATOR_ADDRESS = "0x487b4ce942FC6CED5C7E4e62351aC6a3f686ca0F";
+    // const FLASH_LOAN_AGGREGATOR_ADDRESS = "0x923e559a12d856f3217b715fE98a7a07CabD6Ed7";
 
     /// wagmi Metis
     // const dexname = "wagmi"

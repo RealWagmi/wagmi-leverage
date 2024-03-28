@@ -81,14 +81,14 @@ Traders on Wagmi can margin long or short any pair without the risk of forced pr
 
 | V3 | Network | ChainId | Contract | Address |
 |------|------| ------- | -----| -----|
-| wagmi | KAVA | 2222 | LiquidityBorrowingManager | [0x509C3dc2f8e0ED449CEc8c766A9F5A94E1768d80](https://kavascan.com/address/0x509C3dc2f8e0ED449CEc8c766A9F5A94E1768d80) |
-| wagmi | KAVA | 2222 | Vault| [0xAC253339AE3C75E2dbAB375Da8Bac9c19B6614f9](https://kavascan.com/address/0xAC253339AE3C75E2dbAB375Da8Bac9c19B6614f9) |
+| wagmi | KAVA | 2222 | LiquidityBorrowingManager | [0x74b1775afC80BF595fA4D50Fd939Ed1f78Faa397](https://kavascan.com/address/0x74b1775afC80BF595fA4D50Fd939Ed1f78Faa397) |
+| wagmi | KAVA | 2222 | Vault| [0x256e66E948331BB92dc5BE728c45c4d16c440d5B](https://kavascan.com/address/0x256e66E948331BB92dc5BE728c45c4d16c440d5B) |
 | wagmi | KAVA | 2222 | PositionEffectivityChart| [0x8cf6FFDb1E544348988c151296911beF15A11E2a](https://kavascan.com/address/0x8cf6FFDb1E544348988c151296911beF15A11E2a) |
 | wagmi | METIS | 1088 | LiquidityBorrowingManager | [0x9ac33eeccF1c88c4aC13d800D6e5aa4C75C6125c](https://explorer.metis.io/address/0x9ac33eeccF1c88c4aC13d800D6e5aa4C75C6125c) |
 | wagmi | METIS| 1088 | Vault| [0xa762032CdB17c262e23639A769EDc7aAE5db3002](https://explorer.metis.io/address/0xa762032CdB17c262e23639A769EDc7aAE5db3002) |
 | wagmi | METIS | 1088 | PositionEffectivityChart| [0x48Cc6C8c69662fa3FCd579936041c0C3Ec8DCEE7](https://explorer.metis.io/address/0x48Cc6C8c69662fa3FCd579936041c0C3Ec8DCEE7) |
-| kinetix | KAVA | 2222 | LiquidityBorrowingManager | [0xEb4A370Ff9F67080828e21B7395dFA91E38472F4](https://kavascan.com/address/0xEb4A370Ff9F67080828e21B7395dFA91E38472F4) |
-| kinetix | KAVA | 2222 | Vault| [0x18FB4c6c62301145384e893Bd71e32a78c4A81D3](https://kavascan.com/address/0x18FB4c6c62301145384e893Bd71e32a78c4A81D3) |
+| kinetix | KAVA | 2222 | LiquidityBorrowingManager | [0x3683F2D48a4F9Bf087f3141455CDA81a2e60F168](https://kavascan.com/address/0x3683F2D48a4F9Bf087f3141455CDA81a2e60F168) |
+| kinetix | KAVA | 2222 | Vault| [0xA5C4944e305473Ba14e791967B6f89a8c11B51Bc](https://kavascan.com/address/0xA5C4944e305473Ba14e791967B6f89a8c11B51Bc) |
 | kinetix | KAVA | 2222 | PositionEffectivityChart| [0x3753D5B59ce749c277e8698fcB2875535781F843](https://kavascan.com/address/0x3753D5B59ce749c277e8698fcB2875535781F843) |
 | uniswap | ARBITRUM | 42161 | LiquidityBorrowingManager | [0xda57F8C3466d42D58B505ED9121F348210Ac78A4](https://arbiscan.io/address/0xda57F8C3466d42D58B505ED9121F348210Ac78A4) |
 | uniswap | ARBITRUM | 42161 | Vault| [0xc69F42f9aE0f6B6Ae5cF5766Ab47b57f7966EcDA](https://arbiscan.io/address/0xc69F42f9aE0f6B6Ae5cF5766Ab47b57f7966EcDA) |
