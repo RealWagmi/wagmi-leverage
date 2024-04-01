@@ -427,6 +427,7 @@ describe("WagmiLeverageTests", () => {
         let repayParams: ILiquidityBorrowingManager.RepayParamsStruct = {
             isEmergency: false,
             routes: flashRoutes,
+            externalSwap: [],
             borrowingKey: borrowingKey,
             minHoldTokenOut: BigNumber.from(0),
             minSaleTokenOut: BigNumber.from(0)
@@ -479,6 +480,7 @@ describe("WagmiLeverageTests", () => {
         repayParams = {
             isEmergency: false,
             routes: flashRoutes,
+            externalSwap: [],
             borrowingKey: borrowingKey,
             minHoldTokenOut: BigNumber.from(0),
             minSaleTokenOut: BigNumber.from(0)
@@ -657,6 +659,7 @@ describe("WagmiLeverageTests", () => {
         let repayParams: ILiquidityBorrowingManager.RepayParamsStruct = {
             isEmergency: false,
             routes: flashRoutes,
+            externalSwap: [],
             borrowingKey: borrowingKey,
             minHoldTokenOut: BigNumber.from(0),
             minSaleTokenOut: BigNumber.from(0)
@@ -797,6 +800,7 @@ describe("WagmiLeverageTests", () => {
         let params: ILiquidityBorrowingManager.RepayParamsStruct = {
             isEmergency: false,
             routes: flashRoutes,
+            externalSwap: [],
             borrowingKey: borrowingKey,
             minHoldTokenOut: BigNumber.from(0),
             minSaleTokenOut: BigNumber.from(0)
@@ -932,6 +936,7 @@ describe("WagmiLeverageTests", () => {
         let params: ILiquidityBorrowingManager.RepayParamsStruct = {
             isEmergency: false,
             routes: flashRoutes,
+            externalSwap: [],
             borrowingKey: borrowingKey,
             minHoldTokenOut: BigNumber.from(0),
             minSaleTokenOut: BigNumber.from(0)
@@ -1245,6 +1250,7 @@ describe("WagmiLeverageTests", () => {
         let params: ILiquidityBorrowingManager.RepayParamsStruct = {
             isEmergency: true,
             routes: flashRoutes,
+            externalSwap: [],
             borrowingKey: borrowingKey,
             minHoldTokenOut: BigNumber.from(0),
             minSaleTokenOut: BigNumber.from(0)
@@ -1296,6 +1302,7 @@ describe("WagmiLeverageTests", () => {
         let params: ILiquidityBorrowingManager.RepayParamsStruct = {
             isEmergency: false,
             routes: flashRoutes,
+            externalSwap: [],
             borrowingKey: borrowingKey,
             minHoldTokenOut: BigNumber.from(0),
             minSaleTokenOut: BigNumber.from(0)
@@ -1313,6 +1320,7 @@ describe("WagmiLeverageTests", () => {
         params = {
             isEmergency: false,
             routes: flashRoutes,
+            externalSwap: [],
             borrowingKey: borrowingKey,
             minHoldTokenOut: BigNumber.from(0),
             minSaleTokenOut: BigNumber.from(0)
@@ -1443,6 +1451,7 @@ describe("WagmiLeverageTests", () => {
         let params: ILiquidityBorrowingManager.RepayParamsStruct = {
             isEmergency: false,
             routes: flashRoutes,
+            externalSwap: [],
             borrowingKey: borrowingKey,
             minHoldTokenOut: BigNumber.from(0),
             minSaleTokenOut: BigNumber.from(0)
@@ -1476,6 +1485,7 @@ describe("WagmiLeverageTests", () => {
         params = {
             isEmergency: false,
             routes: flashRoutes,
+            externalSwap: [],
             borrowingKey: borrowingKey,
             minHoldTokenOut: BigNumber.from(0),
             minSaleTokenOut: BigNumber.from(0)

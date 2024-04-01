@@ -79,6 +79,8 @@ interface ILiquidityBorrowingManager is
         bool isEmergency;
         /// @notice FlashLoanRoutes structs, detailing each route used in the repayment process.
         FlashLoanRoutes routes;
+        /// @notice The external swap parameters for the repayment transaction
+        SwapParams[] externalSwap;
         /// @notice The unique identifier (borrowing key) associated with the specific loan being repaid.
         bytes32 borrowingKey;
         /// @notice The minimum amount of hold token that must be received when the loan is repaid.

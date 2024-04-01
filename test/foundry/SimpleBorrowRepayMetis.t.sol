@@ -114,6 +114,7 @@ contract SimpleBorrowRepayMetis is Test, HelperContract {
             memory AliceRepayingParams = ILiquidityBorrowingManager.RepayParams({
                 isEmergency: false,
                 routes: routes,
+                externalSwap: swapParams,
                 borrowingKey: AliceBorrowingKeys[0],
                 minHoldTokenOut: 0,
                 minSaleTokenOut: 0

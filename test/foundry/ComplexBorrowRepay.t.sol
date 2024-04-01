@@ -197,10 +197,13 @@ contract ComplexBorrowRepay is Test, HelperContract {
             flashLoanParams: flashLoanParams
         });
 
+        IApproveSwapAndPay.SwapParams[] memory swapParams;
+
         LiquidityBorrowingManager.RepayParams
             memory AliceRepayingParams = ILiquidityBorrowingManager.RepayParams({
                 isEmergency: false,
                 routes: routes,
+                externalSwap: swapParams,
                 borrowingKey: AliceBorrowingKeys[0],
                 minHoldTokenOut: 0,
                 minSaleTokenOut: 0

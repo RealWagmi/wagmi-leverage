@@ -232,10 +232,12 @@ contract ContractTest is Test, HelperContract {
         bytes32 _borrowingKey
     ) public pure returns (LiquidityBorrowingManager.RepayParams memory repay) {
         ILiquidityManager.FlashLoanRoutes memory routes;
+        IApproveSwapAndPay.SwapParams[] memory swapParams;
 
         repay = ILiquidityBorrowingManager.RepayParams({
             isEmergency: false,
             routes: routes,
+            externalSwap: swapParams,
             borrowingKey: _borrowingKey,
             minHoldTokenOut: 0,
             minSaleTokenOut: 0

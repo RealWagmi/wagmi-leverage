@@ -10,7 +10,7 @@ import "./interfaces/ILiquidityBorrowingManager.sol";
 import { EnumerableSet } from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
 /**
- * WAGMI Leverage Protocol v2.1
+ * WAGMI Leverage Protocol v2.2
  * wagmi.com                                                
  * 
     /  |  _  /  | /      \  /      \ /  \     /  |/      | 
@@ -607,6 +607,10 @@ contract LiquidityBorrowingManager is
                 address(this),
                 borrowing.borrowedAmount + liquidationBonus
             );
+
+            if (params.externalSwap.length != 0) {
+                _callExternalSwap(borrowing.holdToken, params.externalSwap);
+            }
 
             // Restore liquidity using the borrowed amount and pay a daily rate fee
             LoanInfo[] memory loans = loansInfo[params.borrowingKey];
