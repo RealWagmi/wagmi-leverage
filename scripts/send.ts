@@ -22,6 +22,7 @@ async function main() {
     const LiquidityBorrowingManager = await ethers.getContractFactory("LiquidityBorrowingManager");
     const borrowingManager = LiquidityBorrowingManager.attach(borrowingManagerAddress);
 
+    await borrowingManager.updateSettings(1, [69]);
     // const operator = "";
     // await borrowingManager.updateSettings(2, [operator]);
     // await sleep(5000);

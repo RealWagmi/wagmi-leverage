@@ -10,7 +10,7 @@ import "./interfaces/ILiquidityBorrowingManager.sol";
 import { EnumerableSet } from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
 /**
- * WAGMI Leverage Protocol v2.0
+ * WAGMI Leverage Protocol v2.1
  * wagmi.com                                                
  * 
     /  |  _  /  | /      \  /      \ /  \     /  |/      | 
@@ -75,19 +75,15 @@ contract LiquidityBorrowingManager is
     /**
      * @dev Adds or removes a swap call params to the whitelist.
      * @param swapTarget The address of the target contract for the swap call.
-     * @param funcSelector The function selector of the swap call.
      * @param isAllowed A boolean indicating whether the swap call is allowed or not.
      */
-    function setSwapCallToWhitelist(
-        address swapTarget,
-        bytes4 funcSelector,
-        bool isAllowed
-    ) external onlyOwner {
+    function setSwapCallToWhitelist(address swapTarget, bool isAllowed) external onlyOwner {
         (swapTarget == VAULT_ADDRESS ||
             swapTarget == address(this) ||
-            swapTarget == address(underlyingPositionManager) ||
-            funcSelector == IERC20.transferFrom.selector).revertError(ErrLib.ErrorCode.FORBIDDEN);
-        whitelistedCall[swapTarget][funcSelector] = isAllowed;
+            swapTarget == address(underlyingPositionManager)).revertError(
+                ErrLib.ErrorCode.FORBIDDEN
+            );
+        whitelistedCall[swapTarget] = isAllowed;
     }
 
     /**
