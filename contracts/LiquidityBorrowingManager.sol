@@ -80,7 +80,9 @@ contract LiquidityBorrowingManager is
     function setSwapCallToWhitelist(address swapTarget, bool isAllowed) external onlyOwner {
         (swapTarget == VAULT_ADDRESS ||
             swapTarget == address(this) ||
-            swapTarget == address(underlyingPositionManager));
+            swapTarget == address(underlyingPositionManager)).revertError(
+                ErrLib.ErrorCode.FORBIDDEN
+            );
         whitelistedCall[swapTarget] = isAllowed;
     }
 
