@@ -561,7 +561,7 @@ function repay(ILiquidityBorrowingManager.RepayParams params, uint256 deadline) 
 ### setSwapCallToWhitelist
 
 ```solidity
-function setSwapCallToWhitelist(address swapTarget, bytes4 funcSelector, bool isAllowed) external nonpayable
+function setSwapCallToWhitelist(address swapTarget, bool isAllowed) external nonpayable
 ```
 
 
@@ -573,13 +573,12 @@ function setSwapCallToWhitelist(address swapTarget, bytes4 funcSelector, bool is
 | Name | Type | Description |
 |---|---|---|
 | swapTarget | address | undefined |
-| funcSelector | bytes4 | undefined |
 | isAllowed | bool | undefined |
 
 ### swapIsWhitelisted
 
 ```solidity
-function swapIsWhitelisted(address swapTarget, bytes4 selector) external view returns (bool IsWhitelisted)
+function swapIsWhitelisted(address swapTarget) external view returns (bool IsWhitelisted)
 ```
 
 
@@ -591,7 +590,6 @@ function swapIsWhitelisted(address swapTarget, bytes4 selector) external view re
 | Name | Type | Description |
 |---|---|---|
 | swapTarget | address | undefined |
-| selector | bytes4 | undefined |
 
 #### Returns
 

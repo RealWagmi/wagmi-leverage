@@ -38,25 +38,4 @@ library ExternalCall {
             mstore(0x40, add(ptr, data.length)) // Set storage pointer to empty space
         }
     }
-
-    /**
-     * @dev Reads the first 4 bytes from the given `swapData` parameter and returns them as a bytes4 value.
-     * @param swapData The calldata containing the data to read the first 4 bytes from.
-     * @return result The first 4 bytes of the `swapData` as a bytes4 value.
-     */
-    function _readFirstBytes4(bytes calldata swapData) internal pure returns (bytes4 result) {
-        // Read the bytes4 from array memory
-        assembly ("memory-safe") {
-            let ptr := mload(0x40)
-            calldatacopy(ptr, swapData.offset, 32)
-            result := mload(ptr)
-            // Solidity does not require us to clean the trailing bytes.
-            // We do it anyway
-            result := and(
-                result,
-                0xFFFFFFFF00000000000000000000000000000000000000000000000000000000
-            )
-        }
-        return result;
-    }
 }

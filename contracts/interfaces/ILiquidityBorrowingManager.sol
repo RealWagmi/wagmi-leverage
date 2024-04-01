@@ -137,11 +137,7 @@ interface ILiquidityBorrowingManager is
 
     function collectLoansFees(address[] calldata tokens) external;
 
-    function setSwapCallToWhitelist(
-        address swapTarget,
-        bytes4 funcSelector,
-        bool isAllowed
-    ) external;
+    function setSwapCallToWhitelist(address swapTarget, bool isAllowed) external;
 
     function updateHoldTokenDailyRate(address saleToken, address holdToken, uint256 value) external;
 

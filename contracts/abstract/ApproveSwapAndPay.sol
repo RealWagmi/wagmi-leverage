@@ -13,7 +13,6 @@ abstract contract ApproveSwapAndPay is IApproveSwapAndPay {
     using SafeCast for uint256;
     using TransferHelper for address;
     using { ExternalCall._externalCall } for address;
-    using { ExternalCall._readFirstBytes4 } for bytes;
     using { ErrLib.revertError } for bool;
 
     uint160 internal constant MIN_SQRT_RATIO_ADD_ONE = 4295128740;
@@ -23,8 +22,8 @@ abstract contract ApproveSwapAndPay is IApproveSwapAndPay {
     address public immutable PANCAKE_V3_POOL_DEPLOYER;
     bytes32 public immutable UNDERLYING_V3_POOL_INIT_CODE_HASH;
 
-    ///     swapTarget   => (func.selector => is allowed)
-    mapping(address => mapping(bytes4 => bool)) internal whitelistedCall;
+    ///     swapTarget   => is allowed)
+    mapping(address => bool) internal whitelistedCall;
 
     error SwapSlippageCheckError(uint256 expectedOut, uint256 receivedOut);
 
@@ -37,14 +36,10 @@ abstract contract ApproveSwapAndPay is IApproveSwapAndPay {
      * @notice Checks if a swap call is whitelisted.
      * @dev Determines if a given `swapTarget` address and function `selector` are whitelisted for swaps.
      * @param swapTarget The address to check if it is a whitelisted destination for a swap call.
-     * @param selector The function selector to check if it is whitelisted for calls to the `swapTarget`.
      * @return IsWhitelisted Returns `true` if the `swapTarget` address and `selector` combination is whitelisted, otherwise `false`.
      */
-    function swapIsWhitelisted(
-        address swapTarget,
-        bytes4 selector
-    ) external view returns (bool IsWhitelisted) {
-        IsWhitelisted = whitelistedCall[swapTarget][selector];
+    function swapIsWhitelisted(address swapTarget) external view returns (bool IsWhitelisted) {
+        IsWhitelisted = whitelistedCall[swapTarget];
     }
 
     /**
@@ -132,11 +127,8 @@ abstract contract ApproveSwapAndPay is IApproveSwapAndPay {
                 externalSwap[i].swapData
             );
             (swapTarget == address(0)).revertError(ErrLib.ErrorCode.SWAP_TARGET_ADDRESS_IS_ZERO);
-            bytes4 funcSelector = swapData._readFirstBytes4();
             // Verifying if the swap target is whitelisted for the specified function selector
-            (!whitelistedCall[swapTarget][funcSelector]).revertError(
-                ErrLib.ErrorCode.SWAP_TARGET_NOT_APPROVED
-            );
+            (!whitelistedCall[swapTarget]).revertError(ErrLib.ErrorCode.SWAP_TARGET_NOT_APPROVED);
             // Maximizing approval if necessary
             _maxApproveIfNecessary(tokenIn, swapTarget);
 

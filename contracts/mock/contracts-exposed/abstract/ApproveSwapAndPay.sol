@@ -70,12 +70,8 @@ contract $ApproveSwapAndPay is ApproveSwapAndPay {
         emit return$_v3SwapExact(amountOut);
     }
 
-    function $_setSwapCallToWhitelist(
-        address swapTarget,
-        bytes4 funcSelector,
-        bool isAllowed
-    ) external {
-        whitelistedCall[swapTarget][funcSelector] = isAllowed;
+    function $_setSwapCallToWhitelist(address swapTarget, bool isAllowed) external {
+        whitelistedCall[swapTarget] = isAllowed;
     }
 
     receive() external payable {}

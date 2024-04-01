@@ -31,8 +31,5 @@ interface IApproveSwapAndPay {
         uint24 fee
     ) external view returns (address);
 
-    function swapIsWhitelisted(
-        address swapTarget,
-        bytes4 selector
-    ) external view returns (bool IsWhitelisted);
+    function swapIsWhitelisted(address swapTarget) external view returns (bool IsWhitelisted);
 }
