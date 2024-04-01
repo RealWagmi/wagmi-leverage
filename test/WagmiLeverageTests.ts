@@ -170,9 +170,9 @@ describe("WagmiLeverageTests", () => {
 
     it("should add swap target to whitelist will be successful", async () => {
         // onlyOwner
-        await expect(borrowingManager.connect(alice).setSwapCallToWhitelist(aggregatorMock.address, "0x627dd56a", true))
+        await expect(borrowingManager.connect(alice).setSwapCallToWhitelist(aggregatorMock.address, true))
             .to.be.reverted;
-        await borrowingManager.connect(owner).setSwapCallToWhitelist(aggregatorMock.address, "0x627dd56a", true);
+        await borrowingManager.connect(owner).setSwapCallToWhitelist(aggregatorMock.address, true);
     });
 
     it("updating settings by the owner will be successful", async () => {
@@ -1546,7 +1546,7 @@ describe("WagmiLeverageTests", () => {
             $approveSwapAndPay.$_callExternalSwap(USDT_ADDRESS, [swapParams])
         ).to.be.reverted; //swap is not white-listed
 
-        await $approveSwapAndPay.$_setSwapCallToWhitelist(aggregatorMock.address, "0x627dd56a", true);
+        await $approveSwapAndPay.$_setSwapCallToWhitelist(aggregatorMock.address, true);
 
         await $approveSwapAndPay.$_callExternalSwap(USDT_ADDRESS, [swapParams]);
 

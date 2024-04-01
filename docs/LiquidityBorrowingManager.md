@@ -623,7 +623,7 @@ function repay(ILiquidityBorrowingManager.RepayParams params, uint256 deadline) 
 ### setSwapCallToWhitelist
 
 ```solidity
-function setSwapCallToWhitelist(address swapTarget, bytes4 funcSelector, bool isAllowed) external nonpayable
+function setSwapCallToWhitelist(address swapTarget, bool isAllowed) external nonpayable
 ```
 
 
@@ -635,13 +635,12 @@ function setSwapCallToWhitelist(address swapTarget, bytes4 funcSelector, bool is
 | Name | Type | Description |
 |---|---|---|
 | swapTarget | address | The address of the target contract for the swap call. |
-| funcSelector | bytes4 | The function selector of the swap call. |
 | isAllowed | bool | A boolean indicating whether the swap call is allowed or not. |
 
 ### swapIsWhitelisted
 
 ```solidity
-function swapIsWhitelisted(address swapTarget, bytes4 selector) external view returns (bool IsWhitelisted)
+function swapIsWhitelisted(address swapTarget) external view returns (bool IsWhitelisted)
 ```
 
 Checks if a swap call is whitelisted.
@@ -653,7 +652,6 @@ Checks if a swap call is whitelisted.
 | Name | Type | Description |
 |---|---|---|
 | swapTarget | address | The address to check if it is a whitelisted destination for a swap call. |
-| selector | bytes4 | The function selector to check if it is whitelisted for calls to the `swapTarget`. |
 
 #### Returns
 
