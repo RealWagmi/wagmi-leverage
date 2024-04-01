@@ -38,7 +38,7 @@ async function main() {
     //     dexNames = ["wagmi"];
     //     V3_FACTORY = ["0x8112E18a34b63964388a3B2984037d6a2EFE5B8A"];
     //     V3_POOL_INIT_CODE_HASH = ["0x30146866f3a846fe3c636beb2756dbd24cf321bc52c9113c837c21f47470dfeb"];
-    //     // borrowingManagerAddresses = ["0x9ac33eeccF1c88c4aC13d800D6e5aa4C75C6125c"];
+    //     // borrowingManagerAddresses = ["0xcCf08F36C60dEE864e6068081F40e38483D0C334"];
 
     // } else if (network === "arbitrum") {
     //     dexNames = ["uniswap", "sushi", "pancake"];
