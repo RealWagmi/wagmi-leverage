@@ -45,6 +45,8 @@ contract PositionEffectivityChart {
         uint256 holdTokenDebt;
         uint256 marginDepo;
     }
+
+    uint24 internal constant FLASH_LOAN_FEE_COMPENSATION = 10100; // 1.01%
     /// @dev The minimum value that can be returned from #getSqrtRatioAtTick. Equivalent to getSqrtRatioAtTick(MIN_TICK)
     uint160 internal constant MIN_SQRT_RATIO = 4295128739;
 
@@ -313,6 +315,7 @@ contract PositionEffectivityChart {
 
             cache.holdTokenDebt = _getSingleSideRoundUpAmount(
                 zeroForSaleToken,
+                cache.fee,
                 cache.lowerSqrtPriceX96,
                 cache.upperSqrtPriceX96,
                 loan.liquidity
@@ -335,6 +338,7 @@ contract PositionEffectivityChart {
 
     function _getSingleSideRoundUpAmount(
         bool zeroForSaleToken,
+        uint24 feeTiers,
         uint160 lowerSqrtPriceX96,
         uint160 upperSqrtPriceX96,
         uint128 liquidity
@@ -352,6 +356,9 @@ contract PositionEffectivityChart {
                     liquidity
                 )
         );
+        // Apply the fee tier to the borrowed amount
+        feeTiers += FLASH_LOAN_FEE_COMPENSATION;
+        amount += FullMath.mulDivRoundingUp(amount, feeTiers, 1e6 - feeTiers);
     }
 
     function computePoolAddress(
