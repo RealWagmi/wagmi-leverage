@@ -28,20 +28,16 @@ async function main() {
     // await borrowingManager.updateSettings(2, [operator]);
     // await sleep(5000);
     // //metis
-    // await borrowingManager.setSwapCallToWhitelist("0x8B741B0D79BE80E135C880F7583d427B4D41F015", "0x04e45aaf", true);//exactInputSingle
+    // await borrowingManager.setSwapCallToWhitelist("0x8B741B0D79BE80E135C880F7583d427B4D41F015", true);//exactInputSingle
     // await sleep(5000);
-    // await borrowingManager.setSwapCallToWhitelist("0x8B741B0D79BE80E135C880F7583d427B4D41F015", "0xb858183f", true);//exactInput
-    // await sleep(5000);
-    // //Open Ocean Exchange Proxy
-    // await borrowingManager.setSwapCallToWhitelist("0x6352a56caadC4F1E25CD6c75970Fa768A3304e64", "0x90411a32", true);//swap
+    //Open Ocean Exchange Proxy
+    // await borrowingManager.setSwapCallToWhitelist("0x6352a56caadC4F1E25CD6c75970Fa768A3304e64", true);//swap
     // ====================================================
     // // kava
-    // await borrowingManager.setSwapCallToWhitelist("0xB9a14EE1cd3417f3AcC988F61650895151abde24", "0x04e45aaf", true);// SwapRouter02 exactInputSingle
-    // await sleep(5000);
-    // await borrowingManager.setSwapCallToWhitelist("0xB9a14EE1cd3417f3AcC988F61650895151abde24", "0xb858183f", true);//SwapRouter02 exactInput
+    // await borrowingManager.setSwapCallToWhitelist("0xB9a14EE1cd3417f3AcC988F61650895151abde24",true);// SwapRouter02 exactInputSingle
     // await sleep(5000);
     // //Open Ocean Exchange Proxy
-    // await borrowingManager.setSwapCallToWhitelist("0x6352a56caadC4F1E25CD6c75970Fa768A3304e64", "0x90411a32", true);//swap
+    // await borrowingManager.setSwapCallToWhitelist("0x6352a56caadC4F1E25CD6c75970Fa768A3304e64", true);//swap
 
     console.log("done!");
     process.exit(0);

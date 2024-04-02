@@ -84,8 +84,8 @@ Traders on Wagmi can margin long or short any pair without the risk of forced pr
 | wagmi | KAVA | 2222 | LiquidityBorrowingManager | [0x74b1775afC80BF595fA4D50Fd939Ed1f78Faa397](https://kavascan.com/address/0x74b1775afC80BF595fA4D50Fd939Ed1f78Faa397) |
 | wagmi | KAVA | 2222 | Vault| [0x256e66E948331BB92dc5BE728c45c4d16c440d5B](https://kavascan.com/address/0x256e66E948331BB92dc5BE728c45c4d16c440d5B) |
 | wagmi | KAVA | 2222 | PositionEffectivityChart| [0x755C71DEF546e541fffA7B78f6888D7a41d6d18F](https://kavascan.com/address/0x755C71DEF546e541fffA7B78f6888D7a41d6d18F) |
-| wagmi | METIS | 1088 | LiquidityBorrowingManager | [0xcCf08F36C60dEE864e6068081F40e38483D0C334](https://explorer.metis.io/address/0xcCf08F36C60dEE864e6068081F40e38483D0C334) |
-| wagmi | METIS| 1088 | Vault| [0x3653377E210ce10f715B3F39A8B949242d5A130d](https://explorer.metis.io/address/0x3653377E210ce10f715B3F39A8B949242d5A130d) |
+| wagmi | METIS | 1088 | LiquidityBorrowingManager | [0x25a31a36Ff56Bc5570fd09Ac2da062115DAeb54e](https://explorer.metis.io/address/0x25a31a36Ff56Bc5570fd09Ac2da062115DAeb54e) |
+| wagmi | METIS| 1088 | Vault| [0x9cB36c835f189c40bD9cd1cf298717B7bb9e3630](https://explorer.metis.io/address/0x9cB36c835f189c40bD9cd1cf298717B7bb9e3630) |
 | wagmi | METIS | 1088 | PositionEffectivityChart| [0x2c80042504A5C0710e38B0dBD85ee5eB6f1A11CD](https://explorer.metis.io/address/0x2c80042504A5C0710e38B0dBD85ee5eB6f1A11CD) |
 | kinetix | KAVA | 2222 | LiquidityBorrowingManager | [0x3683F2D48a4F9Bf087f3141455CDA81a2e60F168](https://kavascan.com/address/0x3683F2D48a4F9Bf087f3141455CDA81a2e60F168) |
 | kinetix | KAVA | 2222 | Vault| [0xA5C4944e305473Ba14e791967B6f89a8c11B51Bc](https://kavascan.com/address/0xA5C4944e305473Ba14e791967B6f89a8c11B51Bc) |
