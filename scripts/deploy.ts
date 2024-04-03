@@ -11,11 +11,11 @@ async function main() {
 
     console.log(`[${network}] deployer address: ${deployer.address}`);
 
-    const LightQuoterV3Factory = await ethers.getContractFactory("LightQuoterV3");
-    const lightQuoter = await LightQuoterV3Factory.deploy();
-    await lightQuoter.deployed();
-    console.log(`Pancake LightQuoterV3  deployed to ${lightQuoter.address}`);
-    await sleep(10000);
+    // const LightQuoterV3Factory = await ethers.getContractFactory("LightQuoterV3");
+    // const lightQuoter = await LightQuoterV3Factory.deploy();
+    // await lightQuoter.deployed();
+    // console.log(`Pancake LightQuoterV3  deployed to ${lightQuoter.address}`);
+    // await sleep(10000);
 
     let PANCAKE_V3_POOL_DEPLOYER = "";
     let PANCAKE_V3_POOL_INIT_CODE_HASH = "";
@@ -53,8 +53,8 @@ async function main() {
     //     console.log(`add [${dexNames[i]}] UniswapV3Dex to flashLoanAggregator`);
     // }
 
-    const LIGHT_QUOTER_V3 = lightQuoter.address;
-    const FLASH_LOAN_AGGREGATOR_ADDRESS = "0x9f665a1476Afe20637393b61Dc4ce8c6d1108b0A";
+    // const LIGHT_QUOTER_V3 = "0xC49c177736107fD8351ed6564136B9ADbE5B1eC3";
+    // const FLASH_LOAN_AGGREGATOR_ADDRESS = "0xe1f435DfcD6969Ae22E96AAB56D5bA1BC837B1d5";
 
 
     const LiquidityBorrowingManager = await ethers.getContractFactory("LiquidityBorrowingManager");
@@ -85,7 +85,9 @@ async function main() {
     await sleep(5000);
 
     await borrowingManager.updateSettings(2, ["0x3c1Cb7D4c0ce0dc72eDc7Ea06acC866e62a8f1d8"]);
-    console.log(`operator added`);
+    console.log(`operator updateSettings`);
+    await borrowingManager.updateSettings(1, [69]);
+    console.log(`lb updateSettings`);
 
     // const LiquidityBorrowingManager = await ethers.getContractFactory("LiquidityBorrowingManager");
     // const borrowingManager = LiquidityBorrowingManager.attach("0x7C261c6c2F43ec86fbc8DA48505fDF12D66193c9");
@@ -93,7 +95,7 @@ async function main() {
     // await sleep(5000);
     // await borrowingManager.updateSettings(4, [flashLoanAggregator.address]);
 
-    // await sleep(30000);
+    await sleep(30000);
 
 
     await hardhat.run("verify:verify", {
@@ -106,10 +108,10 @@ async function main() {
             PANCAKE_V3_POOL_INIT_CODE_HASH]
     });
 
-    await hardhat.run("verify:verify", {
-        address: lightQuoter.address,
-        constructorArguments: []
-    });
+    // await hardhat.run("verify:verify", {
+    //     address: lightQuoter.address,
+    //     constructorArguments: []
+    // });
 
     // await hardhat.run("verify:verify", {
     //     address: flashLoanAggregator.address,

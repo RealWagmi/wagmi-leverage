@@ -22,7 +22,7 @@ abstract contract ApproveSwapAndPay is IApproveSwapAndPay {
     address public immutable PANCAKE_V3_POOL_DEPLOYER;
     bytes32 public immutable UNDERLYING_V3_POOL_INIT_CODE_HASH;
 
-    ///     swapTarget   => is allowed)
+    ///     swapTarget   => is allowed
     mapping(address => bool) internal whitelistedCall;
 
     error SwapSlippageCheckError(uint256 expectedOut, uint256 receivedOut);

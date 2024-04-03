@@ -2,9 +2,9 @@
 
 
 
-> LiquidityBorrowingManager
 
 
+WAGMI Leverage Protocol v2.2 wagmi.com                                                  /  |  _  /  | /      \  /      \ /  \     /  |/      |  $$ | / \ $$ |/$$$$$$  |/$$$$$$  |$$  \   /$$ |$$$$$$/  $$ |/$  \$$ |$$ |__$$ |$$ | _$$/ $$$  \ /$$$ |  $$ |   $$ /$$$  $$ |$$    $$ |$$ |/    |$$$$  /$$$$ |  $$ |   $$ $$/$$ $$ |$$$$$$$$ |$$ |$$$$ |$$ $$ $$/$$ |  $$ |   $$$$/  $$$$ |$$ |  $$ |$$ \__$$ |$$ |$$$/ $$ | _$$ |_  $$$/    $$$ |$$ |  $$ |$$    $$/ $$ | $/  $$ |/ $$   |   $$/      $$/ $$/   $$/  $$$$$$/  $$/      $$/ $$$$$$/  
 
 
 
@@ -930,6 +930,23 @@ Indicates that a borrower has repaid their loan, optionally with the help of a l
 | borrower  | address | undefined |
 | liquidator  | address | undefined |
 | borrowingKey  | bytes32 | undefined |
+
+### ToWhitelist
+
+```solidity
+event ToWhitelist(address swapTarget, bool isAllowed)
+```
+
+
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| swapTarget  | address | undefined |
+| isAllowed  | bool | undefined |
 
 ### UpdateHoldTokeEntranceFee
 

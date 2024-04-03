@@ -79,6 +79,8 @@ interface ILiquidityBorrowingManager is
         bool isEmergency;
         /// @notice FlashLoanRoutes structs, detailing each route used in the repayment process.
         FlashLoanRoutes routes;
+        /// @notice The external swap parameters for the repayment transaction
+        SwapParams[] externalSwap;
         /// @notice The unique identifier (borrowing key) associated with the specific loan being repaid.
         bytes32 borrowingKey;
         /// @notice The minimum amount of hold token that must be received when the loan is repaid.
@@ -111,6 +113,8 @@ interface ILiquidityBorrowingManager is
     event UpdateHoldTokeEntranceFee(address saleToken, address holdToken, uint256 value);
     /// Indicates that a borrower has increased their collateral balance for a loan
     event IncreaseCollateralBalance(address borrower, bytes32 borrowingKey, uint256 collateralAmt);
+
+    event ToWhitelist(address swapTarget, bool isAllowed);
 
     event Harvest(bytes32 borrowingKey, uint256 harvestedAmt);
 

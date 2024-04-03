@@ -55,9 +55,9 @@ Traders on Wagmi can margin long or short any pair without the risk of forced pr
 
 | Network | ChainId | Contract | Address |
 |------| ------- | -----| -----|
-| BSC | 56 | LiquidityBorrowingManager | [0x7228b8110d9A85BD6740bE03677Eb6deDe0546a8](https://bscscan.com/address/0x7228b8110d9A85BD6740bE03677Eb6deDe0546a8) |
-| BSC | 56 | Vault| [0x7D9A602ff2582C1111C47134914415Ba4F1323A5](https://bscscan.com/address/0x7D9A602ff2582C1111C47134914415Ba4F1323A5) |
-| BSC | 56 | PositionEffectivityChart| [0x141cB6458c8090B23539083C6545070D2ce4EF87](https://bscscan.com/address/0x141cB6458c8090B23539083C6545070D2ce4EF87) |
+| BSC | 56 | LiquidityBorrowingManager | [0x3C422982E76261a3eC73363CAcf5C3731e318104](https://bscscan.com/address/0x3C422982E76261a3eC73363CAcf5C3731e318104) |
+| BSC | 56 | Vault| [0x7dE3beB983bA84607CB7e98251f32742b103BCFB](https://bscscan.com/address/0x7dE3beB983bA84607CB7e98251f32742b103BCFB) |
+| BSC | 56 | PositionEffectivityChart| [0xAB8195dbDB65E74aafc13b7FFc08A1978E481868](https://bscscan.com/address/0xAB8195dbDB65E74aafc13b7FFc08A1978E481868) |
 | ARBITRUM | 42161 | LiquidityBorrowingManager | [0x4a7d1Bd77557461aBa23b74bF41153034524107b](https://arbiscan.io/address/0x4a7d1Bd77557461aBa23b74bF41153034524107b) |
 | ARBITRUM | 42161 | Vault| [0xC7e051C6A1dA34E6aE8171DB3de38515388D85f8](https://arbiscan.io/address/0xC7e051C6A1dA34E6aE8171DB3de38515388D85f8) |
 | ARBITRUM | 42161 | PositionEffectivityChart| [0x521C2d8Be14060B7617c2E2597eE9b52A995E65F](https://arbiscan.io/address/0x521C2d8Be14060B7617c2E2597eE9b52A995E65F) |
