@@ -931,6 +931,23 @@ Indicates that a borrower has repaid their loan, optionally with the help of a l
 | liquidator  | address | undefined |
 | borrowingKey  | bytes32 | undefined |
 
+### ToWhitelist
+
+```solidity
+event ToWhitelist(address swapTarget, bool isAllowed)
+```
+
+
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| swapTarget  | address | undefined |
+| isAllowed  | bool | undefined |
+
 ### UpdateHoldTokeEntranceFee
 
 ```solidity

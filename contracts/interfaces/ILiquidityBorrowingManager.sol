@@ -114,6 +114,8 @@ interface ILiquidityBorrowingManager is
     /// Indicates that a borrower has increased their collateral balance for a loan
     event IncreaseCollateralBalance(address borrower, bytes32 borrowingKey, uint256 collateralAmt);
 
+    event ToWhitelist(address swapTarget, bool isAllowed);
+
     event Harvest(bytes32 borrowingKey, uint256 harvestedAmt);
 
     error TooLittleReceivedError(uint256 minOut, uint256 out);

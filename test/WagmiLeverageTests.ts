@@ -1158,7 +1158,7 @@ describe("WagmiLeverageTests", () => {
         let roundUpvalue = debt.info.borrowedAmount.mul(10).mod(10000).gt(0) ? 1 : 0;
         let collateralBalance = debt.collateralBalance;
         expect(collateralBalance).to.be.equal(
-            ethers.utils.parseUnits(debt.info.borrowedAmount.mul(20).div(10000).add(roundUpvalue).toString(), 18)
+            ethers.utils.parseUnits(debt.info.borrowedAmount.mul(30).div(10000).add(roundUpvalue).toString(), 18)
         ); // 0.1% borrowedAmount
         amountIn = ethers.utils.parseUnits("10", 6);//amount usdt
         swap_params = ethers.utils.defaultAbiCoder.encode(
@@ -1207,7 +1207,7 @@ describe("WagmiLeverageTests", () => {
     });
 
     it("updating the daily rate should be correct", async () => {
-        expect((await borrowingManager.getHoldTokenInfo(USDT_ADDRESS, WETH_ADDRESS)).currentDailyRate).to.be.equal(20); // 0.1% default rate
+        expect((await borrowingManager.getHoldTokenInfo(USDT_ADDRESS, WETH_ADDRESS)).currentDailyRate).to.be.equal(30); // 0.1% default rate
         let latest = await time.latest();
         let debt = (await borrowingManager.getBorrowerDebtsInfo(bob.address))[1];
         expect(debt.estimatedLifeTime).to.be.equal(86400); // 1 day
@@ -1215,7 +1215,7 @@ describe("WagmiLeverageTests", () => {
         let collateralBalance = debt.collateralBalance;
 
         expect(collateralBalance).to.be.equal(
-            ethers.utils.parseUnits(debt.info.borrowedAmount.mul(20).div(10000).add(roundUpvalue).toString(), 18)
+            ethers.utils.parseUnits(debt.info.borrowedAmount.mul(30).div(10000).add(roundUpvalue).toString(), 18)
         ); // 0.1% borrowedAmount
         await time.increaseTo(latest + 43200); //12 hours
 
@@ -1224,7 +1224,7 @@ describe("WagmiLeverageTests", () => {
             collateralBalance.div(2).div(COLLATERAL_BALANCE_PRECISION)
         );
         expect(debt.estimatedLifeTime).to.be.equal(43200); //24-12=12 Hours
-        await borrowingManager.connect(owner).updateHoldTokenDailyRate(USDT_ADDRESS, WETH_ADDRESS, 40); //0.2% MULTIPLE x2
+        await borrowingManager.connect(owner).updateHoldTokenDailyRate(USDT_ADDRESS, WETH_ADDRESS, 60); //0.2% MULTIPLE x2
         await time.increaseTo(latest + 43200 + 21600 + 1);
 
         debt = (await borrowingManager.getBorrowerDebtsInfo(bob.address))[1];
@@ -1407,11 +1407,11 @@ describe("WagmiLeverageTests", () => {
 
 
         let rateInfo = await borrowingManager.getHoldTokenInfo(WETH_ADDRESS, USDT_ADDRESS);
-        expect(rateInfo.currentDailyRate).to.be.equal(20); // default
+        expect(rateInfo.currentDailyRate).to.be.equal(30); // default
         expect(rateInfo.entranceFeeBP).to.be.equal(10); // default
         expect(rateInfo.totalBorrowed).to.be.equal(0);
         rateInfo = await borrowingManager.getHoldTokenInfo(USDT_ADDRESS, WETH_ADDRESS);
-        expect(rateInfo.currentDailyRate).to.be.equal(40);
+        expect(rateInfo.currentDailyRate).to.be.equal(60);
         expect(rateInfo.entranceFeeBP).to.be.equal(30);
         expect(rateInfo.totalBorrowed).to.be.gt(0);
         extinfo = await borrowingManager.getBorrowerDebtsInfo(bob.address);

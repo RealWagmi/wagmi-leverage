@@ -84,6 +84,7 @@ contract LiquidityBorrowingManager is
                 ErrLib.ErrorCode.FORBIDDEN
             );
         whitelistedCall[swapTarget] = isAllowed;
+        emit ToWhitelist(swapTarget, isAllowed);
     }
 
     /**
@@ -334,7 +335,7 @@ contract LiquidityBorrowingManager is
         bytes32 borrowingKey,
         uint256 collateralAmt,
         uint256 deadline
-    ) external checkDeadline(deadline) {
+    ) external nonReentrant checkDeadline(deadline) {
         BorrowingInfo storage borrowing = borrowingsInfo[borrowingKey];
         // Ensure that the borrowed position exists and the borrower is the message sender
         (borrowing.borrowedAmount == 0 || borrowing.borrower != address(msg.sender)).revertError(
