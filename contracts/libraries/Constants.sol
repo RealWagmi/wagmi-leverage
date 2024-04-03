@@ -7,7 +7,7 @@ library Constants {
     uint256 internal constant BPS = 1000;
     uint24 internal constant FLASH_LOAN_DEFAULT_VAULT_FEE = 6900; // 0.69 %
     uint24 internal constant FLASH_LOAN_FEE_COMPENSATION = 10100; // 1.01%
-    uint256 internal constant DEFAULT_DAILY_RATE = 20; // 0.2%
+    uint256 internal constant DEFAULT_DAILY_RATE = 30; // 0.3%
     uint256 internal constant MAX_PLATFORM_FEE = 2000; // 20%
     uint256 internal constant MAX_LIQUIDATION_BONUS = 1000; // 10%
     uint256 internal constant MAX_DAILY_RATE = 10000; // 100%
