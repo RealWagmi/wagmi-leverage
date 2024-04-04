@@ -32,7 +32,7 @@ async function main() {
     //         "0xe34f199b19b2b4f47f68442619d555527d244f78a3297ea89325f843f87b8b54"
     //     ];
 
-    //     // borrowingManagerAddresses = ["0x74b1775afC80BF595fA4D50Fd939Ed1f78Faa397", "0x3683F2D48a4F9Bf087f3141455CDA81a2e60F168"];
+    //     // borrowingManagerAddresses = ["0x496775412549d27A1eC4dDAde02c5c50C50dd8eE", "0xf58a7048b36b2A67dDda4f0E32E76B1081F3AaF0"];
 
     // } else if (network === "metis") {
     //     dexNames = ["wagmi"];
