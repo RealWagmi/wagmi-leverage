@@ -63,6 +63,7 @@ contract FlashLoanAggregator is
         bytes originData;
     }
 
+    uint256 public constant version = 1.0;
     IPoolAddressesProvider public override ADDRESSES_PROVIDER;
     IPool public override POOL;
 
@@ -385,19 +386,12 @@ contract FlashLoanAggregator is
         bytes32 initCodeHash
     ) private pure returns (address pool) {
         if (tokenA > tokenB) (tokenA, tokenB) = (tokenB, tokenA);
+        // dinamic fee support( algebra )
+        bytes32 pHash = fee > 0
+            ? keccak256(abi.encode(tokenA, tokenB, fee))
+            : keccak256(abi.encode(tokenA, tokenB));
         pool = address(
-            uint160(
-                uint256(
-                    keccak256(
-                        abi.encodePacked(
-                            hex"ff",
-                            factoryV3,
-                            keccak256(abi.encode(tokenA, tokenB, fee)),
-                            initCodeHash
-                        )
-                    )
-                )
-            )
+            uint160(uint256(keccak256(abi.encodePacked(hex"ff", factoryV3, pHash, initCodeHash))))
         );
     }
 
