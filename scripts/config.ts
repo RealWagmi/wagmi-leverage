@@ -1,13 +1,12 @@
 
 export default {
     borrowingManagerAddress: {
-        ["kava"]: {
-            ["wagmi"]: "0x509C3dc2f8e0ED449CEc8c766A9F5A94E1768d80",
-            ["kinetix"]: "0xEb4A370Ff9F67080828e21B7395dFA91E38472F4"
+        ["arbitrum"]: {
+            ["pancakeswap"]: "0x4a7d1Bd77557461aBa23b74bF41153034524107b",
         },
-        ["metis"]:
+        ["bsc"]:
         {
-            ["wagmi"]: "0x20fa274D00fF4917A13cD464FDbB200475B6EaBd"
+            ["pancakeswap"]: "0x3C422982E76261a3eC73363CAcf5C3731e318104"
         },
 
     }

@@ -8,7 +8,7 @@ async function sleep(ms: number) {
 
 async function main() {
     //const [deployer] = await ethers.getSigners();
-    let dexname = "wagmi";
+    let dexname = "pancakeswap";
 
     const network = hardhat.network.name as keyof typeof config.borrowingManagerAddress;
 
@@ -26,9 +26,9 @@ async function main() {
     // const operator = "";
     // await borrowingManager.updateSettings(2, [operator]);
     // await sleep(5000);
-    // //bsc
-    // await borrowingManager.setSwapCallToWhitelist("0x..", true);
-    // await sleep(5000);
+    //bsc
+    await borrowingManager.setSwapCallToWhitelist("0xDef1C0ded9bec7F1a1670819833240f027b25EfF", true);//matcha
+    await sleep(5000);
     console.log("done!");
     process.exit(0);
 }
