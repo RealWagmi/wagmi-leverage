@@ -60,6 +60,7 @@ Traders on Wagmi can margin long or short any pair without the risk of forced pr
 | ARBITRUM | sushi | 1 |
 | ARBITRUM | pancake | 2 |
 | METIS | wagmi | 0 |
+| METIS | hercules | 1 |
 | BASE | uniswap | 0 |
 | BASE | sushi | 1 |
 | BASE | pancake | 2 |
@@ -73,7 +74,7 @@ Traders on Wagmi can margin long or short any pair without the risk of forced pr
 | ARBITRUM | 42161 | LightQuoterV3 | [0x4948f07aCEF9958eb03f1F46f5A949594f2dA2D9](https://arbiscan.io/address/0x4948f07aCEF9958eb03f1F46f5A949594f2dA2D9) |
 | ARBITRUM | 42161 | FlashLoanAggregator | [0xAB4bc49175003EBdc7BD6bFae4afC700b185FdA9](https://arbiscan.io/address/0xAB4bc49175003EBdc7BD6bFae4afC700b185FdA9) |
 | METIS | 1088 | LightQuoterV3 | [0x3963793a9FB287Ac83aE3eAe849Ef35c98E4CE98](https://explorer.metis.io/address/0x3963793a9FB287Ac83aE3eAe849Ef35c98E4CE98) |
-| METIS | 1088 | FlashLoanAggregator | [0xCC096c9eFafbf8062F3Bf9894D08E9E912850E1d](https://explorer.metis.io/address/0xCC096c9eFafbf8062F3Bf9894D08E9E912850E1d) |
+| METIS | 1088 | FlashLoanAggregator | [0x056df39aCe357C1ABf67fb090e36C9ec126c8828](https://explorer.metis.io/address/0x056df39aCe357C1ABf67fb090e36C9ec126c8828) |
 | BASE | 8453 | LightQuoterV3 | [0xC49c177736107fD8351ed6564136B9ADbE5B1eC3](https://basescan.org/address/0xC49c177736107fD8351ed6564136B9ADbE5B1eC3) |
 | BASE | 8453 | FlashLoanAggregator | [0x7dD9B456Ef365D1e33b4733f9E796a1F5bB79c40](https://basescan.org/address/0x7dD9B456Ef365D1e33b4733f9E796a1F5bB79c40) |
 
