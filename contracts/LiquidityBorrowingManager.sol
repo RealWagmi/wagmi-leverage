@@ -10,7 +10,7 @@ import "./interfaces/ILiquidityBorrowingManager.sol";
 import { EnumerableSet } from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
 /**
- * WAGMI Leverage Protocol v2.2
+ * WAGMI Leverage Protocol v2.3
  * wagmi.com                                                
  * 
     /  |  _  /  | /      \  /      \ /  \     /  |/      | 
@@ -578,10 +578,7 @@ contract LiquidityBorrowingManager is
             if (completeRepayment) {
                 LoanInfo[] memory empty;
                 _removeKeysAndClearStorage(borrowing.borrower, params.borrowingKey, empty);
-                feesAmt =
-                    _pickUpPlatformFees(borrowing.holdToken, currentFees) /
-                    Constants.COLLATERAL_BALANCE_PRECISION +
-                    liquidationBonus;
+                feesAmt += liquidationBonus;
             } else {
                 // make changes to the storage
                 BorrowingInfo storage borrowingStorage = borrowingsInfo[params.borrowingKey];
