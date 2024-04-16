@@ -38,7 +38,7 @@ async function main() {
         dexNames = ["wagmi", "hercules"];
         V3_FACTORY = [
             "0x8112E18a34b63964388a3B2984037d6a2EFE5B8A",
-            "0xC5BfA92f27dF36d268422EE314a1387bB5ffB06A"
+            "0x43AA9b2eD25F972fD8D44fDfb77a4a514eAB4d71" //poolDeployer
         ];
         V3_POOL_INIT_CODE_HASH = [
             "0x30146866f3a846fe3c636beb2756dbd24cf321bc52c9113c837c21f47470dfeb",
