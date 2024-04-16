@@ -16,87 +16,88 @@ async function main() {
     // await lightQuoter.deployed();
     // console.log(`LightQuoterV3  deployed to ${lightQuoter.address}`);
     // await sleep(10000);
-    let dexNames: string[] = [];
-    let V3_FACTORY: string[] = [];
-    let V3_POOL_INIT_CODE_HASH: string[] = [];
-    let AAVE_POOL_ADDRESS_PROVIDER = constants.AddressZero;
-    let borrowingManagerAddresses: string[] = [];
-    if (network === "kava") {
-        dexNames = ["wagmi", "kinetix"];
-        V3_FACTORY = [
-            "0x0e0Ce4D450c705F8a0B6Dd9d5123e3df2787D16B",
-            "0x2dBB6254231C5569B6A4313c6C1F5Fe1340b35C2"
-        ];
-        V3_POOL_INIT_CODE_HASH = [
-            "0x30146866f3a846fe3c636beb2756dbd24cf321bc52c9113c837c21f47470dfeb",
-            "0xe34f199b19b2b4f47f68442619d555527d244f78a3297ea89325f843f87b8b54"
-        ];
+    // let dexNames: string[] = [];
+    // let V3_FACTORY: string[] = [];
+    // let V3_POOL_INIT_CODE_HASH: string[] = [];
+    // let AAVE_POOL_ADDRESS_PROVIDER = constants.AddressZero;
+    // let borrowingManagerAddresses: string[] = [];
+    // if (network === "kava") {
+    //     dexNames = ["wagmi", "kinetix"];
+    //     V3_FACTORY = [
+    //         "0x0e0Ce4D450c705F8a0B6Dd9d5123e3df2787D16B",
+    //         "0x2dBB6254231C5569B6A4313c6C1F5Fe1340b35C2"
+    //     ];
+    //     V3_POOL_INIT_CODE_HASH = [
+    //         "0x30146866f3a846fe3c636beb2756dbd24cf321bc52c9113c837c21f47470dfeb",
+    //         "0xe34f199b19b2b4f47f68442619d555527d244f78a3297ea89325f843f87b8b54"
+    //     ];
 
-        // borrowingManagerAddresses = ["0x496775412549d27A1eC4dDAde02c5c50C50dd8eE", "0xf58a7048b36b2A67dDda4f0E32E76B1081F3AaF0"];
+    //     // borrowingManagerAddresses = ["0x496775412549d27A1eC4dDAde02c5c50C50dd8eE", "0xf58a7048b36b2A67dDda4f0E32E76B1081F3AaF0"];
 
-    } else if (network === "metis") {
-        dexNames = ["wagmi", "hercules"];
-        V3_FACTORY = [
-            "0x8112E18a34b63964388a3B2984037d6a2EFE5B8A",
-            "0x43AA9b2eD25F972fD8D44fDfb77a4a514eAB4d71" //poolDeployer
-        ];
-        V3_POOL_INIT_CODE_HASH = [
-            "0x30146866f3a846fe3c636beb2756dbd24cf321bc52c9113c837c21f47470dfeb",
-            "0x6c1bebd370ba84753516bc1393c0d0a6c645856da55f5393ac8ab3d6dbc861d3"
-        ];
-        borrowingManagerAddresses = ["0x25a31a36Ff56Bc5570fd09Ac2da062115DAeb54e"];
+    // } else if (network === "metis") {
+    //     dexNames = ["wagmi", "hercules"];
+    //     V3_FACTORY = [
+    //         "0x8112E18a34b63964388a3B2984037d6a2EFE5B8A",
+    //         "0x43AA9b2eD25F972fD8D44fDfb77a4a514eAB4d71" //poolDeployer
+    //     ];
+    //     V3_POOL_INIT_CODE_HASH = [
+    //         "0x30146866f3a846fe3c636beb2756dbd24cf321bc52c9113c837c21f47470dfeb",
+    //         "0x6c1bebd370ba84753516bc1393c0d0a6c645856da55f5393ac8ab3d6dbc861d3"
+    //     ];
+    //     // borrowingManagerAddresses = ["0x25a31a36Ff56Bc5570fd09Ac2da062115DAeb54e"];
 
-    } else if (network === "arbitrum") {
-        dexNames = ["uniswap", "sushi", "pancake"];
-        V3_FACTORY = [
-            "0x1F98431c8aD98523631AE4a59f267346ea31F984",
-            "0x1af415a1EbA07a4986a52B6f2e7dE7003D82231e",
-            "0x41ff9AA7e16B8B1a8a8dc4f0eFacd93D02d071c9"
-        ];
-        V3_POOL_INIT_CODE_HASH = [
-            "0xe34f199b19b2b4f47f68442619d555527d244f78a3297ea89325f843f87b8b54",
-            "0xe34f199b19b2b4f47f68442619d555527d244f78a3297ea89325f843f87b8b54",
-            "0x6ce8eb472fa82df5469c6ab6d485f17c3ad13c8cd7af59b3d4a8026c5ce0f7e2"
-        ];
-        AAVE_POOL_ADDRESS_PROVIDER = "0xa97684ead0e402dC232d5A977953DF7ECBaB3CDb";
-        // borrowingManagerAddresses = ["0xda57F8C3466d42D58B505ED9121F348210Ac78A4", "0xF0F3FC7Da32D49BaB7730142817B2B2111427dc1", "0x4a7d1Bd77557461aBa23b74bF41153034524107b"];
-    } else if (network === "base") {
-        dexNames = ["uniswap", "sushi", "pancake"];
-        V3_FACTORY = [
-            "0x33128a8fC17869897dcE68Ed026d694621f6FDfD",
-            "0xc35DADB65012eC5796536bD9864eD8773aBc74C4",
-            "0x41ff9AA7e16B8B1a8a8dc4f0eFacd93D02d071c9"
-        ];
-        V3_POOL_INIT_CODE_HASH = [
-            "0xe34f199b19b2b4f47f68442619d555527d244f78a3297ea89325f843f87b8b54",
-            "0xe34f199b19b2b4f47f68442619d555527d244f78a3297ea89325f843f87b8b54",
-            "0x6ce8eb472fa82df5469c6ab6d485f17c3ad13c8cd7af59b3d4a8026c5ce0f7e2"
-        ];
-        AAVE_POOL_ADDRESS_PROVIDER = "0xe20fCBdBfFC4Dd138cE8b2E6FBb6CB49777ad64D";
-        // borrowingManagerAddresses = ["0xda57F8C3466d42D58B505ED9121F348210Ac78A4", "0xF0F3FC7Da32D49BaB7730142817B2B2111427dc1", "0x4a7d1Bd77557461aBa23b74bF41153034524107b"];
-    }
+    // } else if (network === "arbitrum") {
+    //     dexNames = ["uniswap", "sushi", "pancake"];
+    //     V3_FACTORY = [
+    //         "0x1F98431c8aD98523631AE4a59f267346ea31F984",
+    //         "0x1af415a1EbA07a4986a52B6f2e7dE7003D82231e",
+    //         "0x41ff9AA7e16B8B1a8a8dc4f0eFacd93D02d071c9"
+    //     ];
+    //     V3_POOL_INIT_CODE_HASH = [
+    //         "0xe34f199b19b2b4f47f68442619d555527d244f78a3297ea89325f843f87b8b54",
+    //         "0xe34f199b19b2b4f47f68442619d555527d244f78a3297ea89325f843f87b8b54",
+    //         "0x6ce8eb472fa82df5469c6ab6d485f17c3ad13c8cd7af59b3d4a8026c5ce0f7e2"
+    //     ];
+    //     AAVE_POOL_ADDRESS_PROVIDER = "0xa97684ead0e402dC232d5A977953DF7ECBaB3CDb";
+    //     // borrowingManagerAddresses = ["0xda57F8C3466d42D58B505ED9121F348210Ac78A4", "0xF0F3FC7Da32D49BaB7730142817B2B2111427dc1", "0x4a7d1Bd77557461aBa23b74bF41153034524107b"];
+    // } else if (network === "base") {
+    //     dexNames = ["uniswap", "sushi", "pancake"];
+    //     V3_FACTORY = [
+    //         "0x33128a8fC17869897dcE68Ed026d694621f6FDfD",
+    //         "0xc35DADB65012eC5796536bD9864eD8773aBc74C4",
+    //         "0x41ff9AA7e16B8B1a8a8dc4f0eFacd93D02d071c9"
+    //     ];
+    //     V3_POOL_INIT_CODE_HASH = [
+    //         "0xe34f199b19b2b4f47f68442619d555527d244f78a3297ea89325f843f87b8b54",
+    //         "0xe34f199b19b2b4f47f68442619d555527d244f78a3297ea89325f843f87b8b54",
+    //         "0x6ce8eb472fa82df5469c6ab6d485f17c3ad13c8cd7af59b3d4a8026c5ce0f7e2"
+    //     ];
+    //     AAVE_POOL_ADDRESS_PROVIDER = "0xe20fCBdBfFC4Dd138cE8b2E6FBb6CB49777ad64D";
+    //     // borrowingManagerAddresses = ["0xda57F8C3466d42D58B505ED9121F348210Ac78A4", "0xF0F3FC7Da32D49BaB7730142817B2B2111427dc1", "0x4a7d1Bd77557461aBa23b74bF41153034524107b"];
+    // }
 
-    const FlashLoanAggregatorFactory = await ethers.getContractFactory("FlashLoanAggregator");
-    const flashLoanAggregator = await FlashLoanAggregatorFactory.deploy(AAVE_POOL_ADDRESS_PROVIDER, V3_FACTORY[0], V3_POOL_INIT_CODE_HASH[0], dexNames[0]);
-    await flashLoanAggregator.deployed();
-    console.log(`[${dexNames[0]}] FlashLoanAggregator  deployed to ${flashLoanAggregator.address}`);
-    await sleep(5000);
-    for (let i = 1; i < dexNames.length; i++) {
-        await flashLoanAggregator.addUniswapV3Dex(V3_FACTORY[i], V3_POOL_INIT_CODE_HASH[i], dexNames[i]);
-        console.log(`add [${dexNames[i]}] UniswapV3Dex to flashLoanAggregator`);
-    }
-    for (const element of borrowingManagerAddresses) {
-        await sleep(10000);
-        await flashLoanAggregator.setWagmiLeverageAddress(element);
-        console.log(`[${element}] setWagmiLeverageAddress flashLoanAggregator`);
-        await sleep(10000);
+    // const FlashLoanAggregatorFactory = await ethers.getContractFactory("FlashLoanAggregator");
+    // const flashLoanAggregator = await FlashLoanAggregatorFactory.deploy(AAVE_POOL_ADDRESS_PROVIDER, V3_FACTORY[0], V3_POOL_INIT_CODE_HASH[0], dexNames[0]);
+    // await flashLoanAggregator.deployed();
+    // console.log(`[${dexNames[0]}] FlashLoanAggregator  deployed to ${flashLoanAggregator.address}`);
+    // await sleep(5000);
+    // for (let i = 1; i < dexNames.length; i++) {
+    //     await flashLoanAggregator.addUniswapV3Dex(V3_FACTORY[i], V3_POOL_INIT_CODE_HASH[i], dexNames[i]);
+    //     await sleep(5000);
+    //     console.log(`add [${dexNames[i]}] UniswapV3Dex to flashLoanAggregator`);
+    // }
+    // for (const element of borrowingManagerAddresses) {
+    //     await sleep(10000);
+    //     await flashLoanAggregator.setWagmiLeverageAddress(element);
+    //     console.log(`[${element}] setWagmiLeverageAddress flashLoanAggregator`);
+    //     await sleep(10000);
 
-        const LiquidityBorrowingManager = await ethers.getContractFactory("LiquidityBorrowingManager");
-        const borrowingManager = LiquidityBorrowingManager.attach(element);
+    //     const LiquidityBorrowingManager = await ethers.getContractFactory("LiquidityBorrowingManager");
+    //     const borrowingManager = LiquidityBorrowingManager.attach(element);
 
-        await borrowingManager.updateSettings(4, [flashLoanAggregator.address]);
-        console.log(`[${element}] updateSettings`);
-    }
+    //     await borrowingManager.updateSettings(4, [flashLoanAggregator.address]);
+    //     console.log(`[${element}] updateSettings`);
+    // }
 
     // Kinetix.finance kava
     // https://github.com/kinetixfi/v3-deploy-scripts/blob/main/state.json
@@ -140,7 +141,7 @@ async function main() {
     // const UNISWAP_V3_POOL_INIT_CODE_HASH = "0xe34f199b19b2b4f47f68442619d555527d244f78a3297ea89325f843f87b8b54";
     // const UNISWAP_V3_FACTORY = "0xc35DADB65012eC5796536bD9864eD8773aBc74C4";
     // const LIGHT_QUOTER_V3 = "0xC49c177736107fD8351ed6564136B9ADbE5B1eC3";
-    // const FLASH_LOAN_AGGREGATOR_ADDRESS = flashLoanAggregator.address;
+    // const FLASH_LOAN_AGGREGATOR_ADDRESS = "0xdd9c5CA0270809b091bf477a7e28890EA1cbd1cF";
 
     /// Uniswap Mainnet, Goerli, Arbitrum, Optimism, Polygon
     // const dexname = "uniswap"
@@ -189,6 +190,11 @@ async function main() {
 
     // await borrowingManager.updateSettings(2, ["0x3c1Cb7D4c0ce0dc72eDc7Ea06acC866e62a8f1d8"]);
     // console.log(`operator added`);
+
+    // await sleep(5000);
+
+    // await borrowingManager.setSwapCallToWhitelist("0xDef1C0ded9bec7F1a1670819833240f027b25EfF", true);// matcha by 0x
+    // console.log(`matcha by 0x`);
 
     // const LiquidityBorrowingManager = await ethers.getContractFactory("LiquidityBorrowingManager");
     // const borrowingManager = LiquidityBorrowingManager.attach("0x7C261c6c2F43ec86fbc8DA48505fDF12D66193c9");
