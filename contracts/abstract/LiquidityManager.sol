@@ -307,7 +307,6 @@ abstract contract LiquidityManager is
                     }
                     // Calculate the square root price using `_getCurrentSqrtPriceX96` function
                     uint160 sqrtPriceX96 = _getCurrentSqrtPriceX96(
-                        params.zeroForSaleToken,
                         cache.saleToken,
                         cache.holdToken,
                         cache.fee
@@ -517,21 +516,16 @@ abstract contract LiquidityManager is
 
     /**
      * @dev Retrieves the current square root price in X96 representation.
-     * @param zeroForA Flag indicating whether to treat the tokenA as the 0th token or not.
      * @param tokenA The address of token A.
      * @param tokenB The address of token B.
      * @param fee The fee associated with the Uniswap V3 pool.
      * @return sqrtPriceX96 The current square root price in X96 representation.
      */
     function _getCurrentSqrtPriceX96(
-        bool zeroForA,
         address tokenA,
         address tokenB,
         uint24 fee
     ) private view returns (uint160 sqrtPriceX96) {
-        if (!zeroForA) {
-            (tokenA, tokenB) = (tokenB, tokenA);
-        }
         address poolAddress = computePoolAddress(tokenA, tokenB, fee);
         (sqrtPriceX96, , , , , , ) = IUniswapV3Pool(poolAddress).slot0();
     }
