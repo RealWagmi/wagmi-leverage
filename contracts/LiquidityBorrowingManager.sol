@@ -2,13 +2,6 @@
 
 pragma solidity 0.8.23;
 
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-import "./abstract/OwnerSettings.sol";
-import "./abstract/DailyRateAndCollateral.sol";
-import "./libraries/ErrLib.sol";
-import "./interfaces/ILiquidityBorrowingManager.sol";
-import { EnumerableSet } from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
-
 /**
  * WAGMI Leverage Protocol v2.3
  * wagmi.com                                                
@@ -22,6 +15,13 @@ import { EnumerableSet } from "@openzeppelin/contracts/utils/structs/EnumerableS
     $$$/    $$$ |$$ |  $$ |$$    $$/ $$ | $/  $$ |/ $$   |  
     $$/      $$/ $$/   $$/  $$$$$$/  $$/      $$/ $$$$$$/  
  */
+
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "./abstract/OwnerSettings.sol";
+import "./abstract/DailyRateAndCollateral.sol";
+import "./libraries/ErrLib.sol";
+import "./interfaces/ILiquidityBorrowingManager.sol";
+import { EnumerableSet } from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
 contract LiquidityBorrowingManager is
     ILiquidityBorrowingManager,
