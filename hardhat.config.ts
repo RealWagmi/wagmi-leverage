@@ -1,12 +1,11 @@
 import { HardhatUserConfig } from "hardhat/config";
-import "@nomicfoundation/hardhat-toolbox";
-import "hardhat-storage-layout";
-import "hardhat-tracer";
-import "@primitivefi/hardhat-dodoc";
-import "hardhat-contract-sizer";
-// import 'hardhat-exposed';
-import { config as dotEnvConfig } from 'dotenv';
+// import "@nomicfoundation/hardhat-toolbox";
+import "@matterlabs/hardhat-zksync-node";
+import "@matterlabs/hardhat-zksync-deploy";
+import "@matterlabs/hardhat-zksync-solc";
+import "@matterlabs/hardhat-zksync-verify";
 
+import { config as dotEnvConfig } from 'dotenv';
 
 dotEnvConfig();
 
@@ -24,175 +23,47 @@ const COMPILER_SETTINGS_OLD = {
   },
 };
 
-const COMPILER_SETTINGS = {
-  version: '0.8.23',
-  settings: {
-    viaIR: true,
-    evmVersion: "paris",
-    optimizer: {
-      enabled: true,
-      runs: 999,
-    },
-    metadata: {
-      bytecodeHash: 'none',
-    },
-  },
-};
-
 const config: HardhatUserConfig = {
-  dodoc: {
-    runOnCompile: true,
-    debugMode: false,
-    freshOutput: true,
-    include: ["LiquidityBorrowingManager"]
-  },
-  defaultNetwork: 'hardhat',
-  // exposed: {
-  //   include: ["./abstract/*.sol"],
-  // },
-  gasReporter: {
-    currency: 'USD',
-    coinmarketcap: process.env.COINMARKETCAP_API_KEY,
-    showTimeSpent: true,
-    enabled: true,
-    excludeContracts: ["ERC20", "ForceSend", "MockERC20", "$ApproveSwapAndPay", "$LiquidityManager"]
-  },
-  contractSizer: {
-    alphaSort: true,
-    disambiguatePaths: false,
-    runOnCompile: true,
-    strict: true,
-    only: ["LiquidityBorrowingManager", "LightQuoterV3", "FlashLoanAggregator"],
-  },
-  paths: {
-    sources: './contracts',
-    tests: './test',
-    artifacts: './artifacts',
-    cache: './cache',
+
+  defaultNetwork: "zkLinkTestnet",
+  zksolc: {
+    version: "latest", // optional.
+    settings: {
+      // compilerPath: "zksolc",  // optional. Ignored for compilerSource "docker". Can be used if compiler is located in a specific folder
+      // libraries: {}, // optional. References to non-inlinable libraries
+      // missingLibrariesPath: "./.zksolc-libraries-cache/missingLibraryDependencies.json", // optional. This path serves as a cache that stores all the libraries that are missing or have dependencies on other libraries. A `hardhat-zksync-deploy` plugin uses this cache later to compile and deploy the libraries, especially when the `deploy-zksync:libraries` task is executed
+      // isSystem: false, // optional.  Enables Yul instructions available only for zkSync system contracts and libraries
+      // forceEvmla: false, // optional. Falls back to EVM legacy assembly if there is a bug with Yul
+      optimizer: {
+        enabled: true, // optional. True by default
+        mode: 'z', // optional. 3 by default, z to optimize bytecode size
+        fallback_to_optimizing_for_size: true, // optional. Try to recompile with optimizer mode "z" if the bytecode is too large
+      },
+      // contractsToCompile: ["FlashLoanAggregator"] //optional. Compile only specific contracts
+    }
   },
   solidity: {
-    compilers: [
-      {
-        version: '0.8.23',
-        settings: {
-          viaIR: true,
-          evmVersion: "paris",
-          optimizer: {
-            enabled: true,
-            runs: 200
-          }
-
-        }
-      }
-    ],
-    overrides: {
-      'contracts/FlashLoanAggregator.sol': COMPILER_SETTINGS,
-      'contracts/LightQuoterV3.sol': COMPILER_SETTINGS,
-      'contracts/mock/ForceSend.sol': COMPILER_SETTINGS_OLD,
-    },
+    version: "0.8.23",
   },
   networks: {
     hardhat: {
-      //hardfork: "istanbul",
-      chainId: 1,
-      forking: {
-        url: "https://rpc.ankr.com/eth",
-        blockNumber: 17329500,
-      },
-      allowBlocksWithSameTimestamp: true,
-      allowUnlimitedContractSize: false,
-      blockGasLimit: 40000000,
-      gas: 40000000,
-      gasPrice: 'auto',
-      loggingEnabled: false,
-      accounts: {
-        mnemonic: "test test test test test test test test test test test junk",
-        path: "m/44'/60'/0'/0",
-        initialIndex: 0,
-        count: 5,
-        accountsBalance: '1000000000000000000000000000000000',
-        passphrase: "",
-      },
+      zksync: true,
     },
-    ethereum: {
-      url: "https://mainnet.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161", // public infura endpoint
-      chainId: 1,
-      gas: 'auto',
-      gasMultiplier: 1.2,
-      gasPrice: 6000000000,
+    zkLinkMainnet: {
+      url: "https://rpc.zklink.io",
+      chainId: 810180,
       accounts: [`${process.env.PRIVATE_KEY}`],
-      loggingEnabled: true,
+      ethNetwork: "mainnet",
+      zksync: true,
+      verifyURL: " https://explorer.zklink.io/contract_verification",
     },
-    bsc: {
-      url: "https://bsc-dataseed1.binance.org",
-      chainId: 56,
+    zkLinkTestnet: {
+      url: "https://sepolia.rpc.zklink.io",
+      chainId: 810181,
       accounts: [`${process.env.PRIVATE_KEY}`],
-      gas: 'auto',
-      gasMultiplier: 1.2,
-      gasPrice: 5000000000,
-      loggingEnabled: true,
-    },
-    avalanche: {
-      url: "https://api.avax.network/ext/bc/C/rpc",
-      chainId: 43114,
-      accounts: [`${process.env.PRIVATE_KEY}`],
-    },
-    fantom: {
-      url: "https://rpcapi.fantom.network",
-      chainId: 250,
-      accounts: [
-        `${process.env.PRIVATE_KEY}`
-      ],
-      gas: 10000000,
-      blockGasLimit: 31000000,
-      gasMultiplier: 1.2,
-      gasPrice: 65000000000,
-      loggingEnabled: true,
-    },
-    polygon: {
-      url: "https://polygon-bor.publicnode.com",
-      accounts: [`${process.env.PRIVATE_KEY}`],
-      chainId: 137,
-      gas: 'auto',
-      gasMultiplier: 1.2,
-      gasPrice: 350000000000,
-      loggingEnabled: true,
-    },
-    arbitrum: {
-      url: "https://arb1.arbitrum.io/rpc",
-      accounts: [`${process.env.PRIVATE_KEY}`],
-      chainId: 42161,
-      gas: 'auto',
-      gasMultiplier: 1.2,
-      gasPrice: 'auto',
-      loggingEnabled: true,
-    },
-    kava: {
-      url: "https://evm.kava.io", // public infura endpoint
-      chainId: 2222,
-      gas: 'auto',
-      gasMultiplier: 1.2,
-      gasPrice: 'auto',
-      accounts: [`${process.env.PRIVATE_KEY}`],
-      loggingEnabled: true,
-    },
-    metis: {
-      url: "https://andromeda.metis.io/?owner=1088", // public endpoint
-      chainId: 1088,
-      gas: 'auto',
-      gasMultiplier: 1.2,
-      gasPrice: 'auto',
-      accounts: [`${process.env.PRIVATE_KEY}`],
-      loggingEnabled: true,
-    },
-    base: {
-      url: 'https://mainnet.base.org',
-      chainId: 8453,
-      gas: 'auto',
-      gasMultiplier: 1.2,
-      gasPrice: 'auto',
-      accounts: [`${process.env.PRIVATE_KEY}`],
-      loggingEnabled: true,
+      ethNetwork: "sepolia",
+      zksync: true,
+      verifyURL: "https://sepolia.explorer.zklink.io/contract_verification",
     },
   },
   mocha: {
