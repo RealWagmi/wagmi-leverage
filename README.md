@@ -56,9 +56,6 @@ Traders on Wagmi can margin long or short any pair without the risk of forced pr
 |------| ------- | -----|
 | KAVA | wagmi | 0 |
 | KAVA | kinetix | 1 |
-| ARBITRUM | uniswap | 0 |
-| ARBITRUM | sushi | 1 |
-| ARBITRUM | pancake | 2 |
 | METIS | wagmi | 0 |
 | METIS | hercules | 1 |
 | BASE | uniswap | 0 |
@@ -71,12 +68,10 @@ Traders on Wagmi can margin long or short any pair without the risk of forced pr
 |------| ------- | -----| -----|
 | KAVA | 2222 | LightQuoterV3 | [0x1C9B724cBd7683c80226cE35a39F9127950ABb95](https://kavascan.com/address/0x1C9B724cBd7683c80226cE35a39F9127950ABb95) |
 | KAVA | 2222 | FlashLoanAggregator | [0x923e559a12d856f3217b715fE98a7a07CabD6Ed7](https://kavascan.com/address/0x923e559a12d856f3217b715fE98a7a07CabD6Ed7) |
-| ARBITRUM | 42161 | LightQuoterV3 | [0x4948f07aCEF9958eb03f1F46f5A949594f2dA2D9](https://arbiscan.io/address/0x4948f07aCEF9958eb03f1F46f5A949594f2dA2D9) |
-| ARBITRUM | 42161 | FlashLoanAggregator | [0xAB4bc49175003EBdc7BD6bFae4afC700b185FdA9](https://arbiscan.io/address/0xAB4bc49175003EBdc7BD6bFae4afC700b185FdA9) |
 | METIS | 1088 | LightQuoterV3 | [0x3963793a9FB287Ac83aE3eAe849Ef35c98E4CE98](https://explorer.metis.io/address/0x3963793a9FB287Ac83aE3eAe849Ef35c98E4CE98) |
 | METIS | 1088 | FlashLoanAggregator | [0x056df39aCe357C1ABf67fb090e36C9ec126c8828](https://explorer.metis.io/address/0x056df39aCe357C1ABf67fb090e36C9ec126c8828) |
-| BASE | 8453 | LightQuoterV3 | [0xC49c177736107fD8351ed6564136B9ADbE5B1eC3](https://basescan.org/address/0xC49c177736107fD8351ed6564136B9ADbE5B1eC3) |
-| BASE | 8453 | FlashLoanAggregator | [0xdd9c5CA0270809b091bf477a7e28890EA1cbd1cF](https://basescan.org/address/0xdd9c5CA0270809b091bf477a7e28890EA1cbd1cF) |
+| BASE | 8453 | LightQuoterV3 | [0x2A3EFD7c2B88dd02b150F7A81825414Db82a7832](https://basescan.org/address/0x2A3EFD7c2B88dd02b150F7A81825414Db82a7832) |
+| BASE | 8453 | FlashLoanAggregator | [0x1bbcE9Fc68E47Cd3E4B6bC3BE64E271bcDb3edf1](https://basescan.org/address/0x1bbcE9Fc68E47Cd3E4B6bC3BE64E271bcDb3edf1) |
 
 ##
 
@@ -91,18 +86,12 @@ Traders on Wagmi can margin long or short any pair without the risk of forced pr
 | kinetix | KAVA | 2222 | LiquidityBorrowingManager | [0xf58a7048b36b2A67dDda4f0E32E76B1081F3AaF0](https://kavascan.com/address/0xf58a7048b36b2A67dDda4f0E32E76B1081F3AaF0) |
 | kinetix | KAVA | 2222 | Vault| [0x5A3F804c853b388f0619Ebf085F94927E7f03470](https://kavascan.com/address/0x5A3F804c853b388f0619Ebf085F94927E7f03470) |
 | kinetix | KAVA | 2222 | PositionEffectivityChart| [0xc01328369EBfE292991bbbAeD986D9Db2B4AEA91](https://kavascan.com/address/0xc01328369EBfE292991bbbAeD986D9Db2B4AEA91) |
-| uniswap | ARBITRUM | 42161 | LiquidityBorrowingManager | [0xda57F8C3466d42D58B505ED9121F348210Ac78A4](https://arbiscan.io/address/0xda57F8C3466d42D58B505ED9121F348210Ac78A4) |
-| uniswap | ARBITRUM | 42161 | Vault| [0xc69F42f9aE0f6B6Ae5cF5766Ab47b57f7966EcDA](https://arbiscan.io/address/0xc69F42f9aE0f6B6Ae5cF5766Ab47b57f7966EcDA) |
-| uniswap | ARBITRUM | 42161 | PositionEffectivityChart| [0x195b6dC59aDaB228347f4509b7ABd1f530ee88Bb](https://arbiscan.io/address/0x195b6dC59aDaB228347f4509b7ABd1f530ee88Bb) |
-| sushi | ARBITRUM | 42161 | LiquidityBorrowingManager | [0xF0F3FC7Da32D49BaB7730142817B2B2111427dc1](https://arbiscan.io/address/0xF0F3FC7Da32D49BaB7730142817B2B2111427dc1) |
-| sushi | ARBITRUM | 42161 | Vault| [0x5429f799c11aEF099863a941802073510e83BB1A](https://arbiscan.io/address/0x5429f799c11aEF099863a941802073510e83BB1A) |
-| sushi | ARBITRUM | 42161 | PositionEffectivityChart| [0x2f08131C0a668a1224FB21DF177B83B5AF3c6968](https://arbiscan.io/address/0x2f08131C0a668a1224FB21DF177B83B5AF3c6968) |
-| uniswap | BASE | 8453 | LiquidityBorrowingManager | [0xAB8195dbDB65E74aafc13b7FFc08A1978E481868](https://basescan.org/address/0xAB8195dbDB65E74aafc13b7FFc08A1978E481868) |
-| uniswap | BASE | 8453 | Vault| [0xcdd3a5811A95Dc73B5995108926504C9d48A8b37](https://basescan.org/address/0xcdd3a5811A95Dc73B5995108926504C9d48A8b37) |
-| uniswap | BASE | 8453 | PositionEffectivityChart| [0x141cB6458c8090B23539083C6545070D2ce4EF87](https://basescan.org/address/0x141cB6458c8090B23539083C6545070D2ce4EF87) |
-| sushi | BASE | 8453 | LiquidityBorrowingManager | [0x5CaF2D85f17A8f3b57918d54c8B138Cacac014BD](https://basescan.org/address/0x5CaF2D85f17A8f3b57918d54c8B138Cacac014BD) |
-| sushi | BASE | 8453 | Vault| [0xe717A68c4c76C3aceAd4C7021AF46894F3806B59](https://basescan.org/address/0xe717A68c4c76C3aceAd4C7021AF46894F3806B59) |
-| sushi | BASE | 8453 | PositionEffectivityChart| [0x69DAD44b15d484bDBb5a3F217605Ff037c26b705](https://basescan.org/address/0x69DAD44b15d484bDBb5a3F217605Ff037c26b705) |
+| uniswap | BASE | 8453 | LiquidityBorrowingManager | [0xAb205ca2FB07aE77B5056309021aE582D3246434](https://basescan.org/address/0xAb205ca2FB07aE77B5056309021aE582D3246434) |
+| uniswap | BASE | 8453 | Vault| [0x5077AF698Bae841544F9216cf12AF6EF699c2618](https://basescan.org/address/0x5077AF698Bae841544F9216cf12AF6EF699c2618) |
+| uniswap | BASE | 8453 | PositionEffectivityChart| [0x2d149685F167b313AcD806AB2E503DC9636c61B5](https://basescan.org/address/0x2d149685F167b313AcD806AB2E503DC9636c61B5) |
+| sushi | BASE | 8453 | LiquidityBorrowingManager | [0x696D71422ea6636e4C7c0af41bDA751D693E6f53](https://basescan.org/address/0x696D71422ea6636e4C7c0af41bDA751D693E6f53) |
+| sushi | BASE | 8453 | Vault| [0xe6ADff9B55b6BBacE1eB39909255A071683CAeDc](https://basescan.org/address/0xe6ADff9B55b6BBacE1eB39909255A071683CAeDc) |
+| sushi | BASE | 8453 | PositionEffectivityChart| [0x16CAd8fbD9878D1fF86A12Eb4A275c7F53B5788e](https://basescan.org/address/0x16CAd8fbD9878D1fF86A12Eb4A275c7F53B5788e) |
 
 ##
 

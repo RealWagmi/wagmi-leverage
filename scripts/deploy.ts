@@ -140,8 +140,8 @@ async function main() {
     // const NONFUNGIBLE_POSITION_MANAGER_ADDRESS = "0x80C7DD17B01855a6D2347444a0FCC36136a314de";
     // const UNISWAP_V3_POOL_INIT_CODE_HASH = "0xe34f199b19b2b4f47f68442619d555527d244f78a3297ea89325f843f87b8b54";
     // const UNISWAP_V3_FACTORY = "0xc35DADB65012eC5796536bD9864eD8773aBc74C4";
-    // const LIGHT_QUOTER_V3 = "0xC49c177736107fD8351ed6564136B9ADbE5B1eC3";
-    // const FLASH_LOAN_AGGREGATOR_ADDRESS = "0xdd9c5CA0270809b091bf477a7e28890EA1cbd1cF";
+    // const LIGHT_QUOTER_V3 = "0x2A3EFD7c2B88dd02b150F7A81825414Db82a7832";
+    // const FLASH_LOAN_AGGREGATOR_ADDRESS = "0x1bbcE9Fc68E47Cd3E4B6bC3BE64E271bcDb3edf1";
 
     /// Uniswap Mainnet, Goerli, Arbitrum, Optimism, Polygon
     // const dexname = "uniswap"
@@ -156,7 +156,7 @@ async function main() {
     // const NONFUNGIBLE_POSITION_MANAGER_ADDRESS = "0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1";
     // const UNISWAP_V3_POOL_INIT_CODE_HASH = "0xe34f199b19b2b4f47f68442619d555527d244f78a3297ea89325f843f87b8b54";
     // const UNISWAP_V3_FACTORY = "0x33128a8fC17869897dcE68Ed026d694621f6FDfD";
-    // const LIGHT_QUOTER_V3 = "0xC49c177736107fD8351ed6564136B9ADbE5B1eC3";
+    // const LIGHT_QUOTER_V3 = lightQuoter.address;
     // const FLASH_LOAN_AGGREGATOR_ADDRESS = flashLoanAggregator.address;
 
 
@@ -192,7 +192,7 @@ async function main() {
     // console.log(`operator added`);
 
     // await sleep(5000);
-
+    // // base
     // await borrowingManager.setSwapCallToWhitelist("0xDef1C0ded9bec7F1a1670819833240f027b25EfF", true);// matcha by 0x
     // console.log(`matcha by 0x`);
 
