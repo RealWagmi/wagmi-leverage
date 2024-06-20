@@ -194,6 +194,11 @@ const config: HardhatUserConfig = {
       accounts: [`${process.env.PRIVATE_KEY}`],
       loggingEnabled: true,
     },
+    iotaevm: {
+      url: 'https://json-rpc.evm.iotaledger.net',
+      chainId: 8822,
+      accounts: [`${process.env.PRIVATE_KEY}`],
+    },
   },
   mocha: {
     timeout: 100000,
@@ -208,6 +213,7 @@ const config: HardhatUserConfig = {
       arbitrumOne: `${process.env.ARBISCAN_API_KEY}`,
       base: `${process.env.BASE_API_KEY}`,
       metis: "metis",
+      iota: "abc",
     },
     customChains: [
       {
@@ -224,6 +230,14 @@ const config: HardhatUserConfig = {
         urls: {
           apiURL: "https://api.basescan.org/api",
           browserURL: "https://basescan.org"
+        }
+      },
+      {
+        network: "iota",
+        chainId: 8822,
+        urls: {
+          apiURL: "https://explorer.evm.iota.org/api",
+          browserURL: "https://explorer.evm.iota.org/"
         }
       }
     ]

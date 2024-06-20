@@ -45,10 +45,10 @@ Traders on Wagmi can margin long or short any pair without the risk of forced pr
 
 ### V2.0
 
-| indx | Protocol | KAVA | ARBITRUM | METIS | BASE |
-|------| ------- | -----| -----| -----| -----|
-| 1 | uniswap | ✅ | ✅ | ✅ | ✅ |
-| 2 | aave | ❌ | ✅ | ❌ | ✅ |
+| indx | Protocol | KAVA | ARBITRUM | METIS | BASE | IOTA |
+|------| ------- | -----| -----| -----| -----| -----|
+| 1 | uniswap | ✅ | ✅ | ✅ | ✅ | ✅ |
+| 2 | aave | ❌ | ✅ | ❌ | ✅ | ❌ |
 
 ##
 
@@ -61,6 +61,7 @@ Traders on Wagmi can margin long or short any pair without the risk of forced pr
 | BASE | uniswap | 0 |
 | BASE | sushi | 1 |
 | BASE | pancake | 2 |
+| IOTA | wagmi | 0 |
 
 ##
 
@@ -72,6 +73,8 @@ Traders on Wagmi can margin long or short any pair without the risk of forced pr
 | METIS | 1088 | FlashLoanAggregator | [0x056df39aCe357C1ABf67fb090e36C9ec126c8828](https://explorer.metis.io/address/0x056df39aCe357C1ABf67fb090e36C9ec126c8828) |
 | BASE | 8453 | LightQuoterV3 | [0x2A3EFD7c2B88dd02b150F7A81825414Db82a7832](https://basescan.org/address/0x2A3EFD7c2B88dd02b150F7A81825414Db82a7832) |
 | BASE | 8453 | FlashLoanAggregator | [0x1bbcE9Fc68E47Cd3E4B6bC3BE64E271bcDb3edf1](https://basescan.org/address/0x1bbcE9Fc68E47Cd3E4B6bC3BE64E271bcDb3edf1) |
+| IOTA | 8822 | LightQuoterV3 | [0xC49c177736107fD8351ed6564136B9ADbE5B1eC3](https://explorer.evm.iota.org/address/0xC49c177736107fD8351ed6564136B9ADbE5B1eC3) |
+| IOTA | 8822 | FlashLoanAggregator | [0x259308E7d8557e4Ba192De1aB8Cf7e0E21896442](https://explorer.evm.iota.org/address/0x259308E7d8557e4Ba192De1aB8Cf7e0E21896442) |
 
 ##
 
@@ -83,6 +86,9 @@ Traders on Wagmi can margin long or short any pair without the risk of forced pr
 | wagmi | METIS | 1088 | LiquidityBorrowingManager | [0x25a31a36Ff56Bc5570fd09Ac2da062115DAeb54e](https://explorer.metis.io/address/0x25a31a36Ff56Bc5570fd09Ac2da062115DAeb54e) |
 | wagmi | METIS| 1088 | Vault| [0x9cB36c835f189c40bD9cd1cf298717B7bb9e3630](https://explorer.metis.io/address/0x9cB36c835f189c40bD9cd1cf298717B7bb9e3630) |
 | wagmi | METIS | 1088 | PositionEffectivityChart| [0x2c80042504A5C0710e38B0dBD85ee5eB6f1A11CD](https://explorer.metis.io/address/0x2c80042504A5C0710e38B0dBD85ee5eB6f1A11CD) |
+| wagmi | IOTA | 8822 | LiquidityBorrowingManager | [0x78B7964A499B6aee02A4a3d628F3e47F7605d5d9](https://explorer.evm.iota.org/address/0x78B7964A499B6aee02A4a3d628F3e47F7605d5d9) |
+| wagmi | IOTA | 8822 | Vault| [0x6E4F7843D0233422238f65B6765eB5676bfb6Dc3](https://explorer.evm.iota.org/address/0x6E4F7843D0233422238f65B6765eB5676bfb6Dc3) |
+| wagmi | IOTA | 8822 | PositionEffectivityChart| [0x7228b8110d9A85BD6740bE03677Eb6deDe0546a8](https://explorer.evm.iota.org/address/0x7228b8110d9A85BD6740bE03677Eb6deDe0546a8) |
 | kinetix | KAVA | 2222 | LiquidityBorrowingManager | [0xf58a7048b36b2A67dDda4f0E32E76B1081F3AaF0](https://kavascan.com/address/0xf58a7048b36b2A67dDda4f0E32E76B1081F3AaF0) |
 | kinetix | KAVA | 2222 | Vault| [0x5A3F804c853b388f0619Ebf085F94927E7f03470](https://kavascan.com/address/0x5A3F804c853b388f0619Ebf085F94927E7f03470) |
 | kinetix | KAVA | 2222 | PositionEffectivityChart| [0xc01328369EBfE292991bbbAeD986D9Db2B4AEA91](https://kavascan.com/address/0xc01328369EBfE292991bbbAeD986D9Db2B4AEA91) |
