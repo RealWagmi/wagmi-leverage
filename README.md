@@ -61,6 +61,7 @@ Traders on Wagmi can margin long or short any pair without the risk of forced pr
 | BASE | uniswap | 0 |
 | BASE | sushi | 1 |
 | BASE | pancake | 2 |
+| BASE | wagmi | 3 |
 | IOTA | wagmi | 0 |
 
 ##
@@ -98,6 +99,9 @@ Traders on Wagmi can margin long or short any pair without the risk of forced pr
 | sushi | BASE | 8453 | LiquidityBorrowingManager | [0x696D71422ea6636e4C7c0af41bDA751D693E6f53](https://basescan.org/address/0x696D71422ea6636e4C7c0af41bDA751D693E6f53) |
 | sushi | BASE | 8453 | Vault| [0xe6ADff9B55b6BBacE1eB39909255A071683CAeDc](https://basescan.org/address/0xe6ADff9B55b6BBacE1eB39909255A071683CAeDc) |
 | sushi | BASE | 8453 | PositionEffectivityChart| [0x16CAd8fbD9878D1fF86A12Eb4A275c7F53B5788e](https://basescan.org/address/0x16CAd8fbD9878D1fF86A12Eb4A275c7F53B5788e) |
+| wagmi | BASE | 8453 | LiquidityBorrowingManager | [0x3De5E32e21a1656d04F3145552735DdB4F4a4A2C](https://basescan.org/address/0x3De5E32e21a1656d04F3145552735DdB4F4a4A2C) |
+| wagmi | BASE | 8453 | Vault| [0xb75c170eCa8614CF70A14Ba8E2Cb602e0E0C003F](https://basescan.org/address/0xb75c170eCa8614CF70A14Ba8E2Cb602e0E0C003F) |
+| wagmi | BASE | 8453 | PositionEffectivityChart| [0x3a080a2d6ad7FCa3f3C8f2798fa7f6712C1E6B07](https://basescan.org/address/0x3a080a2d6ad7FCa3f3C8f2798fa7f6712C1E6B07) |
 
 ##
 
