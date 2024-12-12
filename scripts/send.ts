@@ -8,21 +8,25 @@ async function sleep(ms: number) {
 
 async function main() {
     //const [deployer] = await ethers.getSigners();
-    let dexname = "wagmi";
+    let dexname = "uniswap";
+    const SWAP_ROUTER_O2 = "0xB5fa77E3929fe198a86Aa40fd6c77886785bCd0e";
 
     const network = hardhat.network.name as keyof typeof config.borrowingManagerAddress;
 
 
     const dex = dexname as keyof typeof config.borrowingManagerAddress[typeof network];
     const borrowingManagerAddress = config.borrowingManagerAddress[network][dex];
-    console.log("");
     console.log(`[${network}]  ${dex} LiquidityBorrowingManager : ${borrowingManagerAddress}`);
 
 
     const LiquidityBorrowingManager = await ethers.getContractFactory("LiquidityBorrowingManager");
     const borrowingManager = LiquidityBorrowingManager.attach(borrowingManagerAddress);
 
-    await borrowingManager.updateSettings(1, [69]);
+    await borrowingManager.setSwapCallToWhitelist(SWAP_ROUTER_O2, true);
+    await sleep(5000);
+    console.log(`SwapRouter02`);
+
+    // await borrowingManager.updateSettings(1, [69]);
 
     // const operator = "";
     // await borrowingManager.updateSettings(2, [operator]);
