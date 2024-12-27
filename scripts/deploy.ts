@@ -1,3 +1,4 @@
+// deploy script for those who know what it does
 import hardhat, { ethers } from "hardhat";
 const { constants } = ethers;
 
@@ -210,8 +211,8 @@ async function main() {
     // await flashLoanAggregator.addUniswapV3Dex(UNISWAP_V3_FACTORY, UNISWAP_V3_POOL_INIT_CODE_HASH, dexname);
     // await sleep(5000);
 
-    // await flashLoanAggregator.setWagmiLeverageAddress(borrowingManager.address);
-    // console.log(`setWagmiLeverageAddress flashLoanAggregator`);
+    await flashLoanAggregator.setWagmiLeverageAddress(borrowingManager.address);
+    console.log(`setWagmiLeverageAddress flashLoanAggregator`);
 
     // await sleep(5000);
     // const PositionEffectivityChart = await ethers.getContractFactory("PositionEffectivityChart");

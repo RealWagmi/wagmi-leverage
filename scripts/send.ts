@@ -5,26 +5,23 @@ async function sleep(ms: number) {
     return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-
 async function main() {
     //const [deployer] = await ethers.getSigners();
-    let dexname = "uniswap";
-    const SWAP_ROUTER_O2 = "0xB5fa77E3929fe198a86Aa40fd6c77886785bCd0e";
+    // let dexname = "uniswap";
+    // const SWAP_ROUTER_O2 = "0xB5fa77E3929fe198a86Aa40fd6c77886785bCd0e";
 
-    const network = hardhat.network.name as keyof typeof config.borrowingManagerAddress;
+    // const network = hardhat.network.name as keyof typeof config.borrowingManagerAddress;
 
+    // const dex = dexname as keyof typeof config.borrowingManagerAddress[typeof network];
+    // const borrowingManagerAddress = config.borrowingManagerAddress[network][dex];
+    // console.log(`[${network}]  ${dex} LiquidityBorrowingManager : ${borrowingManagerAddress}`);
 
-    const dex = dexname as keyof typeof config.borrowingManagerAddress[typeof network];
-    const borrowingManagerAddress = config.borrowingManagerAddress[network][dex];
-    console.log(`[${network}]  ${dex} LiquidityBorrowingManager : ${borrowingManagerAddress}`);
+    // const LiquidityBorrowingManager = await ethers.getContractFactory("LiquidityBorrowingManager");
+    // const borrowingManager = LiquidityBorrowingManager.attach(borrowingManagerAddress);
 
-
-    const LiquidityBorrowingManager = await ethers.getContractFactory("LiquidityBorrowingManager");
-    const borrowingManager = LiquidityBorrowingManager.attach(borrowingManagerAddress);
-
-    await borrowingManager.setSwapCallToWhitelist(SWAP_ROUTER_O2, true);
-    await sleep(5000);
-    console.log(`SwapRouter02`);
+    // await borrowingManager.setSwapCallToWhitelist(SWAP_ROUTER_O2, true);
+    // await sleep(5000);
+    // console.log(`SwapRouter02`);
 
     // await borrowingManager.updateSettings(1, [69]);
 
@@ -42,6 +39,13 @@ async function main() {
     // await sleep(5000);
     // //Open Ocean Exchange Proxy
     // await borrowingManager.setSwapCallToWhitelist("0x6352a56caadC4F1E25CD6c75970Fa768A3304e64", true);//swap
+
+    // const FlashLoanAggregatorFactory = await ethers.getContractFactory("FlashLoanAggregator");
+    // const flashLoanAggregator = FlashLoanAggregatorFactory.attach("0x259308E7d8557e4Ba192De1aB8Cf7e0E21896442");
+    // await sleep(5000);
+
+    // await flashLoanAggregator.setWagmiLeverageAddress("0x78B7964A499B6aee02A4a3d628F3e47F7605d5d9");
+    // console.log(`setWagmiLeverageAddress flashLoanAggregator`);
 
     console.log("done!");
     process.exit(0);
